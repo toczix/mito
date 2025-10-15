@@ -54,6 +54,7 @@ export function matchBiomarkersWithRanges(
         hisValue: extractedData.value,
         unit: extractedData.unit,
         optimalRange: optimalRange,
+        testDate: extractedData.testDate,
       });
       matchedNames.add(normalized);
     } else {
@@ -63,6 +64,7 @@ export function matchBiomarkersWithRanges(
         hisValue: 'N/A',
         unit: benchmark.units[0] || '',
         optimalRange: optimalRange,
+        testDate: undefined,
       });
     }
   }

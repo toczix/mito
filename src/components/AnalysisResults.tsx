@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { generateSummary, getValueStatus } from '@/lib/analyzer';
 import type { AnalysisResult } from '@/lib/biomarkers';
 import { Copy, Download, CheckCircle2, XCircle, HelpCircle, AlertCircle, Save } from 'lucide-react';
@@ -103,15 +104,40 @@ export function AnalysisResults({ results, onReset, selectedClientId: preSelecte
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'in-range':
-        return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">In Range</Badge>;
+        return (
+          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-300 font-medium px-3 py-1 flex items-center gap-1.5 w-fit mx-auto">
+            <CheckCircle2 className="h-3.5 w-3.5" />
+            In Range
+          </Badge>
+        );
       case 'out-of-range':
-        return <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">Out of Range</Badge>;
+        return (
+          <Badge variant="outline" className="bg-red-100 text-red-800 border-red-400 font-semibold px-3 py-1 flex items-center gap-1.5 w-fit mx-auto">
+            <XCircle className="h-3.5 w-3.5" />
+            Out of Range
+          </Badge>
+        );
       default:
         return null;
     }
   };
 
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return null;
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('en-US', { 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric' 
+      });
+    } catch {
+      return dateString;
+    }
+  };
+
   return (
+    <TooltipProvider>
     <div className="w-full max-w-7xl mx-auto space-y-6">
       {/* Summary Card */}
       <Card>
@@ -271,36 +297,65 @@ export function AnalysisResults({ results, onReset, selectedClientId: preSelecte
           <div className="rounded-md border overflow-x-auto">
             <Table>
               <TableHeader>
-                <TableRow>
-                  <TableHead className="w-12">#</TableHead>
-                  <TableHead className="min-w-[200px]">Biomarker Name</TableHead>
-                  <TableHead className="min-w-[120px]">His Value</TableHead>
-                  <TableHead className="min-w-[100px]">Unit</TableHead>
-                  <TableHead className="min-w-[200px]">Optimal Range (Male)</TableHead>
-                  <TableHead className="w-32 text-center">Status</TableHead>
+                <TableRow className="hover:bg-transparent">
+                  <TableHead className="w-16 text-center">#</TableHead>
+                  <TableHead className="min-w-[180px]">Biomarker Name</TableHead>
+                  <TableHead className="min-w-[100px] text-right">His Value</TableHead>
+                  <TableHead className="min-w-[80px]">Unit</TableHead>
+                  <TableHead className="min-w-[220px]">Optimal Range (Male)</TableHead>
+                  <TableHead className="w-[180px] text-center">Status</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {results.map((result, index) => {
                   const status = getValueStatus(result.hisValue, result.optimalRange);
                   const isNA = result.hisValue === 'N/A';
+                  const isOutOfRange = status === 'out-of-range';
 
                   return (
-                    <TableRow key={index} className={isNA ? 'bg-muted/30' : ''}>
-                      <TableCell className="font-medium text-muted-foreground">
+                    <TableRow 
+                      key={index} 
+                      className={`
+                        ${isNA ? 'bg-muted/30' : ''} 
+                        ${isOutOfRange ? 'bg-red-50/50 hover:bg-red-50/70' : 'hover:bg-muted/50'}
+                      `}
+                    >
+                      <TableCell className="font-medium text-muted-foreground text-center py-4">
                         {index + 1}
                       </TableCell>
-                      <TableCell className="font-medium">{result.biomarkerName}</TableCell>
-                      <TableCell className={`font-mono ${isNA ? 'text-muted-foreground' : 'font-semibold'}`}>
-                        {result.hisValue}
+                      <TableCell className={`font-medium py-4 ${isOutOfRange ? 'text-gray-900' : ''}`}>
+                        {result.biomarkerName}
                       </TableCell>
-                      <TableCell className="text-muted-foreground">{result.unit}</TableCell>
-                      <TableCell className="text-sm">{result.optimalRange}</TableCell>
-                      <TableCell className="text-center">
-                        <div className="flex items-center justify-center gap-2">
-                          {!isNA && getStatusIcon(status)}
-                          {!isNA && getStatusBadge(status)}
-                        </div>
+                      <TableCell className={`
+                        font-mono text-right py-4
+                        ${isNA ? 'text-muted-foreground' : ''} 
+                        ${isOutOfRange ? 'font-bold text-red-700 text-base' : 'font-semibold'}
+                      `}>
+                        {!isNA && result.testDate ? (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="cursor-help border-b border-dashed border-gray-400 hover:border-gray-600">
+                                {result.hisValue}
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p className="text-xs">
+                                Tested on: <span className="font-semibold">{formatDate(result.testDate)}</span>
+                              </p>
+                            </TooltipContent>
+                          </Tooltip>
+                        ) : (
+                          result.hisValue
+                        )}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground text-sm py-4">
+                        {result.unit}
+                      </TableCell>
+                      <TableCell className="text-sm text-gray-700 py-4">
+                        {result.optimalRange}
+                      </TableCell>
+                      <TableCell className="py-4">
+                        {!isNA && getStatusBadge(status)}
                       </TableCell>
                     </TableRow>
                   );
@@ -311,6 +366,7 @@ export function AnalysisResults({ results, onReset, selectedClientId: preSelecte
         </CardContent>
       </Card>
     </div>
+    </TooltipProvider>
   );
 }
 

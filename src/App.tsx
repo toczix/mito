@@ -154,7 +154,10 @@ function App() {
         }
       }
       
-      const deduplicatedBiomarkers = Array.from(biomarkerMap.values()).map(item => item.biomarker);
+      const deduplicatedBiomarkers = Array.from(biomarkerMap.values()).map(item => ({
+        ...item.biomarker,
+        testDate: item.testDate || undefined,
+      }));
       const combinedResults = matchBiomarkersWithRanges(deduplicatedBiomarkers);
       
       // Determine if we should save as one or multiple analyses

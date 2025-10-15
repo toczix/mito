@@ -9,6 +9,7 @@ export interface ExtractedBiomarker {
   name: string;
   value: string;
   unit: string;
+  testDate?: string; // YYYY-MM-DD format
 }
 
 export interface AnalysisResult {
@@ -16,6 +17,7 @@ export interface AnalysisResult {
   hisValue: string;
   unit: string;
   optimalRange: string;
+  testDate?: string; // YYYY-MM-DD format
 }
 
 export const BIOMARKERS: Biomarker[] = [
