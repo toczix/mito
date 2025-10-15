@@ -72,7 +72,15 @@ function App() {
       // Step 2: Extract biomarkers AND patient info from EACH PDF separately - 20-70%
       setProcessingMessage(`Analyzing ${processedPdfs.length} document(s) with Claude AI...`);
       setProcessingProgress(30);
-      const claudeResponses = await extractBiomarkersFromPdfs(currentApiKey, processedPdfs);
+      const claudeResponses = await extractBiomarkersFromPdfs(
+        currentApiKey, 
+        processedPdfs,
+        (current, total, batchInfo) => {
+          const progress = 30 + Math.round((current / total) * 40);
+          setProcessingProgress(progress);
+          setProcessingMessage(`Analyzing document ${current + 1} of ${total}${batchInfo}...`);
+        }
+      );
       setProcessingProgress(70);
       
       // Step 3: Process each analysis and combine biomarkers - 70-85%

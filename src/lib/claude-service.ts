@@ -143,7 +143,7 @@ export async function extractBiomarkersFromPdf(
       if (error.message.includes('invalid_api_key') || error.message.includes('authentication')) {
         throw new Error('Invalid API key. Please check your Claude API key.');
       }
-      if (error.message.includes('rate_limit') || error.message.includes('overloaded')) {
+      if (error.message.includes('rate_limit') || error.message.includes('overloaded') || error.message.includes('529')) {
         throw new Error('API rate limit exceeded or service is overloaded. Please try again in a moment.');
       }
       throw new Error(`Claude API error: ${error.message}`);
@@ -154,12 +154,13 @@ export async function extractBiomarkersFromPdf(
 }
 
 /**
- * Extract biomarkers from MULTIPLE PDFs (processes in parallel for speed!)
+ * Extract biomarkers from MULTIPLE PDFs (processes in batches to avoid rate limits)
  * Returns array of results, one per PDF
  */
 export async function extractBiomarkersFromPdfs(
   apiKey: string,
-  processedPdfs: ProcessedPDF[]
+  processedPdfs: ProcessedPDF[],
+  onProgress?: (current: number, total: number, batchInfo?: string) => void
 ): Promise<ClaudeResponse[]> {
   if (!apiKey) {
     throw new Error('API key is required');
@@ -169,9 +170,40 @@ export async function extractBiomarkersFromPdfs(
     throw new Error('No PDFs provided');
   }
 
-  // Process ALL PDFs in parallel for maximum speed!
-  const promises = processedPdfs.map(pdf => extractBiomarkersFromPdf(apiKey, pdf));
-  const results = await Promise.all(promises);
+  // Process PDFs in batches to avoid rate limits
+  const BATCH_SIZE = 3; // Process 3 PDFs at a time
+  const DELAY_BETWEEN_BATCHES = 2000; // 2 second delay between batches
+  
+  const results: ClaudeResponse[] = [];
+  const totalBatches = Math.ceil(processedPdfs.length / BATCH_SIZE);
+  let currentBatch = 0;
+  
+  for (let i = 0; i < processedPdfs.length; i += BATCH_SIZE) {
+    currentBatch++;
+    const batch = processedPdfs.slice(i, i + BATCH_SIZE);
+    
+    if (onProgress) {
+      const batchInfo = processedPdfs.length > BATCH_SIZE 
+        ? ` (batch ${currentBatch}/${totalBatches})`
+        : '';
+      onProgress(i, processedPdfs.length, batchInfo);
+    }
+    
+    // Process batch in parallel
+    const batchPromises = batch.map(pdf => extractBiomarkersFromPdf(apiKey, pdf));
+    const batchResults = await Promise.all(batchPromises);
+    
+    results.push(...batchResults);
+    
+    // Add delay between batches (except for the last batch)
+    if (i + BATCH_SIZE < processedPdfs.length) {
+      await new Promise(resolve => setTimeout(resolve, DELAY_BETWEEN_BATCHES));
+    }
+  }
+
+  if (onProgress) {
+    onProgress(processedPdfs.length, processedPdfs.length, '');
+  }
 
   return results;
 }
