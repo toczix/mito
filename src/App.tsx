@@ -8,8 +8,9 @@ import { processMultiplePdfs } from '@/lib/pdf-processor';
 import { extractBiomarkersFromPdfs } from '@/lib/claude-service';
 import { matchBiomarkersWithRanges } from '@/lib/analyzer';
 import type { AnalysisResult } from '@/lib/biomarkers';
-import { AlertCircle, Activity, FileText, Settings } from 'lucide-react';
+import { AlertCircle, Activity, FileText, Settings, Users } from 'lucide-react';
 import { BenchmarkManager } from '@/components/BenchmarkManager';
+import { ClientLibrary } from '@/components/ClientLibrary';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 type AppState = 'api-key' | 'upload' | 'processing' | 'results' | 'error';
@@ -113,10 +114,14 @@ function App() {
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
         <Tabs defaultValue="analysis" className="w-full">
-          <TabsList className="grid w-full max-w-md mx-auto grid-cols-2 mb-8">
+          <TabsList className="grid w-full max-w-2xl mx-auto grid-cols-3 mb-8">
             <TabsTrigger value="analysis" className="gap-2">
               <FileText className="h-4 w-4" />
               Analysis
+            </TabsTrigger>
+            <TabsTrigger value="clients" className="gap-2">
+              <Users className="h-4 w-4" />
+              Clients
             </TabsTrigger>
             <TabsTrigger value="benchmarks" className="gap-2">
               <Settings className="h-4 w-4" />
@@ -188,6 +193,10 @@ function App() {
           {state === 'results' && (
             <AnalysisResults results={results} onReset={handleReset} />
           )}
+          </TabsContent>
+
+          <TabsContent value="clients">
+            <ClientLibrary />
           </TabsContent>
 
           <TabsContent value="benchmarks">
