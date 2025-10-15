@@ -14,7 +14,6 @@ import { BenchmarkManager } from '@/components/BenchmarkManager';
 import { ClientLibrary } from '@/components/ClientLibrary';
 import { Settings } from '@/components/Settings';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
 import { getClaudeApiKey, isSupabaseEnabled } from '@/lib/supabase';
 
 type AppState = 'upload' | 'processing' | 'results' | 'error';
