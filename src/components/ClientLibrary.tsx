@@ -8,11 +8,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Users, UserPlus, Archive, ArchiveRestore, Trash2, Edit, Eye } from 'lucide-react';
+import { Users, UserPlus, Archive, ArchiveRestore, Trash2, Edit } from 'lucide-react';
 import { isSupabaseEnabled } from '@/lib/supabase';
 import type { Client } from '@/lib/supabase';
 import {
-  getAllClients,
   getActiveClients,
   getPastClients,
   createClient,

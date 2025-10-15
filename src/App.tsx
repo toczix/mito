@@ -1,5 +1,4 @@
-import { useState, useEffect } from 'react';
-import { ApiKeyInput } from '@/components/ApiKeyInput';
+import { useState } from 'react';
 import { PdfUploader } from '@/components/PdfUploader';
 import { LoadingState } from '@/components/LoadingState';
 import { AnalysisResults } from '@/components/AnalysisResults';
@@ -20,19 +19,10 @@ const API_KEY_STORAGE_KEY = 'mito_claude_api_key';
 
 function App() {
   const [state, setState] = useState<AppState>('upload');
-  const [apiKey, setApiKey] = useState<string>('');
   const [files, setFiles] = useState<File[]>([]);
   const [results, setResults] = useState<AnalysisResult[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [processingMessage, setProcessingMessage] = useState<string>('Processing...');
-
-  // Load API key from localStorage on mount
-  useEffect(() => {
-    const savedApiKey = localStorage.getItem(API_KEY_STORAGE_KEY);
-    if (savedApiKey) {
-      setApiKey(savedApiKey);
-    }
-  }, []);
 
   const handleFilesSelected = (selectedFiles: File[]) => {
     setFiles(selectedFiles);
