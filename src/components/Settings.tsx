@@ -5,47 +5,31 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
-import { Key, Save, Eye, EyeOff, CheckCircle2, ExternalLink } from 'lucide-react';
+import { Key, Save, Eye, EyeOff, CheckCircle2, ExternalLink, AlertCircle } from 'lucide-react';
 import { isSupabaseEnabled, getClaudeApiKey, saveClaudeApiKey } from '@/lib/supabase';
-
-const API_KEY_STORAGE_KEY = 'mito_claude_api_key';
 
 export function Settings() {
   const [apiKey, setApiKey] = useState('');
   const [showApiKey, setShowApiKey] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
-  const [storageLocation, setStorageLocation] = useState<'localStorage' | 'supabase'>('localStorage');
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     loadApiKey();
   }, []);
 
   async function loadApiKey() {
-    // Try Supabase first if enabled
-    if (isSupabaseEnabled) {
-      const supabaseKey = await getClaudeApiKey();
-      if (supabaseKey) {
-        setApiKey(supabaseKey);
-        setStorageLocation('supabase');
-        // Also save to localStorage as cache
-        localStorage.setItem(API_KEY_STORAGE_KEY, supabaseKey);
-        return;
-      }
+    if (!isSupabaseEnabled) {
+      setIsLoading(false);
+      return;
     }
 
-    // Fallback to localStorage
-    const localKey = localStorage.getItem(API_KEY_STORAGE_KEY);
-    if (localKey) {
-      setApiKey(localKey);
-      setStorageLocation('localStorage');
-      
-      // If Supabase is enabled, sync the local key to Supabase
-      if (isSupabaseEnabled) {
-        await saveClaudeApiKey(localKey);
-        setStorageLocation('supabase');
-      }
+    const supabaseKey = await getClaudeApiKey();
+    if (supabaseKey) {
+      setApiKey(supabaseKey);
     }
+    setIsLoading(false);
   }
 
   async function handleSave() {
@@ -54,45 +38,48 @@ export function Settings() {
       return;
     }
 
+    if (!isSupabaseEnabled) {
+      alert('Supabase is not configured. Please check your environment variables.');
+      return;
+    }
+
     setIsSaving(true);
 
-    // Save to localStorage first (instant)
-    localStorage.setItem(API_KEY_STORAGE_KEY, apiKey);
-
-    // Save to Supabase if enabled (primary storage)
-    if (isSupabaseEnabled) {
-      const saved = await saveClaudeApiKey(apiKey);
-      if (saved) {
-        setStorageLocation('supabase');
-      } else {
-        alert('Failed to save to Supabase, but saved locally');
-        setStorageLocation('localStorage');
-      }
+    const saved = await saveClaudeApiKey(apiKey);
+    if (saved) {
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
     } else {
-      setStorageLocation('localStorage');
+      alert('Failed to save API key to Supabase. Please try again.');
     }
 
     setIsSaving(false);
-    setSaveSuccess(true);
-    setTimeout(() => setSaveSuccess(false), 3000);
   }
 
   async function handleClear() {
     if (confirm('Are you sure you want to clear your API key? You will need to re-enter it to use the analysis feature.')) {
       setApiKey('');
-      localStorage.removeItem(API_KEY_STORAGE_KEY);
-      
-      // Also clear from Supabase if enabled
+
       if (isSupabaseEnabled) {
         await saveClaudeApiKey('');
       }
-      
+
       setSaveSuccess(false);
     }
   }
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
+      {/* Supabase Warning */}
+      {!isSupabaseEnabled && (
+        <Alert variant="destructive">
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            <strong>Supabase not configured.</strong> Please set up your environment variables (VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY) to enable API key storage.
+          </AlertDescription>
+        </Alert>
+      )}
+
       {/* API Key Management */}
       <Card>
         <CardHeader>
@@ -101,89 +88,80 @@ export function Settings() {
             Claude API Key
           </CardTitle>
           <CardDescription>
-            Manage your Anthropic Claude API key for biomarker analysis
+            Your Anthropic Claude API key is stored securely in Supabase and syncs across all your devices.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Storage Location Info */}
-          <Alert>
-            <AlertDescription>
-              <div className="flex items-center justify-between">
-                <span>
-                  <strong>Storage:</strong> {storageLocation === 'supabase' ? 'Supabase (synced across devices)' : 'Browser localStorage (this device only)'}
-                </span>
-                {isSupabaseEnabled && storageLocation === 'supabase' && (
-                  <CheckCircle2 className="h-4 w-4 text-green-600" />
-                )}
+          {isLoading ? (
+            <div className="text-center py-8 text-muted-foreground">Loading...</div>
+          ) : (
+            <>
+              {/* API Key Input */}
+              <div className="space-y-2">
+                <Label htmlFor="api-key">API Key</Label>
+                <div className="flex gap-2">
+                  <div className="relative flex-1">
+                    <Input
+                      id="api-key"
+                      type={showApiKey ? 'text' : 'password'}
+                      value={apiKey}
+                      onChange={(e) => setApiKey(e.target.value)}
+                      placeholder="sk-ant-..."
+                      className="font-mono"
+                      disabled={!isSupabaseEnabled}
+                    />
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setShowApiKey(!showApiKey)}
+                    type="button"
+                  >
+                    {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </Button>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  🔒 Securely stored in Supabase database - accessible from any device
+                </p>
               </div>
-            </AlertDescription>
-          </Alert>
 
-          {/* API Key Input */}
-          <div className="space-y-2">
-            <Label htmlFor="api-key">API Key</Label>
-            <div className="flex gap-2">
-              <div className="relative flex-1">
-                <Input
-                  id="api-key"
-                  type={showApiKey ? 'text' : 'password'}
-                  value={apiKey}
-                  onChange={(e) => setApiKey(e.target.value)}
-                  placeholder="sk-ant-..."
-                  className="font-mono"
-                />
+              {/* Action Buttons */}
+              <div className="flex gap-2">
+                <Button onClick={handleSave} disabled={isSaving || !isSupabaseEnabled} className="gap-2">
+                  {saveSuccess ? (
+                    <>
+                      <CheckCircle2 className="h-4 w-4" />
+                      Saved!
+                    </>
+                  ) : (
+                    <>
+                      <Save className="h-4 w-4" />
+                      {isSaving ? 'Saving...' : 'Save API Key'}
+                    </>
+                  )}
+                </Button>
+                <Button variant="outline" onClick={handleClear} disabled={!isSupabaseEnabled}>
+                  Clear Key
+                </Button>
               </div>
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={() => setShowApiKey(!showApiKey)}
-                type="button"
-              >
-                {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </Button>
-            </div>
-            <p className="text-sm text-muted-foreground">
-              {storageLocation === 'supabase' 
-                ? 'Your API key is stored securely in Supabase and syncs across devices.'
-                : 'Your API key is stored in your browser localStorage (this device only).'}
-            </p>
-          </div>
 
-          {/* Action Buttons */}
-          <div className="flex gap-2">
-            <Button onClick={handleSave} disabled={isSaving} className="gap-2">
-              {saveSuccess ? (
-                <>
-                  <CheckCircle2 className="h-4 w-4" />
-                  Saved!
-                </>
-              ) : (
-                <>
-                  <Save className="h-4 w-4" />
-                  {isSaving ? 'Saving...' : 'Save API Key'}
-                </>
-              )}
-            </Button>
-            <Button variant="outline" onClick={handleClear}>
-              Clear Key
-            </Button>
-          </div>
+              <Separator />
 
-          <Separator />
-
-          {/* Get API Key Link */}
-          <div className="bg-muted p-4 rounded-lg space-y-2">
-            <h4 className="font-semibold text-sm">Don't have an API key?</h4>
-            <p className="text-sm text-muted-foreground">
-              Get your Claude API key from the Anthropic Console.
-            </p>
-            <Button variant="outline" size="sm" asChild className="gap-2">
-              <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener noreferrer">
-                <ExternalLink className="h-4 w-4" />
-                Get API Key
-              </a>
-            </Button>
-          </div>
+              {/* Get API Key Link */}
+              <div className="bg-muted p-4 rounded-lg space-y-2">
+                <h4 className="font-semibold text-sm">Don't have an API key?</h4>
+                <p className="text-sm text-muted-foreground">
+                  Get your Claude API key from the Anthropic Console.
+                </p>
+                <Button variant="outline" size="sm" asChild className="gap-2">
+                  <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener noreferrer">
+                    <ExternalLink className="h-4 w-4" />
+                    Get API Key
+                  </a>
+                </Button>
+              </div>
+            </>
+          )}
         </CardContent>
       </Card>
 
@@ -213,29 +191,29 @@ export function Settings() {
         </CardContent>
       </Card>
 
-      {/* Supabase Status */}
+      {/* Supabase Setup Guide */}
       {!isSupabaseEnabled && (
         <Card>
           <CardHeader>
-            <CardTitle>Supabase Integration</CardTitle>
+            <CardTitle>Supabase Setup Required</CardTitle>
             <CardDescription>
-              Optional cloud storage and sync
+              This app requires Supabase for secure API key storage
             </CardDescription>
           </CardHeader>
           <CardContent>
             <Alert>
               <AlertDescription>
                 <p className="mb-2">
-                  <strong>Supabase is not configured.</strong> The app works without it, but you'll get these benefits if you set it up:
+                  <strong>Supabase provides:</strong>
                 </p>
                 <ul className="list-disc list-inside space-y-1 text-sm ml-2">
-                  <li>Sync API key across all your devices</li>
+                  <li>Secure API key storage (synced across all devices)</li>
                   <li>Client library (manage patient records)</li>
                   <li>Analysis history tracking</li>
                   <li>Custom benchmark sync</li>
                 </ul>
                 <p className="mt-4 text-sm">
-                  See <code className="bg-muted px-1 py-0.5 rounded">SUPABASE_SETUP.md</code> for setup instructions.
+                  See <code className="bg-muted px-1 py-0.5 rounded">HOW_TO_SETUP_SUPABASE.md</code> for setup instructions.
                 </p>
               </AlertDescription>
             </Alert>
@@ -245,4 +223,3 @@ export function Settings() {
     </div>
   );
 }
-

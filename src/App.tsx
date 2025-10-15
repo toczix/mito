@@ -45,8 +45,15 @@ function App() {
       return;
     }
 
-    // Check if API key exists
-    const currentApiKey = localStorage.getItem(API_KEY_STORAGE_KEY);
+    // Check if Supabase is enabled
+    if (!isSupabaseEnabled) {
+      setError('Supabase is not configured. Please set up your environment variables.');
+      setState('error');
+      return;
+    }
+
+    // Get API key from Supabase
+    const currentApiKey = await getClaudeApiKey();
     if (!currentApiKey) {
       setError('Please set your Claude API key in the Settings tab first.');
       setState('error');
@@ -63,7 +70,6 @@ function App() {
       
       // Step 2: Extract biomarkers using Claude
       setProcessingMessage('Analyzing documents with Claude AI...');
-      const currentApiKey = localStorage.getItem(API_KEY_STORAGE_KEY) || '';
       const claudeResponse = await extractBiomarkersFromPdfs(currentApiKey, processedPdfs);
       
       // Step 3: Match with optimal ranges
