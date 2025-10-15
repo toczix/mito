@@ -2,27 +2,38 @@ import { useState } from 'react';
 import { PdfUploader } from '@/components/PdfUploader';
 import { LoadingState } from '@/components/LoadingState';
 import { AnalysisResults } from '@/components/AnalysisResults';
+import { ClientSelector } from '@/components/ClientSelector';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { processMultiplePdfs } from '@/lib/pdf-processor';
 import { extractBiomarkersFromPdfs } from '@/lib/claude-service';
 import { matchBiomarkersWithRanges } from '@/lib/analyzer';
+import { createAnalysis } from '@/lib/analysis-service';
 import type { AnalysisResult } from '@/lib/biomarkers';
-import { AlertCircle, Activity, FileText, Settings as SettingsIcon, Users } from 'lucide-react';
+import { AlertCircle, Activity, FileText, Settings as SettingsIcon, Users, UserCircle } from 'lucide-react';
 import { BenchmarkManager } from '@/components/BenchmarkManager';
 import { ClientLibrary } from '@/components/ClientLibrary';
 import { Settings } from '@/components/Settings';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
 
-type AppState = 'upload' | 'processing' | 'results' | 'error';
+type AppState = 'client-select' | 'upload' | 'processing' | 'results' | 'error';
 
 const API_KEY_STORAGE_KEY = 'mito_claude_api_key';
 
 function App() {
-  const [state, setState] = useState<AppState>('upload');
+  const [state, setState] = useState<AppState>('client-select');
+  const [selectedClientId, setSelectedClientId] = useState<string>('');
+  const [selectedClientName, setSelectedClientName] = useState<string>('');
   const [files, setFiles] = useState<File[]>([]);
   const [results, setResults] = useState<AnalysisResult[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [processingMessage, setProcessingMessage] = useState<string>('Processing...');
+
+  const handleClientSelected = (clientId: string, clientName: string) => {
+    setSelectedClientId(clientId);
+    setSelectedClientName(clientName);
+    setState('upload');
+  };
 
   const handleFilesSelected = (selectedFiles: File[]) => {
     setFiles(selectedFiles);
@@ -60,7 +71,13 @@ function App() {
       setProcessingMessage('Matching biomarkers with optimal ranges...');
       const analysisResults = matchBiomarkersWithRanges(claudeResponse.biomarkers);
       
-      // Step 4: Display results
+      // Step 4: Auto-save to client if selected
+      if (selectedClientId) {
+        setProcessingMessage('Saving results to client record...');
+        await createAnalysis(selectedClientId, analysisResults);
+      }
+      
+      // Step 5: Display results
       setResults(analysisResults);
       setState('results');
     } catch (err) {
@@ -81,7 +98,9 @@ function App() {
     setFiles([]);
     setResults([]);
     setError(null);
-    setState('upload');
+    setSelectedClientId('');
+    setSelectedClientName('');
+    setState('client-select');
   };
 
   return (
@@ -125,7 +144,7 @@ function App() {
 
           <TabsContent value="analysis" className="space-y-8">
           {/* Hero Section */}
-          {state === 'upload' && (
+          {state === 'client-select' && (
             <div className="text-center max-w-2xl mx-auto mb-8">
               <h2 className="text-2xl font-bold mb-3">
                 Automated Biomarker Analysis
@@ -134,6 +153,27 @@ function App() {
                 Upload clinical pathology reports and get instant comparison against 
                 optimal reference ranges for all 57 biomarkers.
               </p>
+            </div>
+          )}
+
+          {/* Client Badge (after selection) */}
+          {(state === 'upload' || state === 'processing' || state === 'results') && selectedClientName && (
+            <div className="max-w-2xl mx-auto">
+              <div className="flex items-center justify-between p-4 bg-secondary rounded-lg">
+                <div className="flex items-center gap-2">
+                  <UserCircle className="h-5 w-5 text-muted-foreground" />
+                  <span className="text-sm text-muted-foreground">Analysis for:</span>
+                  <Badge variant="default" className="text-base">{selectedClientName}</Badge>
+                </div>
+                {state === 'upload' && (
+                  <button
+                    onClick={handleStartOver}
+                    className="text-sm text-muted-foreground hover:text-foreground underline"
+                  >
+                    Change Client
+                  </button>
+                )}
+              </div>
             </div>
           )}
 
@@ -164,7 +204,12 @@ function App() {
             </div>
           )}
 
-          {/* Step 1: PDF Upload */}
+          {/* Step 1: Client Selection */}
+          {state === 'client-select' && (
+            <ClientSelector onClientSelected={handleClientSelected} />
+          )}
+
+          {/* Step 2: PDF Upload */}
           {state === 'upload' && (
             <PdfUploader
               onFilesSelected={handleFilesSelected}
@@ -173,14 +218,28 @@ function App() {
             />
           )}
 
-          {/* Step 2: Processing */}
+          {/* Step 3: Processing */}
           {state === 'processing' && (
             <LoadingState message={processingMessage} />
           )}
 
-          {/* Step 3: Results */}
+          {/* Step 4: Results */}
           {state === 'results' && (
-            <AnalysisResults results={results} onReset={handleReset} />
+            <div className="space-y-4">
+              {selectedClientId && (
+                <Alert className="max-w-7xl mx-auto">
+                  <AlertDescription className="flex items-center gap-2">
+                    ✅ <strong>Results saved to {selectedClientName}'s record</strong>
+                  </AlertDescription>
+                </Alert>
+              )}
+              <AnalysisResults 
+                results={results} 
+                onReset={handleReset}
+                selectedClientId={selectedClientId}
+                selectedClientName={selectedClientName}
+              />
+            </div>
           )}
           </TabsContent>
 

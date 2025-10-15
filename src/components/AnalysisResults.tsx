@@ -20,12 +20,14 @@ import type { Client } from '@/lib/supabase';
 interface AnalysisResultsProps {
   results: AnalysisResult[];
   onReset?: () => void;
+  selectedClientId?: string;
+  selectedClientName?: string;
 }
 
-export function AnalysisResults({ results, onReset }: AnalysisResultsProps) {
+export function AnalysisResults({ results, onReset, selectedClientId: preSelectedClientId, selectedClientName }: AnalysisResultsProps) {
   const [copied, setCopied] = useState(false);
   const [clients, setClients] = useState<Client[]>([]);
-  const [selectedClientId, setSelectedClientId] = useState<string>('');
+  const [manualClientId, setManualClientId] = useState<string>('');
   const [notes, setNotes] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
@@ -33,10 +35,10 @@ export function AnalysisResults({ results, onReset }: AnalysisResultsProps) {
   const summary = generateSummary(results);
 
   useEffect(() => {
-    if (isSupabaseEnabled) {
+    if (isSupabaseEnabled && !preSelectedClientId) {
       loadClients();
     }
-  }, []);
+  }, [preSelectedClientId]);
 
   async function loadClients() {
     const activeClients = await getActiveClients();
@@ -44,13 +46,13 @@ export function AnalysisResults({ results, onReset }: AnalysisResultsProps) {
   }
 
   async function handleSaveToClient() {
-    if (!selectedClientId) {
+    if (!manualClientId) {
       alert('Please select a client');
       return;
     }
 
     setIsSaving(true);
-    const analysis = await createAnalysis(selectedClientId, results, notes);
+    const analysis = await createAnalysis(manualClientId, results, notes);
     setIsSaving(false);
 
     if (analysis) {
@@ -58,7 +60,7 @@ export function AnalysisResults({ results, onReset }: AnalysisResultsProps) {
       setTimeout(() => {
         setSaveDialogOpen(false);
         setSaveSuccess(false);
-        setSelectedClientId('');
+        setManualClientId('');
         setNotes('');
       }, 1500);
     } else {
@@ -156,7 +158,7 @@ export function AnalysisResults({ results, onReset }: AnalysisResultsProps) {
 
           {/* Action Buttons */}
           <div className="flex flex-wrap gap-2">
-            {isSupabaseEnabled && (
+            {isSupabaseEnabled && !preSelectedClientId && (
               <Dialog open={saveDialogOpen} onOpenChange={setSaveDialogOpen}>
                 <DialogTrigger asChild>
                   <Button className="gap-2">
@@ -174,7 +176,7 @@ export function AnalysisResults({ results, onReset }: AnalysisResultsProps) {
                   <div className="space-y-4 py-4">
                     <div className="space-y-2">
                       <Label htmlFor="client">Select Client</Label>
-                      <Select value={selectedClientId} onValueChange={setSelectedClientId}>
+                      <Select value={manualClientId} onValueChange={setManualClientId}>
                         <SelectTrigger id="client">
                           <SelectValue placeholder="Choose a client..." />
                         </SelectTrigger>
@@ -218,7 +220,7 @@ export function AnalysisResults({ results, onReset }: AnalysisResultsProps) {
                       </Button>
                       <Button
                         onClick={handleSaveToClient}
-                        disabled={isSaving || !selectedClientId}
+                        disabled={isSaving || !manualClientId}
                         className="gap-2"
                       >
                         {saveSuccess ? (
