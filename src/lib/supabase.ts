@@ -3,33 +3,22 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Missing Supabase environment variables. Please check your .env.local file.');
-}
+// Supabase is optional for beta - app works without it
+export const supabase = supabaseUrl && supabaseAnonKey 
+  ? createClient(supabaseUrl, supabaseAnonKey)
+  : null;
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export const isSupabaseEnabled = !!supabase;
 
-// Database Types
-export interface Practitioner {
+// Database Types (Simplified - No Auth)
+export interface Settings {
   id: string;
-  email: string;
-  full_name: string | null;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface ApiKey {
-  id: string;
-  practitioner_id: string;
-  service_name: string;
-  encrypted_key: string;
-  created_at: string;
+  claude_api_key: string | null;
   updated_at: string;
 }
 
 export interface CustomBenchmark {
   id: string;
-  practitioner_id: string;
   name: string;
   male_range: string | null;
   female_range: string | null;
@@ -42,39 +31,62 @@ export interface CustomBenchmark {
 
 export interface Client {
   id: string;
-  practitioner_id: string;
   full_name: string;
   email: string | null;
   date_of_birth: string | null;
   gender: 'male' | 'female' | 'other' | null;
   status: 'active' | 'past';
   notes: string | null;
+  tags: string[];
   created_at: string;
   updated_at: string;
 }
 
 export interface Analysis {
   id: string;
-  practitioner_id: string;
   client_id: string;
   analysis_date: string;
   results: any; // JSON biomarker results
-  pdf_files: string[];
+  summary: any | null;
   notes: string | null;
   created_at: string;
   updated_at: string;
 }
 
-// Helper function to get current user
-export async function getCurrentUser() {
-  const { data: { user }, error } = await supabase.auth.getUser();
-  if (error) throw error;
-  return user;
+// Settings ID (singleton)
+const SETTINGS_ID = '00000000-0000-0000-0000-000000000001';
+
+// API Key Management
+export async function getClaudeApiKey(): Promise<string | null> {
+  if (!supabase) return null;
+  
+  const { data, error } = await supabase
+    .from('settings')
+    .select('claude_api_key')
+    .eq('id', SETTINGS_ID)
+    .single();
+  
+  if (error) {
+    console.error('Error fetching API key:', error);
+    return null;
+  }
+  
+  return data?.claude_api_key || null;
 }
 
-// Helper function to check if user is authenticated
-export async function isAuthenticated() {
-  const { data: { session } } = await supabase.auth.getSession();
-  return !!session;
+export async function saveClaudeApiKey(apiKey: string): Promise<boolean> {
+  if (!supabase) return false;
+  
+  const { error } = await supabase
+    .from('settings')
+    .update({ claude_api_key: apiKey })
+    .eq('id', SETTINGS_ID);
+  
+  if (error) {
+    console.error('Error saving API key:', error);
+    return false;
+  }
+  
+  return true;
 }
 

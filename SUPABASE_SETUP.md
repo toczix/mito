@@ -1,90 +1,119 @@
-# Supabase Setup Guide for Mito Analysis
+# Supabase Setup Guide for Mito Analysis (Passwordless Internal Tool)
+
+## Overview
+This is a simplified, passwordless setup for internal use. No authentication required - just data storage and sync.
 
 ## Step 1: Create Supabase Project
 
 1. Go to [supabase.com](https://supabase.com)
-2. Create a new project
-3. Note your project URL and anon key
+2. Sign in and create a new project
+3. Wait for the project to finish setting up (1-2 minutes)
 
-## Step 2: Run Database Schema
+## Step 2: Get Your Credentials
 
-1. Go to your Supabase Dashboard → SQL Editor
-2. Copy the contents of `supabase-schema.sql`
-3. Paste and run it in the SQL Editor
+1. Go to your Project Settings → API
+2. Copy your:
+   - **Project URL** (e.g., `https://xxx.supabase.co`)
+   - **anon/public key** (starts with `eyJ...`)
 
-This will create:
-- `practitioners` table (your practitioner account)
-- `api_keys` table (encrypted API key storage)
-- `custom_benchmarks` table (your custom biomarker ranges)
-- `clients` table (patient/client records)
-- `analyses` table (biomarker analysis history)
+## Step 3: Configure Environment Variables
 
-## Step 3: Enable Email Authentication
-
-1. Go to Authentication → Providers
-2. Enable Email provider
-3. Configure email templates (optional)
-
-## Step 4: Configure Environment Variables
-
-Create a file `.env.local` in the project root with:
-
+Already done! Your `.env.local` file contains:
 ```env
 VITE_SUPABASE_URL=https://your-project.supabase.co
 VITE_SUPABASE_ANON_KEY=your-anon-key-here
 ```
 
-Replace with your actual values from Supabase Dashboard → Settings → API
+## Step 4: Run Database Schema
 
-## Step 5: Test the Connection
+1. Go to Supabase Dashboard → **SQL Editor**
+2. Click "New Query"
+3. Copy the entire contents of **`supabase-schema-simple.sql`**
+4. Paste and click "Run"
 
-1. Run `npm run dev`
-2. You should see a login/signup screen
-3. Create an account
-4. Your practitioner profile will be automatically created
+This creates:
+- ✅ `settings` table (stores Claude API key)
+- ✅ `custom_benchmarks` table (your custom biomarker ranges)
+- ✅ `clients` table (patient records with active/past status)
+- ✅ `analyses` table (biomarker analysis history)
 
-## Database Structure
+## Step 5: Restart Your App
 
-### Tables Overview
+```bash
+npm run dev
+```
 
-**practitioners**
-- Stores practitioner (user) information
-- Auto-created when you sign up
+## Features Enabled
 
-**api_keys**
-- Stores encrypted Claude API keys
-- One per practitioner
+### 🔑 API Key Sync
+- Claude API key stored in Supabase
 - Syncs across all your devices
+- No need to re-enter
 
-**custom_benchmarks**
-- Your custom biomarker ranges
-- Can override defaults
-- Synced across devices
+### 📊 Custom Benchmarks Sync
+- Custom biomarker ranges stored in database
+- Access from any device
+- Backup protection
 
-**clients**
-- Patient/client records
-- `status`: 'active' or 'past'
-- Stores basic client info
+### 👥 Client Library
+- Create and manage client records
+- **Active Clients** - current patients
+- **Past Clients** - archived patients
+- Full contact info and notes
 
-**analyses**
-- Biomarker analysis results for each client
-- Stores full JSON results
+### 📈 Analysis History
+- Save every biomarker analysis
+- View historical results per client
+- Track changes over time
+- Add notes to each analysis
+
+## Database Tables
+
+### `settings`
+Single row storing global settings (API key)
+
+### `custom_benchmarks`
+Your custom biomarker optimal ranges
+
+### `clients`
+Patient/client records with:
+- Full name, email, DOB
+- Gender (for range selection)
+- Status: 'active' or 'past'
+- Tags and notes
+
+### `analyses`
+Biomarker analysis results:
 - Linked to specific client
-- Timestamped for history
+- Full JSON results
+- Automatic summary stats
+- Timestamped
 
-## Security Features
+## Security Notes
 
-- **Row Level Security (RLS)**: You can only see your own data
-- **Encrypted API Keys**: Keys are never exposed
-- **Authentication Required**: Must be logged in to access any data
-- **Auto-sync**: All changes sync automatically across devices
+- No authentication = no password management
+- All data accessible with your anon key
+- For internal/beta use only
+- Can add authentication later if needed
 
-## Next Steps
+## Troubleshooting
 
-After setup, you can:
-1. Login/Signup in the app
-2. Your API key will be stored securely
-3. Custom benchmarks sync across all your devices
-4. Create clients and save their analyses
-5. View analysis history for each client
+**Can't connect to Supabase?**
+- Check `.env.local` has correct URL and key
+- Restart dev server after adding `.env.local`
+- Check Supabase project is active
 
+**Tables not created?**
+- Make sure you ran the entire `supabase-schema-simple.sql` file
+- Check SQL Editor for error messages
+- Verify all tables exist in Table Editor
+
+## Optional: Authentication (Future)
+
+If you want to add authentication later, we can:
+1. Enable Supabase Auth
+2. Add login/signup UI
+3. Enable Row Level Security (RLS)
+4. Multi-practitioner support
+
+For now, enjoy the simple passwordless internal tool! 🚀
