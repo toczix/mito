@@ -1,0 +1,214 @@
+import { useState, useEffect } from 'react';
+import { ApiKeyInput } from '@/components/ApiKeyInput';
+import { PdfUploader } from '@/components/PdfUploader';
+import { LoadingState } from '@/components/LoadingState';
+import { AnalysisResults } from '@/components/AnalysisResults';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { processMultiplePdfs } from '@/lib/pdf-processor';
+import { extractBiomarkersFromPdfs } from '@/lib/claude-service';
+import { matchBiomarkersWithRanges } from '@/lib/analyzer';
+import type { AnalysisResult } from '@/lib/biomarkers';
+import { AlertCircle, Activity, FileText, Settings } from 'lucide-react';
+import { BenchmarkManager } from '@/components/BenchmarkManager';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+
+type AppState = 'api-key' | 'upload' | 'processing' | 'results' | 'error';
+
+const API_KEY_STORAGE_KEY = 'mito_claude_api_key';
+
+function App() {
+  const [state, setState] = useState<AppState>('api-key');
+  const [apiKey, setApiKey] = useState<string>('');
+  const [files, setFiles] = useState<File[]>([]);
+  const [results, setResults] = useState<AnalysisResult[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const [processingMessage, setProcessingMessage] = useState<string>('Processing...');
+
+  // Load API key from localStorage on mount
+  useEffect(() => {
+    const savedApiKey = localStorage.getItem(API_KEY_STORAGE_KEY);
+    if (savedApiKey) {
+      setApiKey(savedApiKey);
+      setState('upload');
+    }
+  }, []);
+
+  const handleApiKeySubmit = (key: string) => {
+    setApiKey(key);
+    localStorage.setItem(API_KEY_STORAGE_KEY, key);
+    setState('upload');
+    setError(null);
+  };
+
+  const handleFilesSelected = (selectedFiles: File[]) => {
+    setFiles(selectedFiles);
+    setError(null);
+  };
+
+  const handleAnalyze = async () => {
+    if (files.length === 0) {
+      setError('Please select at least one PDF file');
+      return;
+    }
+
+    setState('processing');
+    setError(null);
+
+    try {
+      // Step 1: Process PDFs (extract text only - much cheaper!)
+      setProcessingMessage('Extracting text from PDFs...');
+      const processedPdfs = await processMultiplePdfs(files);
+      
+      // Step 2: Extract biomarkers using Claude
+      setProcessingMessage('Analyzing documents with Claude AI...');
+      const claudeResponse = await extractBiomarkersFromPdfs(apiKey, processedPdfs);
+      
+      // Step 3: Match with optimal ranges
+      setProcessingMessage('Matching biomarkers with optimal ranges...');
+      const analysisResults = matchBiomarkersWithRanges(claudeResponse.biomarkers);
+      
+      // Step 4: Display results
+      setResults(analysisResults);
+      setState('results');
+    } catch (err) {
+      console.error('Analysis error:', err);
+      setError(err instanceof Error ? err.message : 'An unexpected error occurred');
+      setState('error');
+    }
+  };
+
+  const handleReset = () => {
+    setFiles([]);
+    setResults([]);
+    setError(null);
+    setState('upload');
+  };
+
+  const handleStartOver = () => {
+    setApiKey('');
+    localStorage.removeItem(API_KEY_STORAGE_KEY);
+    setFiles([]);
+    setResults([]);
+    setError(null);
+    setState('api-key');
+  };
+
+  return (
+    <div className="min-h-screen bg-background">
+      {/* Header */}
+      <header className="border-b bg-card">
+        <div className="container mx-auto px-4 py-6">
+          <div className="flex items-center gap-3">
+            <Activity className="h-8 w-8 text-primary" />
+            <div>
+              <h1 className="text-3xl font-bold">Mito Analysis</h1>
+              <p className="text-sm text-muted-foreground">
+                Clinical Pathology Analysis Portal
+              </p>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <main className="container mx-auto px-4 py-8">
+        <Tabs defaultValue="analysis" className="w-full">
+          <TabsList className="grid w-full max-w-md mx-auto grid-cols-2 mb-8">
+            <TabsTrigger value="analysis" className="gap-2">
+              <FileText className="h-4 w-4" />
+              Analysis
+            </TabsTrigger>
+            <TabsTrigger value="benchmarks" className="gap-2">
+              <Settings className="h-4 w-4" />
+              Benchmarks
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="analysis" className="space-y-8">
+          {/* Hero Section */}
+          {state === 'api-key' && (
+            <div className="text-center max-w-2xl mx-auto mb-8">
+              <h2 className="text-2xl font-bold mb-3">
+                Automated Biomarker Analysis
+              </h2>
+              <p className="text-muted-foreground">
+                Upload clinical pathology reports and get instant comparison against 
+                optimal reference ranges for all 57 biomarkers.
+              </p>
+            </div>
+          )}
+
+          {/* Error Display */}
+          {state === 'error' && error && (
+            <div className="max-w-2xl mx-auto space-y-4">
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertDescription className="ml-2">
+                  <p className="font-semibold mb-1">Analysis Failed</p>
+                  <p>{error}</p>
+                </AlertDescription>
+              </Alert>
+              <div className="flex justify-center gap-3">
+                <button
+                  onClick={handleReset}
+                  className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
+                >
+                  Try Again
+                </button>
+                <button
+                  onClick={handleStartOver}
+                  className="px-4 py-2 border border-border rounded-md hover:bg-accent"
+                >
+                  Start Over
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Step 1: API Key Input */}
+          {state === 'api-key' && (
+            <ApiKeyInput onApiKeySubmit={handleApiKeySubmit} />
+          )}
+
+          {/* Step 2: PDF Upload */}
+          {state === 'upload' && (
+            <PdfUploader
+              onFilesSelected={handleFilesSelected}
+              onAnalyze={handleAnalyze}
+              isProcessing={false}
+            />
+          )}
+
+          {/* Step 3: Processing */}
+          {state === 'processing' && (
+            <LoadingState message={processingMessage} />
+          )}
+
+          {/* Step 4: Results */}
+          {state === 'results' && (
+            <AnalysisResults results={results} onReset={handleReset} />
+          )}
+          </TabsContent>
+
+          <TabsContent value="benchmarks">
+            <BenchmarkManager />
+          </TabsContent>
+        </Tabs>
+      </main>
+
+      {/* Footer */}
+      <footer className="border-t mt-16">
+        <div className="container mx-auto px-4 py-6 text-center text-sm text-muted-foreground">
+          <p>
+            Mito Clinical Pathology Analysis Portal | Powered by Claude AI
+          </p>
+          <p className="mt-2">
+            For informational purposes only. Always consult with healthcare professionals.
+          </p>
+        </div>
+      </footer>
+    </div>
+  );
+}
+
+export default App;
