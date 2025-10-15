@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { PdfUploader } from '@/components/PdfUploader';
 import { LoadingState } from '@/components/LoadingState';
 import { AnalysisResults } from '@/components/AnalysisResults';
@@ -19,8 +19,6 @@ import { getClaudeApiKey, isSupabaseEnabled } from '@/lib/supabase';
 
 type AppState = 'client-select' | 'upload' | 'processing' | 'results' | 'error';
 
-const API_KEY_STORAGE_KEY = 'mito_claude_api_key';
-
 function App() {
   const [state, setState] = useState<AppState>('client-select');
   const [selectedClientId, setSelectedClientId] = useState<string>('');
@@ -29,22 +27,6 @@ function App() {
   const [results, setResults] = useState<AnalysisResult[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [processingMessage, setProcessingMessage] = useState<string>('Processing...');
-
-  // Load API key from Supabase (or localStorage fallback) on mount
-  useEffect(() => {
-    async function loadInitialApiKey() {
-      // Try Supabase first if enabled
-      if (isSupabaseEnabled) {
-        const supabaseKey = await getClaudeApiKey();
-        if (supabaseKey) {
-          localStorage.setItem(API_KEY_STORAGE_KEY, supabaseKey);
-          return;
-        }
-      }
-      // localStorage is already being used by the analysis functions
-    }
-    loadInitialApiKey();
-  }, []);
 
   const handleClientSelected = (clientId: string, clientName: string) => {
     setSelectedClientId(clientId);
