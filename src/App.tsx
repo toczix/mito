@@ -2,13 +2,13 @@ import { useState } from 'react';
 import { PdfUploader } from '@/components/PdfUploader';
 import { LoadingState } from '@/components/LoadingState';
 import { AnalysisResults } from '@/components/AnalysisResults';
-import { ClientSelector } from '@/components/ClientSelector';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { processMultiplePdfs } from '@/lib/pdf-processor';
-import { extractBiomarkersFromPdfs } from '@/lib/claude-service';
+import { extractBiomarkersFromPdfs, type PatientInfo } from '@/lib/claude-service';
 import { matchBiomarkersWithRanges } from '@/lib/analyzer';
 import { createAnalysis } from '@/lib/analysis-service';
-import type { AnalysisResult } from '@/lib/biomarkers';
+import { matchOrCreateClient, autoCreateClient } from '@/lib/client-matcher';
+import type { AnalysisResult, ExtractedBiomarker } from '@/lib/biomarkers';
 import { AlertCircle, Activity, FileText, Settings as SettingsIcon, Users, UserCircle } from 'lucide-react';
 import { BenchmarkManager } from '@/components/BenchmarkManager';
 import { ClientLibrary } from '@/components/ClientLibrary';
@@ -17,22 +17,26 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { getClaudeApiKey, isSupabaseEnabled } from '@/lib/supabase';
 
-type AppState = 'client-select' | 'upload' | 'processing' | 'results' | 'error';
+type AppState = 'upload' | 'processing' | 'results' | 'error';
 
 function App() {
-  const [state, setState] = useState<AppState>('client-select');
+  const [state, setState] = useState<AppState>('upload');
   const [selectedClientId, setSelectedClientId] = useState<string>('');
   const [selectedClientName, setSelectedClientName] = useState<string>('');
   const [files, setFiles] = useState<File[]>([]);
   const [results, setResults] = useState<AnalysisResult[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [processingMessage, setProcessingMessage] = useState<string>('Processing...');
-
-  const handleClientSelected = (clientId: string, clientName: string) => {
-    setSelectedClientId(clientId);
-    setSelectedClientName(clientName);
-    setState('upload');
-  };
+  const [processingProgress, setProcessingProgress] = useState<number>(0);
+  
+  // New state for auto-detection flow (batch processing)
+  const [extractedAnalyses, setExtractedAnalyses] = useState<Array<{
+    patientInfo: PatientInfo;
+    results: AnalysisResult[];
+    fileName: string;
+    panelName: string;
+  }>>([]);
+  const [savedAnalysesCount, setSavedAnalysesCount] = useState<number>(0);
 
   const handleFilesSelected = (selectedFiles: File[]) => {
     setFiles(selectedFiles);
@@ -45,14 +49,7 @@ function App() {
       return;
     }
 
-    // Check if Supabase is enabled
-    if (!isSupabaseEnabled) {
-      setError('Supabase is not configured. Please set up your environment variables.');
-      setState('error');
-      return;
-    }
-
-    // Get API key from Supabase
+    // Get API key from Supabase (or allow without if not configured)
     const currentApiKey = await getClaudeApiKey();
     if (!currentApiKey) {
       setError('Please set your Claude API key in the Settings tab first.');
@@ -62,28 +59,190 @@ function App() {
 
     setState('processing');
     setError(null);
+    setSavedAnalysesCount(0);
+    setProcessingProgress(0);
 
     try {
-      // Step 1: Process PDFs (extract text only - much cheaper!)
-      setProcessingMessage('Extracting text from PDFs...');
+      // Step 1: Process PDFs (extract text) - 0-20%
+      setProcessingMessage(`Extracting text from ${files.length} PDF(s)...`);
+      setProcessingProgress(5);
       const processedPdfs = await processMultiplePdfs(files);
+      setProcessingProgress(20);
       
-      // Step 2: Extract biomarkers using Claude
-      setProcessingMessage('Analyzing documents with Claude AI...');
-      const claudeResponse = await extractBiomarkersFromPdfs(currentApiKey, processedPdfs);
+      // Step 2: Extract biomarkers AND patient info from EACH PDF separately - 20-70%
+      setProcessingMessage(`Analyzing ${processedPdfs.length} document(s) with Claude AI...`);
+      setProcessingProgress(30);
+      const claudeResponses = await extractBiomarkersFromPdfs(currentApiKey, processedPdfs);
+      setProcessingProgress(70);
       
-      // Step 3: Match with optimal ranges
-      setProcessingMessage('Matching biomarkers with optimal ranges...');
-      const analysisResults = matchBiomarkersWithRanges(claudeResponse.biomarkers);
+      // Step 3: Process each analysis and combine biomarkers - 70-85%
+      const allAnalyses: typeof extractedAnalyses = [];
+      const allBiomarkersWithMeta: Array<{ biomarker: ExtractedBiomarker; testDate: string | null; pdfIndex: number }> = [];
+      const testDates: string[] = [];
+      let savedCount = 0;
+      let primaryPatientInfo: PatientInfo | null = null;
       
-      // Step 4: Auto-save to client if selected
-      if (selectedClientId) {
-        setProcessingMessage('Saving results to client record...');
-        await createAnalysis(selectedClientId, analysisResults);
+      for (let i = 0; i < claudeResponses.length; i++) {
+        const claudeResponse = claudeResponses[i];
+        const processedPdf = processedPdfs[i];
+        
+        const progressInStep = 70 + (i / claudeResponses.length) * 15;
+        setProcessingProgress(Math.round(progressInStep));
+        setProcessingMessage(`Processing analysis ${i + 1} of ${claudeResponses.length}...`);
+        
+        // Collect all biomarkers with metadata (which PDF they came from)
+        claudeResponse.biomarkers.forEach(biomarker => {
+          allBiomarkersWithMeta.push({
+            biomarker,
+            testDate: claudeResponse.patientInfo.testDate,
+            pdfIndex: i
+          });
+        });
+        
+        // Collect test dates
+        if (claudeResponse.patientInfo.testDate) {
+          testDates.push(claudeResponse.patientInfo.testDate);
+        }
+        
+        // Use first patient info as primary
+        if (!primaryPatientInfo && claudeResponse.patientInfo.name) {
+          primaryPatientInfo = claudeResponse.patientInfo;
+        }
+        
+        // Match with optimal ranges
+        const analysisResults = matchBiomarkersWithRanges(claudeResponse.biomarkers);
+        
+        // Store individual analysis info (for future multi-analysis support)
+        allAnalyses.push({
+          patientInfo: claudeResponse.patientInfo,
+          results: analysisResults,
+          fileName: processedPdf.fileName,
+          panelName: claudeResponse.panelName,
+        });
       }
       
-      // Step 5: Display results
-      setResults(analysisResults);
+      // Combine all biomarkers and match with ranges - 85-90%
+      setProcessingMessage('Combining biomarkers from all documents...');
+      setProcessingProgress(85);
+      
+      // Deduplicate biomarkers - keep most recent or first valid value
+      const biomarkerMap = new Map<string, { biomarker: ExtractedBiomarker; testDate: string | null; pdfIndex: number }>();
+      
+      for (const item of allBiomarkersWithMeta) {
+        const normalizedName = item.biomarker.name.toLowerCase().trim();
+        
+        if (!biomarkerMap.has(normalizedName)) {
+          // First occurrence, add it
+          biomarkerMap.set(normalizedName, item);
+        } else {
+          const existing = biomarkerMap.get(normalizedName)!;
+          
+          // Replace if existing is N/A but new one has a value
+          if (existing.biomarker.value === 'N/A' && item.biomarker.value !== 'N/A') {
+            biomarkerMap.set(normalizedName, item);
+          }
+          // If both have values, prefer the one with more recent date
+          else if (existing.biomarker.value !== 'N/A' && item.biomarker.value !== 'N/A') {
+            if (item.testDate && existing.testDate) {
+              // Compare dates, keep more recent
+              if (new Date(item.testDate) > new Date(existing.testDate)) {
+                biomarkerMap.set(normalizedName, item);
+              }
+            }
+            // If dates not available, keep first one (no change needed)
+          }
+        }
+      }
+      
+      const deduplicatedBiomarkers = Array.from(biomarkerMap.values()).map(item => item.biomarker);
+      const combinedResults = matchBiomarkersWithRanges(deduplicatedBiomarkers);
+      
+      // Determine if we should save as one or multiple analyses
+      const uniqueDates = [...new Set(testDates)];
+      const hasMixedDates = uniqueDates.length > 1;
+      
+      // If Supabase enabled, save analysis - 90-100%
+      setProcessingProgress(90);
+      if (isSupabaseEnabled && primaryPatientInfo) {
+        if (hasMixedDates) {
+          // Save each PDF as separate analysis (different lab visits)
+          setProcessingMessage(`Saving ${allAnalyses.length} analyses from different dates...`);
+          
+          for (let i = 0; i < allAnalyses.length; i++) {
+            const analysis = allAnalyses[i];
+            
+            // Update progress for each save
+            const saveProgress = 90 + ((i + 1) / allAnalyses.length) * 10;
+            setProcessingProgress(Math.round(saveProgress));
+            
+            // Match or create client
+            const matchResult = await matchOrCreateClient(analysis.patientInfo);
+            
+            let clientId: string;
+            let clientName: string;
+            
+            if (matchResult.client) {
+              clientId = matchResult.client.id;
+              clientName = matchResult.client.full_name;
+            } else if (analysis.patientInfo.name) {
+              const newClient = await autoCreateClient(analysis.patientInfo);
+              if (!newClient) {
+                console.error(`Failed to create client for ${analysis.patientInfo.name}`);
+                continue;
+              }
+              clientId = newClient.id;
+              clientName = newClient.full_name;
+            } else {
+              continue;
+            }
+            
+            // Save individual analysis
+            await createAnalysis(clientId, analysis.results, analysis.patientInfo.testDate);
+            savedCount++;
+            
+            setSelectedClientId(clientId);
+            setSelectedClientName(clientName);
+          }
+        } else {
+          // Save as single combined analysis (same lab visit, multiple panels)
+          setProcessingMessage('Saving combined analysis...');
+          
+          const matchResult = await matchOrCreateClient(primaryPatientInfo);
+          
+          let clientId: string;
+          let clientName: string;
+          
+          if (matchResult.client) {
+            clientId = matchResult.client.id;
+            clientName = matchResult.client.full_name;
+          } else if (primaryPatientInfo.name) {
+            const newClient = await autoCreateClient(primaryPatientInfo);
+            if (!newClient) {
+              throw new Error('Failed to create client');
+            }
+            clientId = newClient.id;
+            clientName = newClient.full_name;
+          } else {
+            throw new Error('No patient information found');
+          }
+          
+          // Save combined analysis
+          await createAnalysis(clientId, combinedResults, primaryPatientInfo.testDate);
+          savedCount = 1;
+          
+          setSelectedClientId(clientId);
+          setSelectedClientName(clientName);
+        }
+      }
+      
+      setExtractedAnalyses(allAnalyses);
+      setSavedAnalysesCount(savedCount);
+      
+      // Always show combined results for display
+      setResults(combinedResults);
+      
+      // Complete!
+      setProcessingProgress(100);
       setState('results');
     } catch (err) {
       console.error('Analysis error:', err);
@@ -96,6 +255,9 @@ function App() {
     setFiles([]);
     setResults([]);
     setError(null);
+    setExtractedAnalyses([]);
+    setSavedAnalysesCount(0);
+    setProcessingProgress(0);
     setState('upload');
   };
 
@@ -105,7 +267,10 @@ function App() {
     setError(null);
     setSelectedClientId('');
     setSelectedClientName('');
-    setState('client-select');
+    setExtractedAnalyses([]);
+    setSavedAnalysesCount(0);
+    setProcessingProgress(0);
+    setState('upload');
   };
 
   return (
@@ -149,34 +314,46 @@ function App() {
 
           <TabsContent value="analysis" className="space-y-8">
           {/* Hero Section */}
-          {state === 'client-select' && (
+          {state === 'upload' && (
             <div className="text-center max-w-2xl mx-auto mb-8">
               <h2 className="text-2xl font-bold mb-3">
                 Automated Biomarker Analysis
               </h2>
               <p className="text-muted-foreground">
-                Upload clinical pathology reports and get instant comparison against 
-                optimal reference ranges for all 57 biomarkers.
+                Upload clinical pathology reports and patient information will be automatically detected.
+                Get instant comparison against optimal reference ranges for all 57 biomarkers.
               </p>
             </div>
           )}
 
-          {/* Client Badge (after selection) */}
-          {(state === 'upload' || state === 'processing' || state === 'results') && selectedClientName && (
+          {/* Summary Badge (after processing) */}
+          {(state === 'results') && extractedAnalyses.length > 0 && (
             <div className="max-w-2xl mx-auto">
-              <div className="flex items-center justify-between p-4 bg-secondary rounded-lg">
+              <div className="p-4 bg-secondary rounded-lg space-y-2">
                 <div className="flex items-center gap-2">
                   <UserCircle className="h-5 w-5 text-muted-foreground" />
-                  <span className="text-sm text-muted-foreground">Analysis for:</span>
-                  <Badge variant="default" className="text-base">{selectedClientName}</Badge>
+                  <span className="text-sm font-semibold">
+                    {extractedAnalyses.length === 1 
+                      ? 'Processed 1 document'
+                      : `Combined ${extractedAnalyses.length} documents`}
+                  </span>
                 </div>
-                {state === 'upload' && (
-                  <button
-                    onClick={handleStartOver}
-                    className="text-sm text-muted-foreground hover:text-foreground underline"
-                  >
-                    Change Client
-                  </button>
+                {savedAnalysesCount > 0 && (
+                  <div className="text-sm text-muted-foreground">
+                    ✅ Saved {savedAnalysesCount} analysis{savedAnalysesCount > 1 ? 'es' : ''} to {selectedClientName}'s record
+                  </div>
+                )}
+                {extractedAnalyses.length > 1 && (
+                  <div className="text-xs text-muted-foreground mt-2 space-y-1">
+                    <div className="font-medium">Panels processed:</div>
+                    <div className="flex flex-wrap gap-2">
+                      {extractedAnalyses.map((analysis, i) => (
+                        <Badge key={i} variant="secondary" className="text-xs">
+                          {analysis.panelName}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
                 )}
               </div>
             </div>
@@ -209,12 +386,7 @@ function App() {
             </div>
           )}
 
-          {/* Step 1: Client Selection */}
-          {state === 'client-select' && (
-            <ClientSelector onClientSelected={handleClientSelected} />
-          )}
-
-          {/* Step 2: PDF Upload */}
+          {/* Step 1: PDF Upload */}
           {state === 'upload' && (
             <PdfUploader
               onFilesSelected={handleFilesSelected}
@@ -223,21 +395,14 @@ function App() {
             />
           )}
 
-          {/* Step 3: Processing */}
+          {/* Step 2: Processing */}
           {state === 'processing' && (
-            <LoadingState message={processingMessage} />
+            <LoadingState message={processingMessage} progress={processingProgress} />
           )}
 
-          {/* Step 4: Results */}
+          {/* Step 3: Results */}
           {state === 'results' && (
             <div className="space-y-4">
-              {selectedClientId && (
-                <Alert className="max-w-7xl mx-auto">
-                  <AlertDescription className="flex items-center gap-2">
-                    ✅ <strong>Results saved to {selectedClientName}'s record</strong>
-                  </AlertDescription>
-                </Alert>
-              )}
               <AnalysisResults 
                 results={results} 
                 onReset={handleReset}

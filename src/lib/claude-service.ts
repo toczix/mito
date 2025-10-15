@@ -4,8 +4,17 @@ import type { ExtractedBiomarker } from './biomarkers';
 
 const MODEL_NAME = 'claude-3-5-haiku-20241022';
 
+export interface PatientInfo {
+  name: string | null;
+  dateOfBirth: string | null;  // YYYY-MM-DD format
+  gender: 'male' | 'female' | 'other' | null;
+  testDate: string | null;  // YYYY-MM-DD format
+}
+
 export interface ClaudeResponse {
   biomarkers: ExtractedBiomarker[];
+  patientInfo: PatientInfo;
+  panelName: string;  // AI-generated summary of what this panel tests
   raw?: string;
 }
 
@@ -15,13 +24,19 @@ export interface ClaudeResponse {
 function createExtractionPrompt(): string {
   return `You are an expert health data analyst specializing in clinical pathology and nutritional biochemistry.
 
-Your task is to extract ALL biomarker values from the provided laboratory result PDFs for a male patient named Adam Winchester.
+Your task is to extract PATIENT INFORMATION and ALL biomarker values from the provided laboratory result PDFs.
 
 INSTRUCTIONS:
 1. Carefully scan all pages of all provided PDF documents
-2. Extract EVERY biomarker name, its numerical value, and unit of measurement
-3. If a biomarker appears multiple times, use the MOST RECENT value (check dates on the reports)
-4. Include ALL of these biomarkers if present:
+2. Extract PATIENT DEMOGRAPHIC INFORMATION:
+   - Patient's full name (as shown on the lab report)
+   - Patient's date of birth (convert to YYYY-MM-DD format)
+   - Patient's gender/sex (male, female, or other)
+   - Test/collection date (the most recent date if multiple reports, in YYYY-MM-DD format)
+
+3. Extract EVERY biomarker name, its numerical value, and unit of measurement
+4. If a biomarker appears multiple times, use the MOST RECENT value (check dates on the reports)
+5. Include ALL of these biomarkers if present:
    - Liver Function: ALP, ALT, AST, GGT, Total Bilirubin
    - Kidney Function: BUN, Creatinine
    - Proteins: Albumin, Globulin, Total Protein
@@ -38,8 +53,14 @@ INSTRUCTIONS:
    - Inflammation: C-Reactive Protein (CRP/hsCRP)
    - Other: Homocysteine, LDH
 
-5. Return ONLY a valid JSON object with this EXACT structure:
+6. Return ONLY a valid JSON object with this EXACT structure:
 {
+  "patientInfo": {
+    "name": "Patient Full Name or null if not found",
+    "dateOfBirth": "YYYY-MM-DD or null if not found",
+    "gender": "male, female, other, or null if not found",
+    "testDate": "YYYY-MM-DD or null if not found"
+  },
   "biomarkers": [
     {
       "name": "Biomarker Name",
@@ -51,9 +72,12 @@ INSTRUCTIONS:
 
 IMPORTANT RULES:
 - Use the EXACT biomarker names as they appear in the lab reports
-- Extract ONLY numerical values (no text descriptions)
+- Extract ONLY numerical values for biomarkers (no text descriptions)
 - Include the unit exactly as shown
 - If a value is marked as "<0.1" or similar, extract "0.1" and note in the unit
+- For dates, always convert to YYYY-MM-DD format
+- For gender, normalize to: "male", "female", or "other"
+- If patient info is not found, use null
 - Do NOT include any explanatory text, only the JSON object
 - Ensure the JSON is valid and parseable
 
@@ -61,18 +85,14 @@ Return your response now:`;
 }
 
 /**
- * Extract biomarkers from PDF documents using Claude API
+ * Extract biomarkers from a SINGLE PDF document using Claude API
  */
-export async function extractBiomarkersFromPdfs(
+export async function extractBiomarkersFromPdf(
   apiKey: string,
-  processedPdfs: ProcessedPDF[]
+  processedPdf: ProcessedPDF
 ): Promise<ClaudeResponse> {
   if (!apiKey) {
     throw new Error('API key is required');
-  }
-
-  if (processedPdfs.length === 0) {
-    throw new Error('No PDFs provided');
   }
 
   try {
@@ -82,15 +102,13 @@ export async function extractBiomarkersFromPdfs(
       dangerouslyAllowBrowser: true, // Required for client-side usage
     });
 
-    // Prepare content - send extracted text instead of full PDFs (much cheaper!)
-    const allPdfText = processedPdfs
-      .map((pdf) => `\n=== ${pdf.fileName} (${pdf.pageCount} pages) ===\n${pdf.extractedText}`)
-      .join('\n\n');
+    // Prepare content for single PDF
+    const pdfText = `\n=== ${processedPdf.fileName} (${processedPdf.pageCount} pages) ===\n${processedPdf.extractedText}`;
 
     const content: Anthropic.MessageParam[] = [
       {
         role: 'user',
-        content: createExtractionPrompt() + '\n\n' + allPdfText,
+        content: createExtractionPrompt() + '\n\n' + pdfText,
       },
     ];
 
@@ -110,10 +128,12 @@ export async function extractBiomarkersFromPdfs(
     const text = textContent.text;
 
     // Parse the JSON response
-    const biomarkers = parseClaudeResponse(text);
+    const { biomarkers, patientInfo, panelName } = parseClaudeResponse(text);
 
     return {
       biomarkers,
+      patientInfo,
+      panelName,
       raw: text,
     };
   } catch (error) {
@@ -129,14 +149,80 @@ export async function extractBiomarkersFromPdfs(
       throw new Error(`Claude API error: ${error.message}`);
     }
     
-    throw new Error('Failed to process PDFs with Claude API');
+    throw new Error('Failed to process PDF with Claude API');
   }
 }
 
 /**
- * Parse the Claude response and extract biomarker data
+ * Extract biomarkers from MULTIPLE PDFs (processes in parallel for speed!)
+ * Returns array of results, one per PDF
  */
-function parseClaudeResponse(text: string): ExtractedBiomarker[] {
+export async function extractBiomarkersFromPdfs(
+  apiKey: string,
+  processedPdfs: ProcessedPDF[]
+): Promise<ClaudeResponse[]> {
+  if (!apiKey) {
+    throw new Error('API key is required');
+  }
+
+  if (processedPdfs.length === 0) {
+    throw new Error('No PDFs provided');
+  }
+
+  // Process ALL PDFs in parallel for maximum speed!
+  const promises = processedPdfs.map(pdf => extractBiomarkersFromPdf(apiKey, pdf));
+  const results = await Promise.all(promises);
+
+  return results;
+}
+
+/**
+ * Generate a smart panel name based on biomarkers found
+ */
+function generatePanelName(biomarkers: ExtractedBiomarker[]): string {
+  const biomarkerNames = biomarkers.map(b => b.name.toLowerCase());
+  const categories: string[] = [];
+
+  // Check for different panel types
+  if (biomarkerNames.some(n => n.includes('wbc') || n.includes('rbc') || n.includes('hemoglobin') || n.includes('hematocrit'))) {
+    categories.push('CBC');
+  }
+  if (biomarkerNames.some(n => n.includes('cholesterol') || n.includes('hdl') || n.includes('ldl') || n.includes('triglyceride'))) {
+    categories.push('Lipid Panel');
+  }
+  if (biomarkerNames.some(n => n.includes('testosterone') || n.includes('estrogen') || n.includes('cortisol') || n.includes('dhea'))) {
+    categories.push('Hormone Panel');
+  }
+  if (biomarkerNames.some(n => n.includes('glucose') || n.includes('sodium') || n.includes('potassium') || n.includes('creatinine'))) {
+    categories.push('Metabolic Panel');
+  }
+  if (biomarkerNames.some(n => n.includes('tsh') || n.includes('t3') || n.includes('t4') || n.includes('thyroid'))) {
+    categories.push('Thyroid Panel');
+  }
+  if (biomarkerNames.some(n => n.includes('iron') || n.includes('ferritin') || n.includes('tibc'))) {
+    categories.push('Iron Studies');
+  }
+  if (biomarkerNames.some(n => n.includes('vitamin') || n.includes('b12') || n.includes('folate'))) {
+    categories.push('Vitamin Panel');
+  }
+  if (biomarkerNames.some(n => n.includes('lead') || n.includes('mercury') || n.includes('arsenic') || n.includes('cadmium'))) {
+    categories.push('Heavy Metals');
+  }
+
+  // Return combined name or default
+  if (categories.length === 0) {
+    return `Lab Panel (${biomarkers.length} biomarkers)`;
+  } else if (categories.length === 1) {
+    return categories[0];
+  } else {
+    return categories.join(' + ');
+  }
+}
+
+/**
+ * Parse the Claude response and extract biomarker data + patient info
+ */
+function parseClaudeResponse(text: string): { biomarkers: ExtractedBiomarker[]; patientInfo: PatientInfo; panelName: string } {
   try {
     // Try to extract JSON from markdown code blocks if present
     let jsonText = text.trim();
@@ -159,11 +245,24 @@ function parseClaudeResponse(text: string): ExtractedBiomarker[] {
       throw new Error('Invalid response format: missing biomarkers array');
     }
 
-    return parsed.biomarkers.map((b: any) => ({
+    // Extract patient info (with defaults if missing)
+    const patientInfo: PatientInfo = {
+      name: parsed.patientInfo?.name || null,
+      dateOfBirth: parsed.patientInfo?.dateOfBirth || null,
+      gender: parsed.patientInfo?.gender || null,
+      testDate: parsed.patientInfo?.testDate || null,
+    };
+
+    const biomarkers = parsed.biomarkers.map((b: any) => ({
       name: String(b.name || '').trim(),
       value: String(b.value || '').trim(),
       unit: String(b.unit || '').trim(),
     }));
+
+    // Generate panel name based on biomarkers (fast, client-side)
+    const panelName = generatePanelName(biomarkers);
+
+    return { biomarkers, patientInfo, panelName };
   } catch (error) {
     console.error('Failed to parse Claude response:', error);
     console.log('Raw response:', text);

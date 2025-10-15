@@ -8,9 +8,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Users, UserPlus, Archive, ArchiveRestore, Trash2, Edit, Upload, Download } from 'lucide-react';
+import { Users, UserPlus, Archive, ArchiveRestore, Trash2, Edit, Upload, Download, History, Calendar, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import { isSupabaseEnabled } from '@/lib/supabase';
-import type { Client } from '@/lib/supabase';
+import type { Client, Analysis } from '@/lib/supabase';
 import {
   getActiveClients,
   getPastClients,
@@ -20,6 +20,9 @@ import {
   archiveClient,
   reactivateClient,
 } from '@/lib/client-service';
+import { getClientAnalyses, deleteDuplicateAnalyses } from '@/lib/analysis-service';
+import { BiomarkerTrendsGrid } from '@/components/BiomarkerTrends';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export function ClientLibrary() {
   const [clients, setClients] = useState<Client[]>([]);
@@ -28,6 +31,17 @@ export function ClientLibrary() {
   const [editingClient, setEditingClient] = useState<Client | null>(null);
   const [loading, setLoading] = useState(true);
   const [importing, setImporting] = useState(false);
+
+  // History dialog state
+  const [isHistoryDialogOpen, setIsHistoryDialogOpen] = useState(false);
+  const [selectedClient, setSelectedClient] = useState<Client | null>(null);
+  const [clientAnalyses, setClientAnalyses] = useState<Analysis[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+  const [cleaningDuplicates, setCleaningDuplicates] = useState(false);
+  
+  // Detail view state
+  const [selectedAnalysis, setSelectedAnalysis] = useState<Analysis | null>(null);
+  const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -105,6 +119,58 @@ export function ClientLibrary() {
     if (confirm(`Are you sure you want to delete ${client.full_name}? This action cannot be undone.`)) {
       await deleteClient(client.id);
       loadClients();
+    }
+  }
+
+  async function handleViewHistory(client: Client) {
+    setSelectedClient(client);
+    setIsHistoryDialogOpen(true);
+    setLoadingHistory(true);
+    const analyses = await getClientAnalyses(client.id);
+    
+    // Automatically deduplicate by lab_test_date (keep most recent for each date)
+    const deduped = deduplicateAnalyses(analyses);
+    setClientAnalyses(deduped);
+    setLoadingHistory(false);
+  }
+
+  function deduplicateAnalyses(analyses: Analysis[]): Analysis[] {
+    const byDate = new Map<string, Analysis>();
+    
+    analyses.forEach(analysis => {
+      const date = analysis.lab_test_date || `no-date-${analysis.id}`;
+      const existing = byDate.get(date);
+      
+      // Keep the one with the most recent created_at timestamp
+      if (!existing || new Date(analysis.created_at) > new Date(existing.created_at)) {
+        byDate.set(date, analysis);
+      }
+    });
+    
+    return Array.from(byDate.values()).sort(
+      (a, b) => new Date(b.analysis_date).getTime() - new Date(a.analysis_date).getTime()
+    );
+  }
+
+  async function handleCleanupDuplicates() {
+    if (!selectedClient) return;
+    
+    if (!confirm('This will permanently delete duplicate analyses from the database, keeping only the most recent upload for each lab test date. Continue?')) {
+      return;
+    }
+
+    setCleaningDuplicates(true);
+    const deletedCount = await deleteDuplicateAnalyses(selectedClient.id);
+    setCleaningDuplicates(false);
+
+    if (deletedCount > 0) {
+      alert(`Permanently removed ${deletedCount} duplicate ${deletedCount === 1 ? 'analysis' : 'analyses'} from database`);
+      // Reload the analyses
+      const analyses = await getClientAnalyses(selectedClient.id);
+      const deduped = deduplicateAnalyses(analyses);
+      setClientAnalyses(deduped);
+    } else {
+      alert('No duplicates found in database');
     }
   }
 
@@ -410,6 +476,14 @@ export function ClientLibrary() {
                       <Button
                         variant="outline"
                         size="sm"
+                        onClick={() => handleViewHistory(client)}
+                        title="View analysis history"
+                      >
+                        <History className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
                         onClick={() => handleEdit(client)}
                       >
                         <Edit className="h-4 w-4" />
@@ -442,6 +516,247 @@ export function ClientLibrary() {
           </div>
         )}
       </CardContent>
+
+      {/* Analysis History Dialog */}
+      <Dialog open={isHistoryDialogOpen} onOpenChange={setIsHistoryDialogOpen}>
+        <DialogContent className="sm:max-w-[800px] max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <DialogTitle className="flex items-center gap-2">
+                  <History className="h-5 w-5" />
+                  Analysis History - {selectedClient?.full_name}
+                </DialogTitle>
+                <DialogDescription>
+                  Historical lab results and biomarker trends over time ({clientAnalyses.length} unique {clientAnalyses.length === 1 ? 'test' : 'tests'})
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+
+          {loadingHistory ? (
+            <div className="text-center py-8 text-muted-foreground">Loading history...</div>
+          ) : clientAnalyses.length === 0 ? (
+            <div className="text-center py-12">
+              <Calendar className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
+              <p className="text-muted-foreground">
+                No analysis history found for this client yet.
+              </p>
+            </div>
+          ) : (
+            <Tabs defaultValue="timeline" className="w-full">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="timeline">Timeline</TabsTrigger>
+                <TabsTrigger value="trends">Trends</TabsTrigger>
+              </TabsList>
+
+              <TabsContent value="timeline" className="space-y-4 py-4">
+                {/* Timeline view */}
+                <div className="relative">
+                {clientAnalyses.map((analysis, index) => {
+                  const testDate = analysis.lab_test_date 
+                    ? new Date(analysis.lab_test_date).toLocaleDateString()
+                    : new Date(analysis.analysis_date).toLocaleDateString();
+                  
+                  const measuredCount = analysis.summary?.measuredBiomarkers || 0;
+                  const totalCount = analysis.summary?.totalBiomarkers || 0;
+
+                  return (
+                    <div key={analysis.id} className="relative pb-6">
+                      {/* Timeline line */}
+                      {index < clientAnalyses.length - 1 && (
+                        <div className="absolute left-4 top-8 bottom-0 w-0.5 bg-border" />
+                      )}
+                      
+                      <div className="flex gap-4">
+                        {/* Timeline dot */}
+                        <div className="relative flex-shrink-0">
+                          <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-xs font-bold">
+                            {index + 1}
+                          </div>
+                        </div>
+
+                        {/* Analysis card */}
+                        <Card className="flex-1">
+                          <CardContent className="p-4">
+                            <div className="space-y-3">
+                              {/* Header */}
+                              <div className="flex items-start justify-between">
+                                <div>
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <Calendar className="h-4 w-4 text-muted-foreground" />
+                                    <span className="font-semibold">{testDate}</span>
+                                    {analysis.lab_test_date && (
+                                      <Badge variant="outline" className="text-xs">Lab Test</Badge>
+                                    )}
+                                  </div>
+                                  <p className="text-sm text-muted-foreground">
+                                    {measuredCount} of {totalCount} biomarkers measured
+                                  </p>
+                                </div>
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  onClick={() => {
+                                    setSelectedAnalysis(analysis);
+                                    setIsDetailDialogOpen(true);
+                                  }}
+                                >
+                                  View Details
+                                </Button>
+                              </div>
+
+                              {/* Sample of key biomarkers */}
+                              {analysis.results && Array.isArray(analysis.results) && (
+                                <div className="pt-2">
+                                  <p className="text-xs text-muted-foreground mb-2">Key Biomarkers:</p>
+                                  <div className="grid grid-cols-2 gap-2">
+                                    {analysis.results.slice(0, 6).map((result: any, idx: number) => (
+                                      <div key={idx} className="text-xs flex items-center justify-between p-2 bg-muted/50 rounded">
+                                        <span className="font-medium">{result.biomarkerName}</span>
+                                        <span className="text-muted-foreground">{result.hisValue}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                  {analysis.results.length > 6 && (
+                                    <p className="text-xs text-muted-foreground text-center mt-2">
+                                      +{analysis.results.length - 6} more biomarkers
+                                    </p>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          </CardContent>
+                        </Card>
+                      </div>
+                    </div>
+                  );
+                })}
+                </div>
+              </TabsContent>
+
+              <TabsContent value="trends" className="py-4">
+                <BiomarkerTrendsGrid analyses={clientAnalyses} />
+              </TabsContent>
+            </Tabs>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Analysis Detail Dialog */}
+      <Dialog open={isDetailDialogOpen} onOpenChange={setIsDetailDialogOpen}>
+        <DialogContent className="sm:max-w-[900px] max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Calendar className="h-5 w-5" />
+              Analysis Details - {selectedAnalysis?.lab_test_date 
+                ? new Date(selectedAnalysis.lab_test_date).toLocaleDateString('en-US', { 
+                    month: 'long', day: 'numeric', year: 'numeric' 
+                  })
+                : 'Unknown Date'}
+            </DialogTitle>
+            <DialogDescription>
+              Complete biomarker results for this lab test
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedAnalysis && (
+            <div className="space-y-6">
+              {/* Summary Stats */}
+              <div className="grid grid-cols-3 gap-4">
+                <Card>
+                  <CardContent className="p-4 text-center">
+                    <div className="text-2xl font-bold text-primary">
+                      {selectedAnalysis.summary?.totalBiomarkers || 0}
+                    </div>
+                    <div className="text-xs text-muted-foreground">Total Biomarkers</div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-4 text-center">
+                    <div className="text-2xl font-bold text-green-600">
+                      {selectedAnalysis.summary?.measuredBiomarkers || 0}
+                    </div>
+                    <div className="text-xs text-muted-foreground">Measured</div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardContent className="p-4 text-center">
+                    <div className="text-2xl font-bold text-muted-foreground">
+                      {selectedAnalysis.summary?.missingBiomarkers || 0}
+                    </div>
+                    <div className="text-xs text-muted-foreground">Not Measured</div>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* All Results Table */}
+              <div>
+                <h3 className="font-semibold mb-3">All Biomarker Results</h3>
+                <div className="border rounded-lg overflow-hidden">
+                  <div className="max-h-[400px] overflow-y-auto">
+                    <table className="w-full">
+                      <thead className="bg-muted sticky top-0">
+                        <tr>
+                          <th className="text-left p-3 font-medium">#</th>
+                          <th className="text-left p-3 font-medium">Biomarker</th>
+                          <th className="text-right p-3 font-medium">Value</th>
+                          <th className="text-right p-3 font-medium">Unit</th>
+                          <th className="text-right p-3 font-medium">Optimal Range</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {selectedAnalysis.results && Array.isArray(selectedAnalysis.results) && 
+                          selectedAnalysis.results.map((result: any, idx: number) => (
+                            <tr 
+                              key={idx} 
+                              className={`border-t hover:bg-muted/50 transition-colors ${
+                                result.hisValue === 'N/A' ? 'opacity-50' : ''
+                              }`}
+                            >
+                              <td className="p-3 text-sm text-muted-foreground">{idx + 1}</td>
+                              <td className="p-3 font-medium">{result.biomarkerName}</td>
+                              <td className={`p-3 text-right font-mono ${
+                                result.hisValue === 'N/A' ? 'text-muted-foreground' : 'font-semibold'
+                              }`}>
+                                {result.hisValue}
+                              </td>
+                              <td className="p-3 text-right text-sm text-muted-foreground">
+                                {result.unit || '-'}
+                              </td>
+                              <td className="p-3 text-right text-sm text-muted-foreground">
+                                {result.optimalRange}
+                              </td>
+                            </tr>
+                          ))
+                        }
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+              {/* Notes if any */}
+              {selectedAnalysis.notes && (
+                <div>
+                  <h3 className="font-semibold mb-2">Notes</h3>
+                  <Card>
+                    <CardContent className="p-4">
+                      <p className="text-sm text-muted-foreground">{selectedAnalysis.notes}</p>
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
+
+              {/* Metadata */}
+              <div className="pt-4 border-t text-xs text-muted-foreground flex justify-between">
+                <span>Analysis ID: {selectedAnalysis.id}</span>
+                <span>Uploaded: {new Date(selectedAnalysis.created_at).toLocaleString()}</span>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }

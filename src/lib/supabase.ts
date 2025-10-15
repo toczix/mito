@@ -50,7 +50,8 @@ export interface Client {
 export interface Analysis {
   id: string;
   client_id: string;
-  analysis_date: string;
+  lab_test_date: string | null;  // Actual test date from lab report (YYYY-MM-DD)
+  analysis_date: string;  // When uploaded/created
   results: any; // JSON biomarker results
   summary: any | null;
   notes: string | null;

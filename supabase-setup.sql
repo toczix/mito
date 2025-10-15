@@ -59,7 +59,8 @@ CREATE TABLE IF NOT EXISTS clients (
 CREATE TABLE IF NOT EXISTS analyses (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   client_id UUID REFERENCES clients(id) ON DELETE CASCADE,
-  analysis_date TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  lab_test_date DATE,  -- Actual lab test date from the report
+  analysis_date TIMESTAMP WITH TIME ZONE DEFAULT NOW(),  -- When analysis was uploaded/created
   results JSONB NOT NULL,
   summary JSONB,
   notes TEXT,
@@ -76,6 +77,7 @@ CREATE INDEX IF NOT EXISTS idx_clients_status ON clients(status);
 CREATE INDEX IF NOT EXISTS idx_clients_name ON clients(full_name);
 CREATE INDEX IF NOT EXISTS idx_analyses_client ON analyses(client_id);
 CREATE INDEX IF NOT EXISTS idx_analyses_date ON analyses(analysis_date DESC);
+CREATE INDEX IF NOT EXISTS idx_analyses_lab_test_date ON analyses(lab_test_date DESC);
 
 -- ============================================
 -- 6. AUTO-UPDATE TIMESTAMPS

@@ -24,6 +24,19 @@
 
 ---
 
+## Step 2.5: Seed Default Biomarkers (ONE TIME)
+
+1. In **SQL Editor**, click **"New Query"** again
+2. In your project, open the file: **`supabase-seed-benchmarks.sql`**
+3. **Copy ALL the SQL** (Cmd+A, then Cmd+C)
+4. **Paste** into the Supabase SQL Editor
+5. Click **"Run"** (or press Cmd+Enter)
+6. You should see: **"Success. No rows returned"** or a count of inserted rows
+
+This populates your database with 96 default biomarker standards! 🎉
+
+---
+
 ## Step 3: Get Your Credentials
 
 1. Go to **Settings** → **API** (left sidebar)
@@ -84,12 +97,12 @@ Optional: Check that tables were created
 
 1. Go to **Table Editor** in Supabase (left sidebar)
 2. You should see **4 tables**:
-   - `settings` ✓
-   - `custom_benchmarks` ✓
-   - `clients` ✓
-   - `analyses` ✓
+   - `settings` ✓ (1 row)
+   - `custom_benchmarks` ✓ (96 rows with all default biomarkers)
+   - `clients` ✓ (0 rows - you'll add these)
+   - `analyses` ✓ (0 rows - you'll add these)
 
-If you don't see them, run the SQL again (it's safe to run multiple times).
+If you don't see them, run the SQL scripts again (they're safe to run multiple times).
 
 ---
 

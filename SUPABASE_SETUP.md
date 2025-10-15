@@ -28,7 +28,7 @@ VITE_SUPABASE_ANON_KEY=your-anon-key-here
 
 1. Go to Supabase Dashboard → **SQL Editor**
 2. Click "New Query"
-3. Copy the entire contents of **`supabase-schema-simple.sql`**
+3. Copy the entire contents of **`supabase-setup.sql`**
 4. Paste and click "Run"
 
 This creates:
@@ -37,7 +37,25 @@ This creates:
 - ✅ `clients` table (patient records with active/past status)
 - ✅ `analyses` table (biomarker analysis history)
 
-## Step 5: Restart Your App
+## Step 5: Seed Default Biomarkers
+
+1. In the **SQL Editor**, click "New Query" again
+2. Copy the entire contents of **`supabase-seed-benchmarks.sql`**
+3. Paste and click "Run"
+
+This populates the `custom_benchmarks` table with 96 default biomarkers across all categories:
+- ✅ Liver Function (ALP, ALT, AST, GGT, Bilirubin)
+- ✅ Kidney Function (BUN, Creatinine)
+- ✅ Lipids (HDL, LDL, Total Cholesterol, Triglycerides)
+- ✅ Thyroid (TSH, Free T3, Free T4, TPO Antibodies)
+- ✅ Hormones (Testosterone, DHEA-S, Cortisol, FSH, LH, SHBG)
+- ✅ Blood Cells (RBC, WBC, Hemoglobin, Hematocrit, Platelets)
+- ✅ Metabolic (Glucose, Insulin, HbA1c)
+- ✅ Vitamins (Vitamin D, Vitamin B12)
+- ✅ Minerals (Calcium, Magnesium, Iron, Ferritin)
+- ✅ And many more...
+
+## Step 6: Restart Your App
 
 ```bash
 npm run dev
