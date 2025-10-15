@@ -1,13 +1,21 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
 import { generateSummary, getValueStatus } from '@/lib/analyzer';
 import type { AnalysisResult } from '@/lib/biomarkers';
-import { Copy, Download, CheckCircle2, XCircle, HelpCircle, AlertCircle } from 'lucide-react';
+import { Copy, Download, CheckCircle2, XCircle, HelpCircle, AlertCircle, Save } from 'lucide-react';
+import { isSupabaseEnabled } from '@/lib/supabase';
+import { getActiveClients } from '@/lib/client-service';
+import { createAnalysis } from '@/lib/analysis-service';
+import type { Client } from '@/lib/supabase';
 
 interface AnalysisResultsProps {
   results: AnalysisResult[];
@@ -16,7 +24,47 @@ interface AnalysisResultsProps {
 
 export function AnalysisResults({ results, onReset }: AnalysisResultsProps) {
   const [copied, setCopied] = useState(false);
+  const [clients, setClients] = useState<Client[]>([]);
+  const [selectedClientId, setSelectedClientId] = useState<string>('');
+  const [notes, setNotes] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+  const [saveDialogOpen, setSaveDialogOpen] = useState(false);
   const summary = generateSummary(results);
+
+  useEffect(() => {
+    if (isSupabaseEnabled) {
+      loadClients();
+    }
+  }, []);
+
+  async function loadClients() {
+    const activeClients = await getActiveClients();
+    setClients(activeClients);
+  }
+
+  async function handleSaveToClient() {
+    if (!selectedClientId) {
+      alert('Please select a client');
+      return;
+    }
+
+    setIsSaving(true);
+    const analysis = await createAnalysis(selectedClientId, results, notes);
+    setIsSaving(false);
+
+    if (analysis) {
+      setSaveSuccess(true);
+      setTimeout(() => {
+        setSaveDialogOpen(false);
+        setSaveSuccess(false);
+        setSelectedClientId('');
+        setNotes('');
+      }, 1500);
+    } else {
+      alert('Failed to save analysis. Please try again.');
+    }
+  }
 
   const copyToClipboard = () => {
     // Generate markdown table
@@ -108,6 +156,88 @@ export function AnalysisResults({ results, onReset }: AnalysisResultsProps) {
 
           {/* Action Buttons */}
           <div className="flex flex-wrap gap-2">
+            {isSupabaseEnabled && (
+              <Dialog open={saveDialogOpen} onOpenChange={setSaveDialogOpen}>
+                <DialogTrigger asChild>
+                  <Button className="gap-2">
+                    <Save className="h-4 w-4" />
+                    Save to Client
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Save Analysis to Client</DialogTitle>
+                    <DialogDescription>
+                      Select a client to save this analysis to their record
+                    </DialogDescription>
+                  </DialogHeader>
+                  <div className="space-y-4 py-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="client">Select Client</Label>
+                      <Select value={selectedClientId} onValueChange={setSelectedClientId}>
+                        <SelectTrigger id="client">
+                          <SelectValue placeholder="Choose a client..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {clients.length === 0 ? (
+                            <div className="px-2 py-6 text-center text-sm text-muted-foreground">
+                              No active clients found.<br />
+                              Create a client in the Clients tab first.
+                            </div>
+                          ) : (
+                            clients.map((client) => (
+                              <SelectItem key={client.id} value={client.id}>
+                                {client.full_name}
+                                {client.email && ` (${client.email})`}
+                              </SelectItem>
+                            ))
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="notes">Notes (Optional)</Label>
+                      <Textarea
+                        id="notes"
+                        value={notes}
+                        onChange={(e) => setNotes(e.target.value)}
+                        placeholder="Add any notes about this analysis..."
+                        rows={3}
+                      />
+                    </div>
+
+                    <div className="flex gap-2 justify-end pt-4">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setSaveDialogOpen(false)}
+                        disabled={isSaving}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        onClick={handleSaveToClient}
+                        disabled={isSaving || !selectedClientId}
+                        className="gap-2"
+                      >
+                        {saveSuccess ? (
+                          <>
+                            <CheckCircle2 className="h-4 w-4" />
+                            Saved!
+                          </>
+                        ) : (
+                          <>
+                            <Save className="h-4 w-4" />
+                            {isSaving ? 'Saving...' : 'Save Analysis'}
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
+            )}
             <Button onClick={copyToClipboard} variant="outline" className="gap-2">
               {copied ? <CheckCircle2 className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
               {copied ? 'Copied!' : 'Copy Markdown Table'}
