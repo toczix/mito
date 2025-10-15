@@ -8,17 +8,18 @@ import { processMultiplePdfs } from '@/lib/pdf-processor';
 import { extractBiomarkersFromPdfs } from '@/lib/claude-service';
 import { matchBiomarkersWithRanges } from '@/lib/analyzer';
 import type { AnalysisResult } from '@/lib/biomarkers';
-import { AlertCircle, Activity, FileText, Settings, Users } from 'lucide-react';
+import { AlertCircle, Activity, FileText, Settings as SettingsIcon, Users } from 'lucide-react';
 import { BenchmarkManager } from '@/components/BenchmarkManager';
 import { ClientLibrary } from '@/components/ClientLibrary';
+import { Settings } from '@/components/Settings';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
-type AppState = 'api-key' | 'upload' | 'processing' | 'results' | 'error';
+type AppState = 'upload' | 'processing' | 'results' | 'error';
 
 const API_KEY_STORAGE_KEY = 'mito_claude_api_key';
 
 function App() {
-  const [state, setState] = useState<AppState>('api-key');
+  const [state, setState] = useState<AppState>('upload');
   const [apiKey, setApiKey] = useState<string>('');
   const [files, setFiles] = useState<File[]>([]);
   const [results, setResults] = useState<AnalysisResult[]>([]);
@@ -30,16 +31,8 @@ function App() {
     const savedApiKey = localStorage.getItem(API_KEY_STORAGE_KEY);
     if (savedApiKey) {
       setApiKey(savedApiKey);
-      setState('upload');
     }
   }, []);
-
-  const handleApiKeySubmit = (key: string) => {
-    setApiKey(key);
-    localStorage.setItem(API_KEY_STORAGE_KEY, key);
-    setState('upload');
-    setError(null);
-  };
 
   const handleFilesSelected = (selectedFiles: File[]) => {
     setFiles(selectedFiles);
@@ -49,6 +42,14 @@ function App() {
   const handleAnalyze = async () => {
     if (files.length === 0) {
       setError('Please select at least one PDF file');
+      return;
+    }
+
+    // Check if API key exists
+    const currentApiKey = localStorage.getItem(API_KEY_STORAGE_KEY);
+    if (!currentApiKey) {
+      setError('Please set your Claude API key in the Settings tab first.');
+      setState('error');
       return;
     }
 
@@ -62,7 +63,8 @@ function App() {
       
       // Step 2: Extract biomarkers using Claude
       setProcessingMessage('Analyzing documents with Claude AI...');
-      const claudeResponse = await extractBiomarkersFromPdfs(apiKey, processedPdfs);
+      const currentApiKey = localStorage.getItem(API_KEY_STORAGE_KEY) || '';
+      const claudeResponse = await extractBiomarkersFromPdfs(currentApiKey, processedPdfs);
       
       // Step 3: Match with optimal ranges
       setProcessingMessage('Matching biomarkers with optimal ranges...');
@@ -86,12 +88,10 @@ function App() {
   };
 
   const handleStartOver = () => {
-    setApiKey('');
-    localStorage.removeItem(API_KEY_STORAGE_KEY);
     setFiles([]);
     setResults([]);
     setError(null);
-    setState('api-key');
+    setState('upload');
   };
 
   return (
@@ -114,7 +114,7 @@ function App() {
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8">
         <Tabs defaultValue="analysis" className="w-full">
-          <TabsList className="grid w-full max-w-2xl mx-auto grid-cols-3 mb-8">
+          <TabsList className="grid w-full max-w-3xl mx-auto grid-cols-4 mb-8">
             <TabsTrigger value="analysis" className="gap-2">
               <FileText className="h-4 w-4" />
               Analysis
@@ -124,14 +124,18 @@ function App() {
               Clients
             </TabsTrigger>
             <TabsTrigger value="benchmarks" className="gap-2">
-              <Settings className="h-4 w-4" />
+              <SettingsIcon className="h-4 w-4" />
               Benchmarks
+            </TabsTrigger>
+            <TabsTrigger value="settings" className="gap-2">
+              <SettingsIcon className="h-4 w-4" />
+              Settings
             </TabsTrigger>
           </TabsList>
 
           <TabsContent value="analysis" className="space-y-8">
           {/* Hero Section */}
-          {state === 'api-key' && (
+          {state === 'upload' && (
             <div className="text-center max-w-2xl mx-auto mb-8">
               <h2 className="text-2xl font-bold mb-3">
                 Automated Biomarker Analysis
@@ -170,12 +174,7 @@ function App() {
             </div>
           )}
 
-          {/* Step 1: API Key Input */}
-          {state === 'api-key' && (
-            <ApiKeyInput onApiKeySubmit={handleApiKeySubmit} />
-          )}
-
-          {/* Step 2: PDF Upload */}
+          {/* Step 1: PDF Upload */}
           {state === 'upload' && (
             <PdfUploader
               onFilesSelected={handleFilesSelected}
@@ -184,12 +183,12 @@ function App() {
             />
           )}
 
-          {/* Step 3: Processing */}
+          {/* Step 2: Processing */}
           {state === 'processing' && (
             <LoadingState message={processingMessage} />
           )}
 
-          {/* Step 4: Results */}
+          {/* Step 3: Results */}
           {state === 'results' && (
             <AnalysisResults results={results} onReset={handleReset} />
           )}
@@ -201,6 +200,10 @@ function App() {
 
           <TabsContent value="benchmarks">
             <BenchmarkManager />
+          </TabsContent>
+
+          <TabsContent value="settings">
+            <Settings />
           </TabsContent>
         </Tabs>
       </main>
