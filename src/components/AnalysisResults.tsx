@@ -12,7 +12,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { generateSummary, getValueStatus } from '@/lib/analyzer';
 import type { AnalysisResult } from '@/lib/biomarkers';
-import { Copy, Download, CheckCircle2, XCircle, HelpCircle, AlertCircle, Save } from 'lucide-react';
+import { Copy, Download, CheckCircle2, XCircle, AlertCircle, Save } from 'lucide-react';
 import { isSupabaseEnabled } from '@/lib/supabase';
 import { getActiveClients } from '@/lib/client-service';
 import { createAnalysis } from '@/lib/analysis-service';

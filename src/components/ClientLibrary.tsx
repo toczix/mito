@@ -20,7 +20,7 @@ import {
   archiveClient,
   reactivateClient,
 } from '@/lib/client-service';
-import { getClientAnalyses, deleteDuplicateAnalyses } from '@/lib/analysis-service';
+import { getClientAnalyses } from '@/lib/analysis-service';
 import { BiomarkerTrendsGrid } from '@/components/BiomarkerTrends';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
