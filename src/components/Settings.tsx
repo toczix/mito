@@ -143,7 +143,9 @@ export function Settings() {
               </Button>
             </div>
             <p className="text-sm text-muted-foreground">
-              Your API key is stored securely {isSupabaseEnabled ? 'in Supabase and syncs across devices' : 'in your browser'}.
+              {storageLocation === 'supabase' 
+                ? 'Your API key is stored securely in Supabase and syncs across devices.'
+                : 'Your API key is stored in your browser localStorage (this device only).'}
             </p>
           </div>
 
