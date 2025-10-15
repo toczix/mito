@@ -28,6 +28,8 @@ export function Settings() {
       if (supabaseKey) {
         setApiKey(supabaseKey);
         setStorageLocation('supabase');
+        // Also save to localStorage as cache
+        localStorage.setItem(API_KEY_STORAGE_KEY, supabaseKey);
         return;
       }
     }
@@ -37,6 +39,12 @@ export function Settings() {
     if (localKey) {
       setApiKey(localKey);
       setStorageLocation('localStorage');
+      
+      // If Supabase is enabled, sync the local key to Supabase
+      if (isSupabaseEnabled) {
+        await saveClaudeApiKey(localKey);
+        setStorageLocation('supabase');
+      }
     }
   }
 
@@ -48,14 +56,17 @@ export function Settings() {
 
     setIsSaving(true);
 
-    // Save to localStorage
+    // Save to localStorage first (instant)
     localStorage.setItem(API_KEY_STORAGE_KEY, apiKey);
 
-    // Also save to Supabase if enabled
+    // Save to Supabase if enabled (primary storage)
     if (isSupabaseEnabled) {
       const saved = await saveClaudeApiKey(apiKey);
       if (saved) {
         setStorageLocation('supabase');
+      } else {
+        alert('Failed to save to Supabase, but saved locally');
+        setStorageLocation('localStorage');
       }
     } else {
       setStorageLocation('localStorage');
@@ -66,10 +77,16 @@ export function Settings() {
     setTimeout(() => setSaveSuccess(false), 3000);
   }
 
-  function handleClear() {
+  async function handleClear() {
     if (confirm('Are you sure you want to clear your API key? You will need to re-enter it to use the analysis feature.')) {
       setApiKey('');
       localStorage.removeItem(API_KEY_STORAGE_KEY);
+      
+      // Also clear from Supabase if enabled
+      if (isSupabaseEnabled) {
+        await saveClaudeApiKey('');
+      }
+      
       setSaveSuccess(false);
     }
   }
