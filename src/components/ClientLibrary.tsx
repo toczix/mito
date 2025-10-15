@@ -335,7 +335,8 @@ export function ClientLibrary() {
                 </div>
               </form>
             </DialogContent>
-          </Dialog>
+            </Dialog>
+          </div>
         </div>
       </CardHeader>
 
