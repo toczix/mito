@@ -3,13 +3,13 @@ import { PdfUploader } from '@/components/PdfUploader';
 import { LoadingState } from '@/components/LoadingState';
 import { AnalysisResults } from '@/components/AnalysisResults';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { processMultiplePdfs } from '@/lib/pdf-processor';
-import { extractBiomarkersFromPdfs, type PatientInfo } from '@/lib/claude-service';
+import { processMultiplePdfs, type ProcessedPDF } from '@/lib/pdf-processor';
+import { extractBiomarkersFromPdfs, type PatientInfo, consolidatePatientInfo } from '@/lib/claude-service';
 import { matchBiomarkersWithRanges } from '@/lib/analyzer';
 import { createAnalysis } from '@/lib/analysis-service';
 import { matchOrCreateClient, autoCreateClient } from '@/lib/client-matcher';
 import type { AnalysisResult, ExtractedBiomarker } from '@/lib/biomarkers';
-import { AlertCircle, Activity, FileText, Settings as SettingsIcon, Users, UserCircle } from 'lucide-react';
+import { AlertCircle, Activity, FileText, Settings as SettingsIcon, Users, UserCircle, CheckCircle2 } from 'lucide-react';
 import { BenchmarkManager } from '@/components/BenchmarkManager';
 import { ClientLibrary } from '@/components/ClientLibrary';
 import { Settings } from '@/components/Settings';
@@ -37,6 +37,7 @@ function App() {
     panelName: string;
   }>>([]);
   const [savedAnalysesCount, setSavedAnalysesCount] = useState<number>(0);
+  const [patientInfoDiscrepancies, setPatientInfoDiscrepancies] = useState<string[]>([]);
 
   const handleFilesSelected = (selectedFiles: File[]) => {
     setFiles(selectedFiles);
@@ -67,14 +68,39 @@ function App() {
       setProcessingMessage(`Extracting text from ${files.length} PDF(s)...`);
       setProcessingProgress(5);
       const processedPdfs = await processMultiplePdfs(files);
+      
+      // Check for quality issues
+      const qualityIssues: string[] = [];
+      const validPdfs: ProcessedPDF[] = [];
+      
+      processedPdfs.forEach(pdf => {
+        if (pdf.qualityWarning && pdf.qualityScore && pdf.qualityScore < 0.5) {
+          qualityIssues.push(`${pdf.fileName}: ${pdf.qualityWarning}`);
+        } else {
+          validPdfs.push(pdf);
+        }
+      });
+      
+      if (qualityIssues.length > 0) {
+        const errorMsg = `Some files have quality issues and were skipped:\n${qualityIssues.join('\n')}`;
+        if (validPdfs.length === 0) {
+          setError(errorMsg);
+          setState('error');
+          return;
+        } else {
+          // Continue with valid PDFs but log warning
+          console.warn(errorMsg);
+        }
+      }
+      
       setProcessingProgress(20);
       
       // Step 2: Extract biomarkers AND patient info from EACH PDF separately - 20-70%
-      setProcessingMessage(`Analyzing ${processedPdfs.length} document(s) with Claude AI...`);
+      setProcessingMessage(`Analyzing ${validPdfs.length} document(s) with Claude AI...`);
       setProcessingProgress(30);
       const claudeResponses = await extractBiomarkersFromPdfs(
         currentApiKey, 
-        processedPdfs,
+        validPdfs,
         (current, total, batchInfo) => {
           const progress = 30 + Math.round((current / total) * 40);
           setProcessingProgress(progress);
@@ -83,18 +109,29 @@ function App() {
       );
       setProcessingProgress(70);
       
-      // Step 3: Process each analysis and combine biomarkers - 70-85%
+      // Step 3: Consolidate patient info (BATCH UPLOAD = ONE CLIENT) - 70-75%
+      setProcessingMessage('Consolidating patient information...');
+      setProcessingProgress(70);
+      
+      const allPatientInfos = claudeResponses.map(r => r.patientInfo);
+      const { consolidated: consolidatedPatientInfo, discrepancies, confidence } = consolidatePatientInfo(allPatientInfos);
+      
+      // Store discrepancies for display
+      setPatientInfoDiscrepancies(discrepancies);
+      
+      if (confidence === 'low') {
+        console.warn('Low confidence in patient info consolidation:', discrepancies);
+      }
+      
+      // Step 4: Process each analysis and combine biomarkers - 75-85%
       const allAnalyses: typeof extractedAnalyses = [];
       const allBiomarkersWithMeta: Array<{ biomarker: ExtractedBiomarker; testDate: string | null; pdfIndex: number }> = [];
-      const testDates: string[] = [];
-      let savedCount = 0;
-      let primaryPatientInfo: PatientInfo | null = null;
       
       for (let i = 0; i < claudeResponses.length; i++) {
         const claudeResponse = claudeResponses[i];
-        const processedPdf = processedPdfs[i];
+        const processedPdf = validPdfs[i];
         
-        const progressInStep = 70 + (i / claudeResponses.length) * 15;
+        const progressInStep = 75 + (i / claudeResponses.length) * 10;
         setProcessingProgress(Math.round(progressInStep));
         setProcessingMessage(`Processing analysis ${i + 1} of ${claudeResponses.length}...`);
         
@@ -107,20 +144,10 @@ function App() {
           });
         });
         
-        // Collect test dates
-        if (claudeResponse.patientInfo.testDate) {
-          testDates.push(claudeResponse.patientInfo.testDate);
-        }
-        
-        // Use first patient info as primary
-        if (!primaryPatientInfo && claudeResponse.patientInfo.name) {
-          primaryPatientInfo = claudeResponse.patientInfo;
-        }
-        
         // Match with optimal ranges
         const analysisResults = matchBiomarkersWithRanges(claudeResponse.biomarkers);
         
-        // Store individual analysis info (for future multi-analysis support)
+        // Store individual analysis info (for display purposes)
         allAnalyses.push({
           patientInfo: claudeResponse.patientInfo,
           results: analysisResults,
@@ -168,81 +195,68 @@ function App() {
       }));
       const combinedResults = matchBiomarkersWithRanges(deduplicatedBiomarkers);
       
-      // Determine if we should save as one or multiple analyses
-      const uniqueDates = [...new Set(testDates)];
-      const hasMixedDates = uniqueDates.length > 1;
+      // Get unique test dates to determine if multiple lab visits
+      const uniqueTestDates = Array.from(
+        new Set(
+          allBiomarkersWithMeta
+            .map(item => item.testDate)
+            .filter((date): date is string => date !== null)
+        )
+      );
+      const hasMultipleDates = uniqueTestDates.length > 1;
       
       // If Supabase enabled, save analysis - 90-100%
       setProcessingProgress(90);
-      if (isSupabaseEnabled && primaryPatientInfo) {
-        if (hasMixedDates) {
-          // Save each PDF as separate analysis (different lab visits)
-          setProcessingMessage(`Saving ${allAnalyses.length} analyses from different dates...`);
+      let savedCount = 0;
+      
+      if (isSupabaseEnabled && consolidatedPatientInfo.name) {
+        // ALWAYS use consolidated patient info for ONE client
+        setProcessingMessage('Matching or creating client...');
+        
+        const matchResult = await matchOrCreateClient(consolidatedPatientInfo);
+        
+        let clientId: string;
+        let clientName: string;
+        
+        if (matchResult.client) {
+          clientId = matchResult.client.id;
+          clientName = matchResult.client.full_name;
+          console.log(`Matched existing client: ${clientName}`);
+        } else {
+          const newClient = await autoCreateClient(consolidatedPatientInfo);
+          if (!newClient) {
+            throw new Error('Failed to create client');
+          }
+          clientId = newClient.id;
+          clientName = newClient.full_name;
+          console.log(`Created new client: ${clientName}`);
+        }
+        
+        setSelectedClientId(clientId);
+        setSelectedClientName(clientName);
+        
+        // Save based on whether we have multiple test dates
+        if (hasMultipleDates) {
+          // Save each date as a separate analysis (different lab visits)
+          setProcessingMessage(`Saving ${uniqueTestDates.length} analyses for ${clientName}...`);
           
-          for (let i = 0; i < allAnalyses.length; i++) {
-            const analysis = allAnalyses[i];
+          for (const testDate of uniqueTestDates) {
+            // Filter biomarkers for this date
+            const biomarkersForDate = allBiomarkersWithMeta
+              .filter(item => item.testDate === testDate)
+              .map(item => item.biomarker);
             
-            // Update progress for each save
-            const saveProgress = 90 + ((i + 1) / allAnalyses.length) * 10;
-            setProcessingProgress(Math.round(saveProgress));
+            const resultsForDate = matchBiomarkersWithRanges(biomarkersForDate);
             
-            // Match or create client
-            const matchResult = await matchOrCreateClient(analysis.patientInfo);
-            
-            let clientId: string;
-            let clientName: string;
-            
-            if (matchResult.client) {
-              clientId = matchResult.client.id;
-              clientName = matchResult.client.full_name;
-            } else if (analysis.patientInfo.name) {
-              const newClient = await autoCreateClient(analysis.patientInfo);
-              if (!newClient) {
-                console.error(`Failed to create client for ${analysis.patientInfo.name}`);
-                continue;
-              }
-              clientId = newClient.id;
-              clientName = newClient.full_name;
-            } else {
-              continue;
-            }
-            
-            // Save individual analysis
-            await createAnalysis(clientId, analysis.results, analysis.patientInfo.testDate);
+            await createAnalysis(clientId, resultsForDate, testDate);
             savedCount++;
-            
-            setSelectedClientId(clientId);
-            setSelectedClientName(clientName);
           }
         } else {
-          // Save as single combined analysis (same lab visit, multiple panels)
-          setProcessingMessage('Saving combined analysis...');
+          // Save as single combined analysis (same visit, multiple panels)
+          setProcessingMessage(`Saving analysis for ${clientName}...`);
           
-          const matchResult = await matchOrCreateClient(primaryPatientInfo);
-          
-          let clientId: string;
-          let clientName: string;
-          
-          if (matchResult.client) {
-            clientId = matchResult.client.id;
-            clientName = matchResult.client.full_name;
-          } else if (primaryPatientInfo.name) {
-            const newClient = await autoCreateClient(primaryPatientInfo);
-            if (!newClient) {
-              throw new Error('Failed to create client');
-            }
-            clientId = newClient.id;
-            clientName = newClient.full_name;
-          } else {
-            throw new Error('No patient information found');
-          }
-          
-          // Save combined analysis
-          await createAnalysis(clientId, combinedResults, primaryPatientInfo.testDate);
+          await createAnalysis(clientId, combinedResults, consolidatedPatientInfo.testDate);
           savedCount = 1;
-          
-          setSelectedClientId(clientId);
-          setSelectedClientName(clientName);
         }
       }
       
@@ -269,6 +283,7 @@ function App() {
     setExtractedAnalyses([]);
     setSavedAnalysesCount(0);
     setProcessingProgress(0);
+    setPatientInfoDiscrepancies([]);
     setState('upload');
   };
 
@@ -281,6 +296,7 @@ function App() {
     setExtractedAnalyses([]);
     setSavedAnalysesCount(0);
     setProcessingProgress(0);
+    setPatientInfoDiscrepancies([]);
     setState('upload');
   };
 
@@ -339,33 +355,42 @@ function App() {
 
           {/* Summary Badge (after processing) */}
           {(state === 'results') && extractedAnalyses.length > 0 && (
-            <div className="max-w-2xl mx-auto">
-              <div className="p-4 bg-secondary rounded-lg space-y-2">
-                <div className="flex items-center gap-2">
-                  <UserCircle className="h-5 w-5 text-muted-foreground" />
-                  <span className="text-sm font-semibold">
-                    {extractedAnalyses.length === 1 
-                      ? 'Processed 1 document'
-                      : `Combined ${extractedAnalyses.length} documents`}
-                  </span>
-                </div>
-                {savedAnalysesCount > 0 && (
-                  <div className="text-sm text-muted-foreground">
-                    ✅ Saved {savedAnalysesCount} analysis{savedAnalysesCount > 1 ? 'es' : ''} to {selectedClientName}'s record
-                  </div>
-                )}
-                {extractedAnalyses.length > 1 && (
-                  <div className="text-xs text-muted-foreground mt-2 space-y-1">
-                    <div className="font-medium">Panels processed:</div>
-                    <div className="flex flex-wrap gap-2">
-                      {extractedAnalyses.map((analysis, i) => (
-                        <Badge key={i} variant="secondary" className="text-xs">
-                          {analysis.panelName}
-                        </Badge>
+            <div className="max-w-2xl mx-auto space-y-3">
+              {/* Patient Info Discrepancies Warning */}
+              {patientInfoDiscrepancies.length > 0 && (
+                <Alert>
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>
+                    <p className="font-semibold text-sm">Patient info consolidated from multiple documents:</p>
+                    <div className="mt-2 space-y-1 text-xs">
+                      {patientInfoDiscrepancies.map((discrepancy, i) => (
+                        <div key={i} className="flex items-center gap-2">
+                          <span className="text-muted-foreground">•</span>
+                          <span>{discrepancy}</span>
+                        </div>
                       ))}
                     </div>
+                  </AlertDescription>
+                </Alert>
+              )}
+              
+              <div className="p-4 bg-secondary rounded-lg">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <UserCircle className="h-5 w-5 text-muted-foreground" />
+                    <span className="text-sm font-semibold">
+                      {extractedAnalyses.length === 1 
+                        ? 'Processed 1 document'
+                        : `${extractedAnalyses.length} documents`}
+                    </span>
                   </div>
-                )}
+                  {savedAnalysesCount > 0 && (
+                    <div className="text-sm text-muted-foreground flex items-center gap-1">
+                      <CheckCircle2 className="h-4 w-4 text-green-600" />
+                      <span>{savedAnalysesCount} {savedAnalysesCount > 1 ? 'analyses' : 'analysis'} saved to {selectedClientName}</span>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           )}

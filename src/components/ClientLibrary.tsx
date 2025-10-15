@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Users, UserPlus, Archive, ArchiveRestore, Trash2, Edit, Upload, Download, History, Calendar } from 'lucide-react';
+import { Users, UserPlus, Archive, ArchiveRestore, Trash2, Edit, Upload, Download, History, Calendar, FileText } from 'lucide-react';
 import { isSupabaseEnabled } from '@/lib/supabase';
 import type { Client, Analysis } from '@/lib/supabase';
 import {
@@ -22,7 +22,9 @@ import {
 } from '@/lib/client-service';
 import { getClientAnalyses } from '@/lib/analysis-service';
 import { BiomarkerTrendsGrid } from '@/components/BiomarkerTrends';
+import { AnalysisResults } from '@/components/AnalysisResults';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import type { AnalysisResult } from '@/lib/biomarkers';
 
 export function ClientLibrary() {
   const [clients, setClients] = useState<Client[]>([]);
@@ -41,6 +43,11 @@ export function ClientLibrary() {
   // Detail view state
   const [selectedAnalysis, setSelectedAnalysis] = useState<Analysis | null>(null);
   const [isDetailDialogOpen, setIsDetailDialogOpen] = useState(false);
+  
+  // Latest results view state
+  const [isLatestResultsOpen, setIsLatestResultsOpen] = useState(false);
+  const [latestAnalysis, setLatestAnalysis] = useState<Analysis | null>(null);
+  const [loadingLatest, setLoadingLatest] = useState(false);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -131,6 +138,39 @@ export function ClientLibrary() {
     const deduped = deduplicateAnalyses(analyses);
     setClientAnalyses(deduped);
     setLoadingHistory(false);
+  }
+  
+  async function handleViewLatestResults(client: Client) {
+    setSelectedClient(client);
+    setIsLatestResultsOpen(true);
+    setLoadingLatest(true);
+    
+    const analyses = await getClientAnalyses(client.id);
+    
+    // Get analysis with most measured biomarkers (most data)
+    if (analyses.length > 0) {
+      // Sort by most measured biomarkers first, then by most recent lab test date
+      const sorted = analyses.sort((a, b) => {
+        const aMeasured = a.summary?.measuredBiomarkers || 0;
+        const bMeasured = b.summary?.measuredBiomarkers || 0;
+        
+        // Prioritize the one with more measured biomarkers
+        if (bMeasured !== aMeasured) {
+          return bMeasured - aMeasured;
+        }
+        
+        // If same number of measured biomarkers, use most recent lab test date
+        const aDate = a.lab_test_date ? new Date(a.lab_test_date).getTime() : 0;
+        const bDate = b.lab_test_date ? new Date(b.lab_test_date).getTime() : 0;
+        return bDate - aDate;
+      });
+      
+      setLatestAnalysis(sorted[0]);
+    } else {
+      setLatestAnalysis(null);
+    }
+    
+    setLoadingLatest(false);
   }
 
   function deduplicateAnalyses(analyses: Analysis[]): Analysis[] {
@@ -451,10 +491,20 @@ export function ClientLibrary() {
 
                     <div className="flex gap-2">
                       <Button
+                        variant="default"
+                        size="sm"
+                        onClick={() => handleViewLatestResults(client)}
+                        title="View latest analysis results"
+                        className="gap-2"
+                      >
+                        <FileText className="h-4 w-4" />
+                        Latest Results
+                      </Button>
+                      <Button
                         variant="outline"
                         size="sm"
                         onClick={() => handleViewHistory(client)}
-                        title="View analysis history"
+                        title="View analysis history & trends"
                       >
                         <History className="h-4 w-4" />
                       </Button>
@@ -616,6 +666,33 @@ export function ClientLibrary() {
                 <BiomarkerTrendsGrid analyses={clientAnalyses} />
               </TabsContent>
             </Tabs>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Latest Results Dialog - Using Full AnalysisResults Component */}
+      <Dialog open={isLatestResultsOpen} onOpenChange={setIsLatestResultsOpen}>
+        <DialogContent className="sm:max-w-[90vw] max-h-[95vh] overflow-y-auto p-6">
+          <DialogHeader className="sr-only">
+            <DialogTitle>Analysis Results</DialogTitle>
+            <DialogDescription>Complete biomarker analysis for {selectedClient?.full_name}</DialogDescription>
+          </DialogHeader>
+          {loadingLatest ? (
+            <div className="text-center py-12 text-muted-foreground">Loading results...</div>
+          ) : !latestAnalysis ? (
+            <div className="text-center py-12">
+              <FileText className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-50" />
+              <p className="text-muted-foreground">
+                No analysis results found for this client yet.
+              </p>
+            </div>
+          ) : (
+            <AnalysisResults
+              results={latestAnalysis.results as AnalysisResult[]}
+              selectedClientId={selectedClient?.id}
+              selectedClientName={selectedClient?.full_name}
+              onReset={() => setIsLatestResultsOpen(false)}
+            />
           )}
         </DialogContent>
       </Dialog>

@@ -25,7 +25,7 @@ interface AnalysisResultsProps {
   selectedClientName?: string;
 }
 
-export function AnalysisResults({ results, onReset, selectedClientId: preSelectedClientId }: AnalysisResultsProps) {
+export function AnalysisResults({ results, onReset, selectedClientId: preSelectedClientId, selectedClientName: preSelectedClientName }: AnalysisResultsProps) {
   const [copied, setCopied] = useState(false);
   const [clients, setClients] = useState<Client[]>([]);
   const [manualClientId, setManualClientId] = useState<string>('');
@@ -71,14 +71,14 @@ export function AnalysisResults({ results, onReset, selectedClientId: preSelecte
 
   const copyToClipboard = () => {
     // Generate markdown table
-    const markdown = generateMarkdownTable(results);
+    const markdown = generateMarkdownTable(results, preSelectedClientName);
     navigator.clipboard.writeText(markdown);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
   const downloadAsMarkdown = () => {
-    const markdown = generateMarkdownTable(results);
+    const markdown = generateMarkdownTable(results, preSelectedClientName);
     const blob = new Blob([markdown], { type: 'text/markdown' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -133,7 +133,7 @@ export function AnalysisResults({ results, onReset, selectedClientId: preSelecte
         <CardHeader>
           <CardTitle>Analysis Complete</CardTitle>
           <CardDescription>
-            Biomarker analysis for Adam Winchester
+            {preSelectedClientName ? `Biomarker analysis for ${preSelectedClientName}` : 'Biomarker analysis'}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -362,9 +362,11 @@ export function AnalysisResults({ results, onReset, selectedClientId: preSelecte
 /**
  * Generate markdown table from results
  */
-function generateMarkdownTable(results: AnalysisResult[]): string {
+function generateMarkdownTable(results: AnalysisResult[], clientName?: string): string {
   let markdown = '# Biomarker Analysis Results\n\n';
-  markdown += `**Patient:** Adam Winchester\n`;
+  if (clientName) {
+    markdown += `**Patient:** ${clientName}\n`;
+  }
   markdown += `**Date:** ${new Date().toLocaleDateString()}\n\n`;
   
   markdown += '## Comprehensive Biomarker Analysis\n\n';

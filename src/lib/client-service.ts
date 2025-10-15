@@ -126,3 +126,29 @@ export async function reactivateClient(id: string): Promise<Client | null> {
   return updateClient(id, { status: 'active' });
 }
 
+/**
+ * Merge two clients - moves all lab tests from sourceId to targetId, then archives source
+ * Use this to fix duplicate clients (e.g., "Ashley Lebedev" and "Ashley Leebody")
+ */
+export async function mergeClients(targetId: string, sourceId: string): Promise<boolean> {
+  if (!supabase) return false;
+  
+  try {
+    // Update all lab_tests to point to target client
+    const { error: updateError } = await supabase
+      .from('lab_tests')
+      .update({ client_id: targetId })
+      .eq('client_id', sourceId);
+    
+    if (updateError) throw updateError;
+    
+    // Archive the source client
+    await archiveClient(sourceId);
+    
+    return true;
+  } catch (error) {
+    console.error('Error merging clients:', error);
+    return false;
+  }
+}
+

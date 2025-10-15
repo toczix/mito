@@ -102,15 +102,40 @@ export async function extractBiomarkersFromPdf(
       dangerouslyAllowBrowser: true, // Required for client-side usage
     });
 
-    // Prepare content for single PDF
-    const pdfText = `\n=== ${processedPdf.fileName} (${processedPdf.pageCount} pages) ===\n${processedPdf.extractedText}`;
-
-    const content: Anthropic.MessageParam[] = [
-      {
-        role: 'user',
-        content: createExtractionPrompt() + '\n\n' + pdfText,
-      },
-    ];
+    // Prepare content - handle both PDFs and images
+    let content: Anthropic.MessageParam[];
+    
+    if (processedPdf.isImage && processedPdf.imageData && processedPdf.mimeType) {
+      // For images, use Claude's vision API
+      content = [
+        {
+          role: 'user',
+          content: [
+            {
+              type: 'text',
+              text: createExtractionPrompt(),
+            },
+            {
+              type: 'image',
+              source: {
+                type: 'base64',
+                media_type: processedPdf.mimeType as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp',
+                data: processedPdf.imageData,
+              },
+            },
+          ],
+        },
+      ];
+    } else {
+      // For PDFs, use text extraction
+      const pdfText = `\n=== ${processedPdf.fileName} (${processedPdf.pageCount} pages) ===\n${processedPdf.extractedText}`;
+      content = [
+        {
+          role: 'user',
+          content: createExtractionPrompt() + '\n\n' + pdfText,
+        },
+      ];
+    }
 
     // Create message
     const message = await client.messages.create({
@@ -300,6 +325,151 @@ function parseClaudeResponse(text: string): { biomarkers: ExtractedBiomarker[]; 
     console.log('Raw response:', text);
     throw new Error('Failed to parse biomarker data from API response. The response may not be in the expected format.');
   }
+}
+
+/**
+ * Convert name to proper Title Case
+ * Examples:
+ *   "ASHLEY LEBEDEV" -> "Ashley Lebedev"
+ *   "ashley lebedev" -> "Ashley Lebedev"
+ */
+function toTitleCase(name: string): string {
+  return name
+    .toLowerCase()
+    .split(/\b/)
+    .map(word => {
+      // Capitalize first letter of each word, preserve spaces/punctuation
+      if (word.length > 0 && /[a-z]/.test(word[0])) {
+        return word.charAt(0).toUpperCase() + word.slice(1);
+      }
+      return word;
+    })
+    .join('');
+}
+
+/**
+ * Consolidate patient info from multiple extractions (batch upload for single client)
+ * Picks the most common/complete values and flags discrepancies
+ */
+export function consolidatePatientInfo(
+  patientInfos: PatientInfo[]
+): { 
+  consolidated: PatientInfo; 
+  discrepancies: string[];
+  confidence: 'high' | 'medium' | 'low';
+} {
+  const discrepancies: string[] = [];
+  
+  // Extract all non-null values
+  const names = patientInfos.map(p => p.name).filter((n): n is string => n !== null);
+  const dobs = patientInfos.map(p => p.dateOfBirth).filter((d): d is string => d !== null);
+  const genders = patientInfos.map(p => p.gender).filter((g): g is 'male' | 'female' | 'other' => g !== null);
+  const testDates = patientInfos.map(p => p.testDate).filter((t): t is string => t !== null);
+  
+  // Consolidate names - pick most common, or longest (likely most complete)
+  let consolidatedName: string | null = null;
+  if (names.length > 0) {
+    // Count occurrences
+    const nameCounts = new Map<string, number>();
+    names.forEach(name => {
+      const normalized = name.toLowerCase().trim();
+      nameCounts.set(normalized, (nameCounts.get(normalized) || 0) + 1);
+    });
+    
+    // Find most common
+    let maxCount = 0;
+    let mostCommonName = names[0];
+    nameCounts.forEach((count, name) => {
+      if (count > maxCount) {
+        maxCount = count;
+        mostCommonName = names.find(n => n.toLowerCase().trim() === name) || name;
+      }
+    });
+    
+    // Convert to Title Case for consistency
+    consolidatedName = toTitleCase(mostCommonName);
+    
+    // Check for discrepancies
+    const uniqueNames = Array.from(new Set(names.map(n => n.toLowerCase().trim())));
+    if (uniqueNames.length > 1) {
+      discrepancies.push(`Name: Found ${uniqueNames.length} variations → Using "${consolidatedName}"`);
+    }
+  }
+  
+  // Consolidate DOB - pick most common
+  let consolidatedDob: string | null = null;
+  if (dobs.length > 0) {
+    const dobCounts = new Map<string, number>();
+    dobs.forEach(dob => {
+      dobCounts.set(dob, (dobCounts.get(dob) || 0) + 1);
+    });
+    
+    let maxCount = 0;
+    dobs.forEach(dob => {
+      const count = dobCounts.get(dob) || 0;
+      if (count > maxCount) {
+        maxCount = count;
+        consolidatedDob = dob;
+      }
+    });
+    
+    // Check for discrepancies
+    const uniqueDobs = Array.from(new Set(dobs));
+    if (uniqueDobs.length > 1) {
+      discrepancies.push(`Date of Birth: Found ${uniqueDobs.length} different dates → Using ${consolidatedDob}`);
+    }
+  }
+  
+  // Consolidate gender - pick most common
+  let consolidatedGender: 'male' | 'female' | 'other' | null = null;
+  if (genders.length > 0) {
+    const genderCounts = new Map<string, number>();
+    genders.forEach(gender => {
+      genderCounts.set(gender, (genderCounts.get(gender) || 0) + 1);
+    });
+    
+    let maxCount = 0;
+    genders.forEach(gender => {
+      const count = genderCounts.get(gender) || 0;
+      if (count > maxCount) {
+        maxCount = count;
+        consolidatedGender = gender;
+      }
+    });
+  }
+  
+  // Consolidate test date - pick most recent
+  let consolidatedTestDate: string | null = null;
+  if (testDates.length > 0) {
+    consolidatedTestDate = testDates.reduce((latest, current) => {
+      return new Date(current) > new Date(latest) ? current : latest;
+    });
+    
+    // Check if there are multiple dates (multiple lab visits)
+    const uniqueDates = Array.from(new Set(testDates));
+    if (uniqueDates.length > 1) {
+      discrepancies.push(`Test Dates: Found ${uniqueDates.length} different dates (multiple lab visits)`);
+    }
+  }
+  
+  // Determine confidence level
+  let confidence: 'high' | 'medium' | 'low' = 'high';
+  if (discrepancies.length > 2) {
+    confidence = 'low';
+  } else if (discrepancies.length > 0) {
+    confidence = 'medium';
+  }
+  
+  return {
+    consolidated: {
+      name: consolidatedName,
+      dateOfBirth: consolidatedDob,
+      gender: consolidatedGender,
+      testDate: consolidatedTestDate,
+    },
+    discrepancies,
+    confidence,
+  };
 }
 
 /**

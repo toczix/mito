@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { validatePdfFiles } from '@/lib/pdf-processor';
-import { Upload, FileText, X, CheckCircle2 } from 'lucide-react';
+import { Upload, FileText, X, CheckCircle2, Image } from 'lucide-react';
 
 interface PdfUploaderProps {
   onFilesSelected: (files: File[]) => void;
@@ -34,7 +34,9 @@ export function PdfUploader({ onFilesSelected, onAnalyze, isProcessing = false }
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: {
-      'application/pdf': ['.pdf']
+      'application/pdf': ['.pdf'],
+      'image/png': ['.png'],
+      'image/jpeg': ['.jpg', '.jpeg']
     },
     disabled: isProcessing,
     multiple: true,
@@ -63,7 +65,7 @@ export function PdfUploader({ onFilesSelected, onAnalyze, isProcessing = false }
       <CardHeader>
         <CardTitle>Upload Lab Reports</CardTitle>
         <CardDescription>
-          Upload one or more PDF files containing laboratory results for Adam Winchester
+          Upload PDF files or images (PNG/JPG) containing laboratory results
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -80,11 +82,11 @@ export function PdfUploader({ onFilesSelected, onAnalyze, isProcessing = false }
           <input {...getInputProps()} />
           <Upload className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
           {isDragActive ? (
-            <p className="text-lg font-medium">Drop the PDFs here...</p>
+            <p className="text-lg font-medium">Drop the files here...</p>
           ) : (
             <div className="space-y-2">
-              <p className="text-lg font-medium">Drag & drop PDF files here</p>
-              <p className="text-sm text-muted-foreground">or click to select files</p>
+              <p className="text-lg font-medium">Drag & drop files here</p>
+              <p className="text-sm text-muted-foreground">PDFs, PNG, or JPG images</p>
               <p className="text-xs text-muted-foreground">Maximum file size: 50MB per file</p>
             </div>
           )}
@@ -121,7 +123,11 @@ export function PdfUploader({ onFilesSelected, onAnalyze, isProcessing = false }
                   className="flex items-center justify-between p-3 bg-muted rounded-lg"
                 >
                   <div className="flex items-center gap-3 flex-1 min-w-0">
-                    <FileText className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+                    {file.type.startsWith('image/') ? (
+                      <Image className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+                    ) : (
+                      <FileText className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+                    )}
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate">{file.name}</p>
                       <p className="text-xs text-muted-foreground">

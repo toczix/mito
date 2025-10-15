@@ -188,6 +188,27 @@ function levenshteinDistance(str1: string, str2: string): number {
 }
 
 /**
+ * Convert name to proper Title Case
+ * Examples:
+ *   "ASHLEY LEBEDEV" -> "Ashley Lebedev"
+ *   "ashley lebedev" -> "Ashley Lebedev"
+ *   "LeBeDeV, ASHLEY" -> "Lebedev, Ashley"
+ */
+function toTitleCase(name: string): string {
+  return name
+    .toLowerCase()
+    .split(/\b/)
+    .map(word => {
+      // Capitalize first letter of each word, preserve spaces/punctuation
+      if (word.length > 0 && /[a-z]/.test(word[0])) {
+        return word.charAt(0).toUpperCase() + word.slice(1);
+      }
+      return word;
+    })
+    .join('');
+}
+
+/**
  * Auto-create client from patient info
  */
 export async function autoCreateClient(patientInfo: PatientInfo): Promise<Client | null> {
@@ -195,8 +216,11 @@ export async function autoCreateClient(patientInfo: PatientInfo): Promise<Client
     throw new Error('Patient name is required to create a client');
   }
 
+  // Convert name to proper Title Case for consistency
+  const formattedName = toTitleCase(patientInfo.name);
+
   return createClient({
-    full_name: patientInfo.name,
+    full_name: formattedName,
     date_of_birth: patientInfo.dateOfBirth || null,
     gender: patientInfo.gender || null,
     email: null,
