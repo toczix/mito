@@ -1,4 +1,4 @@
-import { getActiveClients, getAllClients, createClient } from './client-service';
+import { getAllClients, createClient } from './client-service';
 import type { Client } from './supabase';
 import type { PatientInfo } from './claude-service';
 

@@ -8,7 +8,6 @@ import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { CheckCircle2, AlertTriangle, UserCircle, Calendar, Users } from 'lucide-react';
 import type { PatientInfo } from '@/lib/claude-service';
-import type { Client } from '@/lib/supabase';
 import type { ClientMatchResult } from '@/lib/client-matcher';
 
 interface ClientConfirmationProps {

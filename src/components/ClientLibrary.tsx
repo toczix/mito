@@ -8,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Users, UserPlus, Archive, ArchiveRestore, Trash2, Edit, Upload, Download, History, Calendar, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { Users, UserPlus, Archive, ArchiveRestore, Trash2, Edit, Upload, Download, History, Calendar } from 'lucide-react';
 import { isSupabaseEnabled } from '@/lib/supabase';
 import type { Client, Analysis } from '@/lib/supabase';
 import {
@@ -37,7 +37,6 @@ export function ClientLibrary() {
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [clientAnalyses, setClientAnalyses] = useState<Analysis[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
-  const [cleaningDuplicates, setCleaningDuplicates] = useState(false);
   
   // Detail view state
   const [selectedAnalysis, setSelectedAnalysis] = useState<Analysis | null>(null);
@@ -150,28 +149,6 @@ export function ClientLibrary() {
     return Array.from(byDate.values()).sort(
       (a, b) => new Date(b.analysis_date).getTime() - new Date(a.analysis_date).getTime()
     );
-  }
-
-  async function handleCleanupDuplicates() {
-    if (!selectedClient) return;
-    
-    if (!confirm('This will permanently delete duplicate analyses from the database, keeping only the most recent upload for each lab test date. Continue?')) {
-      return;
-    }
-
-    setCleaningDuplicates(true);
-    const deletedCount = await deleteDuplicateAnalyses(selectedClient.id);
-    setCleaningDuplicates(false);
-
-    if (deletedCount > 0) {
-      alert(`Permanently removed ${deletedCount} duplicate ${deletedCount === 1 ? 'analysis' : 'analyses'} from database`);
-      // Reload the analyses
-      const analyses = await getClientAnalyses(selectedClient.id);
-      const deduped = deduplicateAnalyses(analyses);
-      setClientAnalyses(deduped);
-    } else {
-      alert('No duplicates found in database');
-    }
   }
 
   async function handleCsvImport(event: React.ChangeEvent<HTMLInputElement>) {

@@ -25,7 +25,7 @@ interface AnalysisResultsProps {
   selectedClientName?: string;
 }
 
-export function AnalysisResults({ results, onReset, selectedClientId: preSelectedClientId, selectedClientName }: AnalysisResultsProps) {
+export function AnalysisResults({ results, onReset, selectedClientId: preSelectedClientId }: AnalysisResultsProps) {
   const [copied, setCopied] = useState(false);
   const [clients, setClients] = useState<Client[]>([]);
   const [manualClientId, setManualClientId] = useState<string>('');
@@ -88,17 +88,6 @@ export function AnalysisResults({ results, onReset, selectedClientId: preSelecte
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-  };
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'in-range':
-        return <CheckCircle2 className="h-4 w-4 text-green-600" />;
-      case 'out-of-range':
-        return <XCircle className="h-4 w-4 text-red-600" />;
-      default:
-        return <HelpCircle className="h-4 w-4 text-muted-foreground" />;
-    }
   };
 
   const getStatusBadge = (status: string) => {
