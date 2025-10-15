@@ -3,12 +3,17 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
+// Debug: Log env vars (remove in production)
+console.log('Supabase URL:', supabaseUrl ? '✓ Set' : '✗ Not set');
+console.log('Supabase Key:', supabaseAnonKey ? '✓ Set' : '✗ Not set');
+
 // Supabase is optional for beta - app works without it
 export const supabase = supabaseUrl && supabaseAnonKey 
   ? createClient(supabaseUrl, supabaseAnonKey)
   : null;
 
 export const isSupabaseEnabled = !!supabase;
+console.log('Supabase Enabled:', isSupabaseEnabled);
 
 // Database Types (Simplified - No Auth)
 export interface Settings {
