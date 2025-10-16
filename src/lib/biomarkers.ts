@@ -57,7 +57,7 @@ export const BIOMARKERS: Biomarker[] = [
     femaleRange: "40-50 g/L (4.0-5.0 g/dL)",
     units: ["g/L", "g/dL"],
     category: "Protein",
-    aliases: ["Serum Albumin"]
+    aliases: ["Serum Albumin", "ALB", "S-Albumin", "Albumina"]
   },
   {
     name: "BUN",
@@ -89,7 +89,7 @@ export const BIOMARKERS: Biomarker[] = [
     femaleRange: "2.3-2.45 mmol/L (9.22-9.8 mg/dL)",
     units: ["mmol/L", "mg/dL"],
     category: "Minerals",
-    aliases: ["Serum Calcium", "Total Calcium", "Ca"]
+    aliases: ["Serum Calcium", "Total Calcium", "Ca", "Calcium Total", "S-Calcium", "Calcio"]
   },
   {
     name: "Chloride",
@@ -105,7 +105,7 @@ export const BIOMARKERS: Biomarker[] = [
     femaleRange: "60-100 µmol/L (0.68-1.13 mg/dL)",
     units: ["µmol/L", "umol/L", "mg/dL"],
     category: "Kidney Function",
-    aliases: ["Serum Creatinine", "Creat"]
+    aliases: ["Serum Creatinine", "Creat", "CREA", "Creatinina", "S-Creatinine"]
   },
   {
     name: "Eosinophils",
@@ -121,7 +121,7 @@ export const BIOMARKERS: Biomarker[] = [
     femaleRange: "4.44-5.0 mmol/L (80-90 mg/dL)",
     units: ["mmol/L", "mg/dL"],
     category: "Metabolic",
-    aliases: ["Glucose", "Glucose Fasting", "FBG", "Fasting Blood Glucose", "Blood Glucose"]
+    aliases: ["Glucose", "Glucose Fasting", "FBG", "Fasting Blood Glucose", "Blood Glucose", "Gluc", "Glucosa", "Glucose (Fasting)", "GLU"]
   },
   {
     name: "Fasting Insulin",
@@ -177,7 +177,7 @@ export const BIOMARKERS: Biomarker[] = [
     femaleRange: "5.0-5.3 % (31-34 mmol/mol)",
     units: ["%", "mmol/mol"],
     category: "Metabolic",
-    aliases: ["HbA1c", "Hemoglobin A1C", "A1C", "Glycated Hemoglobin", "Glycohemoglobin"]
+    aliases: ["HbA1c", "Hemoglobin A1C", "A1C", "Glycated Hemoglobin", "Glycohemoglobin", "Haemoglobin A1C", "Hb A1c", "Hgb A1C"]
   },
   {
     name: "HCT",
@@ -193,7 +193,7 @@ export const BIOMARKERS: Biomarker[] = [
     femaleRange: "1.29-2.2 mmol/L (50-85 mg/dL)",
     units: ["mmol/L", "mg/dL"],
     category: "Lipids",
-    aliases: ["HDL", "HDL-C", "High Density Lipoprotein"]
+    aliases: ["HDL", "HDL-C", "HDL-Cholesterol", "High Density Lipoprotein", "HDL Colesterol", "HDL-Colesterol", "HDL Chol", "HDL-Chol"]
   },
   {
     name: "Hemoglobin",
@@ -225,7 +225,7 @@ export const BIOMARKERS: Biomarker[] = [
     femaleRange: "2.07-4.4 mmol/L (80-170 mg/dL)",
     units: ["mmol/L", "mg/dL"],
     category: "Lipids",
-    aliases: ["LDL", "LDL-C", "Low Density Lipoprotein", "LDL Calculated"]
+    aliases: ["LDL", "LDL-C", "LDL-Cholesterol", "Low Density Lipoprotein", "LDL Calculated", "LDL Colesterol", "LDL-Colesterol", "LDL Chol", "LDL-Chol"]
   },
   {
     name: "Lymphocytes",
@@ -297,7 +297,7 @@ export const BIOMARKERS: Biomarker[] = [
     femaleRange: "4.0-4.5 mmol/L",
     units: ["mmol/L", "mEq/L"],
     category: "Electrolytes",
-    aliases: ["K", "Serum Potassium"]
+    aliases: ["K", "Serum Potassium", "S-Potassium", "Potasio", "K+"]
   },
   {
     name: "RBC",
@@ -353,7 +353,7 @@ export const BIOMARKERS: Biomarker[] = [
     femaleRange: "137-143 mmol/L",
     units: ["mmol/L", "mEq/L"],
     category: "Electrolytes",
-    aliases: ["Na", "Serum Sodium"]
+    aliases: ["Na", "Serum Sodium", "S-Sodium", "Sodio", "Na+"]
   },
   {
     name: "TIBC",
@@ -401,7 +401,7 @@ export const BIOMARKERS: Biomarker[] = [
     femaleRange: "4.2-6.4 mmol/L (162-240 mg/dL)",
     units: ["mmol/L", "mg/dL"],
     category: "Lipids",
-    aliases: ["Cholesterol", "Cholesterol Total", "Total Chol"]
+    aliases: ["Cholesterol", "Cholesterol Total", "Total Chol", "Colesterol", "Total Colesterol", "Colesterol Total", "Chol Total"]
   },
   {
     name: "Total Protein",
@@ -425,7 +425,7 @@ export const BIOMARKERS: Biomarker[] = [
     femaleRange: "0.6-1.0 mmol/L (53-88.5 mg/dL)",
     units: ["mmol/L", "mg/dL"],
     category: "Lipids",
-    aliases: ["Trig", "TG", "Triglyceride"]
+    aliases: ["Trig", "TG", "Triglyceride", "Triglycérides", "Triglyceridos", "TRIG"]
   },
   {
     name: "Vitamin B12",
@@ -433,7 +433,7 @@ export const BIOMARKERS: Biomarker[] = [
     femaleRange: "350-650 pmol/L (474-880 pg/mL)",
     units: ["pmol/L", "pg/mL"],
     category: "Vitamins",
-    aliases: ["B12", "Cobalamin", "Vitamin B-12"]
+    aliases: ["B12", "Cobalamin", "Vitamin B-12", "VitB12", "Vit B12", "Vitamina B12"]
   },
   {
     name: "Vitamin D (25-Hydroxy D)",
@@ -441,7 +441,7 @@ export const BIOMARKERS: Biomarker[] = [
     femaleRange: "125-225 nmol/L (50-90 ng/mL)",
     units: ["nmol/L", "ng/mL"],
     category: "Vitamins",
-    aliases: ["Vitamin D", "25-Hydroxy Vitamin D", "25-OH Vitamin D", "25(OH)D", "Vitamin D 25-Hydroxy"]
+    aliases: ["Vitamin D", "25-Hydroxy Vitamin D", "25-OH Vitamin D", "25(OH)D", "Vitamin D 25-Hydroxy", "VitD", "Vit D", "Vitamina D", "25-OH-D3", "25-Hydroxyvitamin D"]
   },
   {
     name: "WBC",
