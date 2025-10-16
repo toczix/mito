@@ -297,7 +297,7 @@ export function AnalysisResults({ results, onReset, selectedClientId: preSelecte
               </TableHeader>
               <TableBody>
                 {results.map((result, index) => {
-                  const status = getValueStatus(result.hisValue, result.optimalRange);
+                  const status = getValueStatus(result.hisValue, result.optimalRange, result.unit);
                   const isNA = result.hisValue === 'N/A';
                   const isOutOfRange = status === 'out-of-range';
 
