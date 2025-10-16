@@ -20,40 +20,43 @@ function App() {
       {/* Header */}
       <header className="border-b bg-card sticky top-0 z-50">
         <div className="container mx-auto px-4 py-6">
-          <div className="flex items-center gap-3 mb-6">
-            <Activity className="h-8 w-8 text-primary" />
-            <div>
-              <h1 className="text-3xl font-bold">Mito Analysis</h1>
-              <p className="text-sm text-muted-foreground">
-                Clinical Pathology Analysis Portal
-              </p>
+          <div className="flex items-center justify-between gap-8">
+            {/* Logo and Title */}
+            <div className="flex items-center gap-3">
+              <Activity className="h-8 w-8 text-primary" />
+              <div>
+                <h1 className="text-3xl font-bold">Mito Analysis</h1>
+                <p className="text-sm text-muted-foreground">
+                  Clinical Pathology Analysis Portal
+                </p>
+              </div>
             </div>
-          </div>
 
-          {/* Navigation */}
-          <nav className="flex gap-2">
-            {navItems.map(({ path, label, icon: Icon }) => {
-              const isActive = location.pathname === path || 
-                (path !== '/' && location.pathname.startsWith(path));
-              
-              return (
-                <NavLink
-                  key={path}
-                  to={path}
-                  className={`
-                    flex items-center gap-2 px-4 py-2 rounded-md transition-colors
-                    ${isActive 
-                      ? 'bg-primary text-primary-foreground' 
-                      : 'hover:bg-accent text-muted-foreground hover:text-foreground'
-                    }
-                  `}
-                >
-                  <Icon className="h-4 w-4" />
-                  <span className="font-medium">{label}</span>
-                </NavLink>
-              );
-            })}
-          </nav>
+            {/* Navigation */}
+            <nav className="flex gap-2">
+              {navItems.map(({ path, label, icon: Icon }) => {
+                const isActive = location.pathname === path || 
+                  (path !== '/' && location.pathname.startsWith(path));
+                
+                return (
+                  <NavLink
+                    key={path}
+                    to={path}
+                    className={`
+                      flex items-center gap-2 px-4 py-2 rounded-md transition-colors
+                      ${isActive 
+                        ? 'bg-primary text-primary-foreground' 
+                        : 'hover:bg-accent text-muted-foreground hover:text-foreground'
+                      }
+                    `}
+                  >
+                    <Icon className="h-4 w-4" />
+                    <span className="font-medium">{label}</span>
+                  </NavLink>
+                );
+              })}
+            </nav>
+          </div>
         </div>
       </header>
 
