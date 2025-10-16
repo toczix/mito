@@ -99,14 +99,40 @@ export function isValueInRange(value: string, optimalRange: string): boolean | n
     return null;
   }
 
-  // Try to parse the value
+  // Try to parse the numeric value
   const numValue = parseFloat(value.replace(/[^0-9.-]/g, ''));
   if (isNaN(numValue)) {
     return null;
   }
 
-  // Try to extract range from optimalRange string
-  // Format: "min-max unit" or "<max unit" or multiple ranges
+  // Extract unit from value (everything after the number)
+  const valueUnit = value.replace(/[0-9.-\s]/g, '').trim();
+  
+  // Try to find a range that matches the value's unit
+  // Look for patterns like "min-max unit" where unit matches the value's unit
+  // We need to escape special regex characters in the unit
+  const escapedUnit = valueUnit.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  
+  // Try to find a range with the matching unit in parentheses first (e.g., "(162-240 mg/dL)")
+  const parenthesesPattern = new RegExp(`\\((\\d+\\.?\\d*)\\s*-\\s*(\\d+\\.?\\d*)\\s*${escapedUnit}\\)`, 'i');
+  const parenthesesMatch = optimalRange.match(parenthesesPattern);
+  if (parenthesesMatch && valueUnit) {
+    const min = parseFloat(parenthesesMatch[1]);
+    const max = parseFloat(parenthesesMatch[2]);
+    return numValue >= min && numValue <= max;
+  }
+  
+  // Try to find a range with the matching unit (e.g., "162-240 mg/dL")
+  const unitPattern = new RegExp(`(\\d+\\.?\\d*)\\s*-\\s*(\\d+\\.?\\d*)\\s*${escapedUnit}(?:\\s|$|\\(|,)`, 'i');
+  const unitMatch = optimalRange.match(unitPattern);
+  if (unitMatch && valueUnit) {
+    const min = parseFloat(unitMatch[1]);
+    const max = parseFloat(unitMatch[2]);
+    return numValue >= min && numValue <= max;
+  }
+
+  // If no unit-specific match, fall back to the first range found
+  // This handles cases where there's only one range or no clear unit distinction
   const rangeMatch = optimalRange.match(/(\d+\.?\d*)\s*-\s*(\d+\.?\d*)/);
   if (rangeMatch) {
     const min = parseFloat(rangeMatch[1]);
@@ -114,11 +140,38 @@ export function isValueInRange(value: string, optimalRange: string): boolean | n
     return numValue >= min && numValue <= max;
   }
 
-  // Handle "<X" format
+  // Handle "<X" format with unit matching
+  if (valueUnit) {
+    const lessThanWithUnit = new RegExp(`<\\s*(\\d+\\.?\\d*)\\s*${escapedUnit}`, 'i');
+    const lessThanUnitMatch = optimalRange.match(lessThanWithUnit);
+    if (lessThanUnitMatch) {
+      const max = parseFloat(lessThanUnitMatch[1]);
+      return numValue < max;
+    }
+  }
+  
+  // Handle "<X" format without unit
   const lessThanMatch = optimalRange.match(/<\s*(\d+\.?\d*)/);
   if (lessThanMatch) {
     const max = parseFloat(lessThanMatch[1]);
     return numValue < max;
+  }
+
+  // Handle ">X" format with unit matching
+  if (valueUnit) {
+    const greaterThanWithUnit = new RegExp(`>\\s*(\\d+\\.?\\d*)\\s*${escapedUnit}`, 'i');
+    const greaterThanUnitMatch = optimalRange.match(greaterThanWithUnit);
+    if (greaterThanUnitMatch) {
+      const min = parseFloat(greaterThanUnitMatch[1]);
+      return numValue > min;
+    }
+  }
+  
+  // Handle ">X" format without unit
+  const greaterThanMatch = optimalRange.match(/>\s*(\d+\.?\d*)/);
+  if (greaterThanMatch) {
+    const min = parseFloat(greaterThanMatch[1]);
+    return numValue > min;
   }
 
   // Can't determine, return null
