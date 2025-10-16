@@ -69,9 +69,9 @@ export const BIOMARKERS: Biomarker[] = [
   },
   {
     name: "Basophils",
-    maleRange: "≤ 0.09 ×10³/µL",
-    femaleRange: "≤ 0.09 ×10³/µL",
-    units: ["×10³/µL", "×10^3/µL", "K/µL", "K/uL"],
+    maleRange: "0-1 % (≤ 0.09 ×10³/µL)",
+    femaleRange: "0-1 % (≤ 0.09 ×10³/µL)",
+    units: ["%", "×10³/µL", "×10^3/µL", "K/µL", "K/uL"],
     category: "White Blood Cells",
     aliases: ["Baso", "Basophil Count", "Absolute Basophils"]
   },
@@ -109,9 +109,9 @@ export const BIOMARKERS: Biomarker[] = [
   },
   {
     name: "Eosinophils",
-    maleRange: "0.0-0.3 ×10³/µL",
-    femaleRange: "0.0-0.3 ×10³/µL",
-    units: ["×10³/µL", "×10^3/µL", "K/µL", "K/uL"],
+    maleRange: "1-4 % (0.0-0.3 ×10³/µL)",
+    femaleRange: "1-4 % (0.0-0.3 ×10³/µL)",
+    units: ["%", "×10³/µL", "×10^3/µL", "K/µL", "K/uL"],
     category: "White Blood Cells",
     aliases: ["Eos", "Eosinophil Count", "Absolute Eosinophils"]
   },
@@ -229,9 +229,9 @@ export const BIOMARKERS: Biomarker[] = [
   },
   {
     name: "Lymphocytes",
-    maleRange: "1.1-3.1 ×10³/µL",
-    femaleRange: "1.1-3.1 ×10³/µL",
-    units: ["×10³/µL", "×10^3/µL", "K/µL", "K/uL"],
+    maleRange: "20-40 % (1.1-3.1 ×10³/µL)",
+    femaleRange: "20-40 % (1.1-3.1 ×10³/µL)",
+    units: ["%", "×10³/µL", "×10^3/µL", "K/µL", "K/uL"],
     category: "White Blood Cells",
     aliases: ["Lymph", "Lymphocyte Count", "Absolute Lymphocytes"]
   },
@@ -261,17 +261,17 @@ export const BIOMARKERS: Biomarker[] = [
   },
   {
     name: "Monocytes",
-    maleRange: "0.3-0.5 ×10³/µL",
-    femaleRange: "0.3-0.5 ×10³/µL",
-    units: ["×10³/µL", "×10^3/µL", "K/µL", "K/uL"],
+    maleRange: "2-8 % (0.3-0.5 ×10³/µL)",
+    femaleRange: "2-8 % (0.3-0.5 ×10³/µL)",
+    units: ["%", "×10³/µL", "×10^3/µL", "K/µL", "K/uL"],
     category: "White Blood Cells",
     aliases: ["Mono", "Monocyte Count", "Absolute Monocytes"]
   },
   {
     name: "Neutrophils",
-    maleRange: "3.0-4.5 ×10³/µL",
-    femaleRange: "3.0-4.5 ×10³/µL",
-    units: ["×10³/µL", "×10^3/µL", "K/µL", "K/uL"],
+    maleRange: "40-70 % (3.0-4.5 ×10³/µL)",
+    femaleRange: "40-70 % (3.0-4.5 ×10³/µL)",
+    units: ["%", "×10³/µL", "×10^3/µL", "K/µL", "K/uL"],
     category: "White Blood Cells",
     aliases: ["Neut", "Neutrophil Count", "Absolute Neutrophils", "Segmented Neutrophils"]
   },
