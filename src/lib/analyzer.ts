@@ -25,6 +25,7 @@ export function matchBiomarkersWithRanges(
   const benchmarks = getAllBenchmarks();
 
   // Create a map of extracted biomarkers by normalized name
+  // This map will store: normalized name -> extracted biomarker
   const extractedMap = new Map<string, ExtractedBiomarker>();
   
   for (const extracted of extractedBiomarkers) {
@@ -37,15 +38,29 @@ export function matchBiomarkersWithRanges(
 
   // Process all benchmarks
   for (const benchmark of benchmarks) {
-    const normalized = normalizeName(benchmark.name);
+    // Try to find a match by checking the biomarker name and all its aliases
+    const namesToCheck = [benchmark.name];
+    if (benchmark.aliases && Array.isArray(benchmark.aliases)) {
+      namesToCheck.push(...benchmark.aliases);
+    }
     
-    // Check if we have extracted data for this biomarker
-    const extractedData = extractedMap.get(normalized);
+    let extractedData: ExtractedBiomarker | undefined = undefined;
+    
+    // Check all possible names (primary name + aliases)
+    for (const nameToCheck of namesToCheck) {
+      const normalized = normalizeName(nameToCheck);
+      const found = extractedMap.get(normalized);
+      if (found) {
+        extractedData = found;
+        matchedNames.add(normalized);
+        break; // Found a match, no need to check other aliases
+      }
+    }
     
     // Get the appropriate range based on gender
     const optimalRange = gender === 'female' && benchmark.femaleRange
       ? benchmark.femaleRange
-      : benchmark.maleRange || benchmark.optimalRange;
+      : benchmark.maleRange;
     
     if (extractedData) {
       // We have data for this biomarker
@@ -56,7 +71,6 @@ export function matchBiomarkersWithRanges(
         optimalRange: optimalRange,
         testDate: extractedData.testDate,
       });
-      matchedNames.add(normalized);
     } else {
       // No data found, mark as N/A
       results.push({

@@ -36,22 +36,89 @@ INSTRUCTIONS:
 
 3. Extract EVERY biomarker name, its numerical value, and unit of measurement
 4. If a biomarker appears multiple times, use the MOST RECENT value (check dates on the reports)
-5. Include ALL of these biomarkers if present:
-   - Liver Function: ALP, ALT, AST, GGT, Total Bilirubin
-   - Kidney Function: BUN, Creatinine
-   - Proteins: Albumin, Globulin, Total Protein
-   - Electrolytes: Sodium, Potassium, Chloride, Bicarbonate, CO2
-   - Minerals: Calcium, Magnesium, Phosphate
-   - Complete Blood Count: WBC, RBC, Hemoglobin, Hematocrit, MCV, MCH, MCHC, RDW, Platelets
-   - White Blood Cell Differential: Neutrophils, Lymphocytes, Monocytes, Eosinophils, Basophils
-   - Lipids: Total Cholesterol, HDL, LDL, Triglycerides
-   - Metabolic: Fasting Glucose, HbA1c, Fasting Insulin, Uric Acid
-   - Hormones: TSH, Free T3, Free T4, Testosterone, FSH, LH, Prolactin, DHEA-S, Cortisol, SHBG, FAI
-   - Thyroid Antibodies: TPO Antibodies, Thyroglobulin Antibodies
-   - Iron Studies: Serum Iron, Ferritin, TIBC, Transferrin Saturation
-   - Vitamins: Vitamin D (25-Hydroxy D), Vitamin B12
-   - Inflammation: C-Reactive Protein (CRP/hsCRP)
-   - Other: Homocysteine, LDH
+5. Include ALL of these 54 core biomarkers if present (use the name as listed, but lab reports may use alternate names):
+
+   LIVER FUNCTION (4):
+   - ALP (may appear as: Alkaline Phosphatase, Alk Phos)
+   - ALT (may appear as: Alanine Aminotransferase, SGPT)
+   - AST (may appear as: Aspartate Aminotransferase, SGOT)
+   - GGT (may appear as: Gamma-Glutamyl Transferase, Gamma GT)
+   - Total Bilirubin (may appear as: Bilirubin, T Bili)
+
+   KIDNEY FUNCTION (3):
+   - BUN (may appear as: Blood Urea Nitrogen, Urea)
+   - Creatinine (may appear as: Serum Creatinine, Creat)
+   - eGFR (may appear as: Estimated GFR, GFR)
+
+   PROTEINS (3):
+   - Albumin (may appear as: Serum Albumin)
+   - Globulin (may appear as: Serum Globulin, Calculated Globulin)
+   - Total Protein (may appear as: Protein Total, Serum Protein)
+
+   ELECTROLYTES (4):
+   - Sodium (may appear as: Na, Serum Sodium)
+   - Potassium (may appear as: K, Serum Potassium)
+   - Chloride (may appear as: Cl, Serum Chloride)
+   - Bicarbonate (may appear as: Carbon Dioxide, CO2, Total CO2, HCO3)
+
+   MINERALS (3):
+   - Calcium (may appear as: Serum Calcium, Total Calcium, Ca)
+   - Phosphorus (may appear as: Phosphate, Inorganic Phosphorus, P)
+   - Serum Magnesium (may appear as: Magnesium, Mg)
+
+   RED BLOOD CELLS (8):
+   - RBC (may appear as: Red Blood Cell Count, Erythrocytes)
+   - Hemoglobin (may appear as: Hgb, Hb, Haemoglobin)
+   - HCT (may appear as: Hematocrit)
+   - MCV (may appear as: Mean Corpuscular Volume, Mean Cell Volume)
+   - MCH (may appear as: Mean Corpuscular Hemoglobin, Mean Cell Hemoglobin)
+   - MCHC (may appear as: Mean Corpuscular Hemoglobin Concentration)
+   - RDW (may appear as: Red Cell Distribution Width, RDW-CV)
+   - Platelets (may appear as: PLT, Platelet Count, Thrombocytes)
+
+   WHITE BLOOD CELLS (6):
+   - WBC (may appear as: White Blood Cell Count, Leukocytes)
+   - Neutrophils (may appear as: Neut, Absolute Neutrophils, Segmented Neutrophils)
+   - Lymphocytes (may appear as: Lymph, Absolute Lymphocytes)
+   - Monocytes (may appear as: Mono, Absolute Monocytes)
+   - Eosinophils (may appear as: Eos, Absolute Eosinophils)
+   - Basophils (may appear as: Baso, Absolute Basophils)
+
+   LIPIDS (4):
+   - Total Cholesterol (may appear as: Cholesterol, Cholesterol Total)
+   - HDL Cholesterol (may appear as: HDL, HDL-C)
+   - LDL Cholesterol (may appear as: LDL, LDL-C, LDL Calculated)
+   - Triglycerides (may appear as: Trig, TG)
+
+   METABOLIC (3):
+   - Fasting Glucose (may appear as: Glucose, Glucose Fasting, FBG, Blood Glucose)
+   - HbA1C (may appear as: HbA1c, Hemoglobin A1C, A1C, Glycated Hemoglobin)
+   - Fasting Insulin (may appear as: Insulin, Insulin Fasting)
+
+   THYROID (5):
+   - TSH (may appear as: Thyroid Stimulating Hormone, Thyrotropin)
+   - Free T3 (may appear as: FT3, Free Triiodothyronine)
+   - Free T4 (may appear as: FT4, Free Thyroxine)
+   - TPO Antibodies (may appear as: Thyroid Peroxidase Antibodies, Anti-TPO, TPO Ab)
+   - Thyroglobulin Antibodies (may appear as: Anti-Thyroglobulin, TgAb, Anti-Tg)
+
+   HORMONES (1):
+   - SHBG (may appear as: Sex Hormone Binding Globulin)
+
+   IRON STUDIES (4):
+   - Serum Iron (may appear as: Iron, Fe, Iron Total)
+   - Ferritin (may appear as: Serum Ferritin)
+   - TIBC (may appear as: Total Iron Binding Capacity)
+   - Transferrin Saturation % (may appear as: Transferrin Saturation, TSAT, Iron Saturation)
+
+   VITAMINS (3):
+   - Vitamin D (25-Hydroxy D) (may appear as: Vitamin D, 25-Hydroxy Vitamin D, 25-OH Vitamin D, 25(OH)D)
+   - Vitamin B12 (may appear as: B12, Cobalamin, Vitamin B-12)
+   - Serum Folate (may appear as: Folate, Folic Acid, Vitamin B9)
+
+   OTHER (3):
+   - Homocysteine (may appear as: Homocystine, Plasma Homocysteine)
+   - LDH (may appear as: Lactate Dehydrogenase, LD, LDH Total)
 
 6. Return ONLY a valid JSON object with this EXACT structure:
 {
@@ -71,7 +138,7 @@ INSTRUCTIONS:
 }
 
 IMPORTANT RULES:
-- Use the EXACT biomarker names as they appear in the lab reports
+- Use the PRIMARY biomarker names (e.g., "ALP" not "Alkaline Phosphatase", "Bicarbonate" not "CO2")
 - Extract ONLY numerical values for biomarkers (no text descriptions)
 - Include the unit exactly as shown
 - If a value is marked as "<0.1" or similar, extract "0.1" and note in the unit

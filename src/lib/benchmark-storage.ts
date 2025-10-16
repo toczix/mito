@@ -6,8 +6,7 @@ const CUSTOM_BENCHMARKS_KEY = 'mito_custom_benchmarks';
 export interface CustomBiomarker extends Biomarker {
   id: string;
   isCustom: boolean;
-  maleRange?: string;
-  femaleRange?: string;
+  // Note: maleRange and femaleRange are now in the base Biomarker interface
 }
 
 /**
@@ -18,8 +17,6 @@ export function getAllBenchmarks(): CustomBiomarker[] {
     ...b,
     id: `default-${index}`,
     isCustom: false,
-    maleRange: b.optimalRange,
-    femaleRange: b.optimalRange, // TODO: Add female-specific ranges
   }));
 
   const customBenchmarks = getCustomBenchmarks();

@@ -1,8 +1,10 @@
 export interface Biomarker {
   name: string;
-  optimalRange: string;
+  maleRange: string;
+  femaleRange: string;
   units: string[];
   category?: string;
+  aliases?: string[]; // Alternative names for this biomarker
 }
 
 export interface ExtractedBiomarker {
@@ -20,538 +22,444 @@ export interface AnalysisResult {
   testDate?: string; // YYYY-MM-DD format
 }
 
+/**
+ * Core 54 biomarkers for Mito Labs analysis
+ * These are the ONLY biomarkers that will be shown in the main analysis report
+ */
 export const BIOMARKERS: Biomarker[] = [
   {
     name: "ALP",
-    optimalRange: "65-100 IU/L",
+    maleRange: "65-100 IU/L",
+    femaleRange: "65-100 IU/L",
     units: ["IU/L", "U/L"],
-    category: "Liver Function"
+    category: "Liver Function",
+    aliases: ["Alkaline Phosphatase", "Alk Phos", "ALKP"]
   },
   {
     name: "ALT",
-    optimalRange: "13-23 IU/L (Male)",
+    maleRange: "13-23 IU/L",
+    femaleRange: "9-19 IU/L",
     units: ["IU/L", "U/L"],
-    category: "Liver Function"
+    category: "Liver Function",
+    aliases: ["Alanine Aminotransferase", "SGPT", "ALT/SGPT"]
   },
   {
     name: "AST",
-    optimalRange: "15-25 IU/L (Male)",
+    maleRange: "15-25 IU/L",
+    femaleRange: "12-22 IU/L",
     units: ["IU/L", "U/L"],
-    category: "Liver Function"
+    category: "Liver Function",
+    aliases: ["Aspartate Aminotransferase", "SGOT", "AST/SGOT"]
   },
   {
     name: "Albumin",
-    optimalRange: "40-50 g/L or 4.0-5.0 g/dL",
+    maleRange: "40-50 g/L (4.0-5.0 g/dL)",
+    femaleRange: "40-50 g/L (4.0-5.0 g/dL)",
     units: ["g/L", "g/dL"],
-    category: "Protein"
+    category: "Protein",
+    aliases: ["Serum Albumin"]
   },
   {
     name: "BUN",
-    optimalRange: "4.0-6.9 mmol/L or 11.2-19.3 mg/dL",
+    maleRange: "4.0-6.9 mmol/L (11.2-19.3 mg/dL)",
+    femaleRange: "4.0-6.9 mmol/L (11.2-19.3 mg/dL)",
     units: ["mmol/L", "mg/dL"],
-    category: "Kidney Function"
+    category: "Kidney Function",
+    aliases: ["Blood Urea Nitrogen", "Urea Nitrogen", "Urea"]
   },
   {
     name: "Basophils",
-    optimalRange: "0.0×10³/μL (up to around 0.09)",
-    units: ["×10³/μL", "×10^3/μL", "K/μL"],
-    category: "White Blood Cells"
+    maleRange: "≤ 0.09 ×10³/µL",
+    femaleRange: "≤ 0.09 ×10³/µL",
+    units: ["×10³/µL", "×10^3/µL", "K/µL", "K/uL"],
+    category: "White Blood Cells",
+    aliases: ["Baso", "Basophil Count", "Absolute Basophils"]
   },
   {
     name: "Bicarbonate",
-    optimalRange: "25-30 mmol/L",
+    maleRange: "25-30 mmol/L",
+    femaleRange: "25-30 mmol/L",
     units: ["mmol/L", "mEq/L"],
-    category: "Electrolytes"
-  },
-  {
-    name: "CO2",
-    optimalRange: "25-30 mmol/L",
-    units: ["mmol/L", "mEq/L"],
-    category: "Electrolytes"
+    category: "Electrolytes",
+    aliases: ["Carbon Dioxide", "CO2", "Total CO2", "HCO3", "Bicarb"]
   },
   {
     name: "Calcium",
-    optimalRange: "2.3-2.45 mmol/L or 9.22-9.8 mg/dL",
+    maleRange: "2.3-2.45 mmol/L (9.22-9.8 mg/dL)",
+    femaleRange: "2.3-2.45 mmol/L (9.22-9.8 mg/dL)",
     units: ["mmol/L", "mg/dL"],
-    category: "Minerals"
+    category: "Minerals",
+    aliases: ["Serum Calcium", "Total Calcium", "Ca"]
   },
   {
     name: "Chloride",
-    optimalRange: "100-105 mmol/L",
+    maleRange: "100-105 mmol/L",
+    femaleRange: "100-105 mmol/L",
     units: ["mmol/L", "mEq/L"],
-    category: "Electrolytes"
-  },
-  {
-    name: "Cortisol",
-    optimalRange: "400-600 nmol/L or 14.5-22.0 μg/dL (AM)",
-    units: ["nmol/L", "μg/dL", "ug/dL"],
-    category: "Hormones"
+    category: "Electrolytes",
+    aliases: ["Cl", "Serum Chloride"]
   },
   {
     name: "Creatinine",
-    optimalRange: "60-100 μmol/L or 0.68-1.13 mg/dL",
-    units: ["μmol/L", "umol/L", "mg/dL"],
-    category: "Kidney Function"
-  },
-  {
-    name: "C-Reactive Protein",
-    optimalRange: "<1.0 mg/L (Low Risk)",
-    units: ["mg/L", "mg/dL"],
-    category: "Inflammation"
-  },
-  {
-    name: "hsCRP",
-    optimalRange: "<1.0 mg/L (Low Risk)",
-    units: ["mg/L", "mg/dL"],
-    category: "Inflammation"
-  },
-  {
-    name: "DHEA-S",
-    optimalRange: "5.5-8.0 μmol/L or 200-300 μg/dL",
-    units: ["μmol/L", "umol/L", "μg/dL", "ug/dL"],
-    category: "Hormones"
+    maleRange: "60-100 µmol/L (0.68-1.13 mg/dL)",
+    femaleRange: "60-100 µmol/L (0.68-1.13 mg/dL)",
+    units: ["µmol/L", "umol/L", "mg/dL"],
+    category: "Kidney Function",
+    aliases: ["Serum Creatinine", "Creat"]
   },
   {
     name: "Eosinophils",
-    optimalRange: "0.0-0.2×10³/μL",
-    units: ["×10³/μL", "×10^3/μL", "K/μL"],
-    category: "White Blood Cells"
-  },
-  {
-    name: "FAI",
-    optimalRange: "40-80%",
-    units: ["%"],
-    category: "Hormones"
-  },
-  {
-    name: "Free Androgen Index",
-    optimalRange: "40-80%",
-    units: ["%"],
-    category: "Hormones"
+    maleRange: "0.0-0.3 ×10³/µL",
+    femaleRange: "0.0-0.3 ×10³/µL",
+    units: ["×10³/µL", "×10^3/µL", "K/µL", "K/uL"],
+    category: "White Blood Cells",
+    aliases: ["Eos", "Eosinophil Count", "Absolute Eosinophils"]
   },
   {
     name: "Fasting Glucose",
-    optimalRange: "4.44-5.0 mmol/L or 80-90 mg/dL",
+    maleRange: "4.44-5.0 mmol/L (80-90 mg/dL)",
+    femaleRange: "4.44-5.0 mmol/L (80-90 mg/dL)",
     units: ["mmol/L", "mg/dL"],
-    category: "Metabolic"
-  },
-  {
-    name: "Glucose",
-    optimalRange: "4.44-5.0 mmol/L or 80-90 mg/dL",
-    units: ["mmol/L", "mg/dL"],
-    category: "Metabolic"
+    category: "Metabolic",
+    aliases: ["Glucose", "Glucose Fasting", "FBG", "Fasting Blood Glucose", "Blood Glucose"]
   },
   {
     name: "Fasting Insulin",
-    optimalRange: "13-40 pmol/L or 2-6 μg/dL",
-    units: ["pmol/L", "μg/dL", "ug/dL", "mIU/L"],
-    category: "Metabolic"
-  },
-  {
-    name: "Insulin",
-    optimalRange: "13-40 pmol/L or 2-6 μg/dL",
-    units: ["pmol/L", "μg/dL", "ug/dL", "mIU/L"],
-    category: "Metabolic"
+    maleRange: "13-40 pmol/L (2-6 µIU/mL)",
+    femaleRange: "13-40 pmol/L (2-6 µIU/mL)",
+    units: ["pmol/L", "µIU/mL", "uIU/mL", "mIU/L"],
+    category: "Metabolic",
+    aliases: ["Insulin", "Insulin Fasting", "Serum Insulin"]
   },
   {
     name: "Ferritin",
-    optimalRange: "50-150 μg/L or 50-150 ng/mL",
-    units: ["μg/L", "ug/L", "ng/mL"],
-    category: "Iron Studies"
-  },
-  {
-    name: "FSH",
-    optimalRange: "2.0-5.0 IU/L",
-    units: ["IU/L", "mIU/mL"],
-    category: "Hormones"
-  },
-  {
-    name: "Follicle Stimulating Hormone",
-    optimalRange: "2.0-5.0 IU/L",
-    units: ["IU/L", "mIU/mL"],
-    category: "Hormones"
+    maleRange: "50-150 µg/L",
+    femaleRange: "50-150 µg/L",
+    units: ["µg/L", "ug/L", "ng/mL"],
+    category: "Iron Studies",
+    aliases: ["Serum Ferritin"]
   },
   {
     name: "Free T3",
-    optimalRange: "4.6-6.9 pmol/L or 3.0-4.5 pg/mL",
-    units: ["pmol/L", "pg/mL"],
-    category: "Thyroid"
-  },
-  {
-    name: "FT3",
-    optimalRange: "4.6-6.9 pmol/L or 3.0-4.5 pg/mL",
-    units: ["pmol/L", "pg/mL"],
-    category: "Thyroid"
+    maleRange: "3.0-4.5 pg/mL (4.6-6.9 pmol/L)",
+    femaleRange: "3.0-4.5 pg/mL (4.6-6.9 pmol/L)",
+    units: ["pg/mL", "pmol/L"],
+    category: "Thyroid",
+    aliases: ["FT3", "Free Triiodothyronine", "Triiodothyronine Free"]
   },
   {
     name: "Free T4",
-    optimalRange: "13.0-20.0 pmol/L or 1.0-1.55 ng/dL",
-    units: ["pmol/L", "ng/dL"],
-    category: "Thyroid"
-  },
-  {
-    name: "FT4",
-    optimalRange: "13.0-20.0 pmol/L or 1.0-1.55 ng/dL",
-    units: ["pmol/L", "ng/dL"],
-    category: "Thyroid"
+    maleRange: "1.0-1.55 ng/dL (13-20 pmol/L)",
+    femaleRange: "1.0-1.55 ng/dL (13-20 pmol/L)",
+    units: ["ng/dL", "pmol/L"],
+    category: "Thyroid",
+    aliases: ["FT4", "Free Thyroxine", "Thyroxine Free"]
   },
   {
     name: "GGT",
-    optimalRange: "10-20 IU/L",
+    maleRange: "12-24 IU/L",
+    femaleRange: "12-24 IU/L",
     units: ["IU/L", "U/L"],
-    category: "Liver Function"
-  },
-  {
-    name: "Gamma-Glutamyl Transferase",
-    optimalRange: "10-20 IU/L",
-    units: ["IU/L", "U/L"],
-    category: "Liver Function"
+    category: "Liver Function",
+    aliases: ["Gamma-Glutamyl Transferase", "Gamma GT", "Gamma Glutamyl Transpeptidase", "GGTP"]
   },
   {
     name: "Globulin",
-    optimalRange: "22-28 g/L or 2.2-2.8 g/dL",
+    maleRange: "22-28 g/L (2.2-2.8 g/dL)",
+    femaleRange: "22-28 g/L (2.2-2.8 g/dL)",
     units: ["g/L", "g/dL"],
-    category: "Protein"
+    category: "Protein",
+    aliases: ["Serum Globulin", "Calculated Globulin"]
   },
   {
-    name: "HBA1C",
-    optimalRange: "5.0-5.3% or 31-34 mmol/mol",
+    name: "HbA1C",
+    maleRange: "5.0-5.3 % (31-34 mmol/mol)",
+    femaleRange: "5.0-5.3 % (31-34 mmol/mol)",
     units: ["%", "mmol/mol"],
-    category: "Metabolic"
-  },
-  {
-    name: "HbA1c",
-    optimalRange: "5.0-5.3% or 31-34 mmol/mol",
-    units: ["%", "mmol/mol"],
-    category: "Metabolic"
+    category: "Metabolic",
+    aliases: ["HbA1c", "Hemoglobin A1C", "A1C", "Glycated Hemoglobin", "Glycohemoglobin"]
   },
   {
     name: "HCT",
-    optimalRange: "0.40-0.54",
-    units: ["", "L/L", "%"],
-    category: "Red Blood Cells"
-  },
-  {
-    name: "Hematocrit",
-    optimalRange: "0.40-0.54",
-    units: ["", "L/L", "%"],
-    category: "Red Blood Cells"
+    maleRange: "38-48 %",
+    femaleRange: "38-48 %",
+    units: ["%", "L/L"],
+    category: "Red Blood Cells",
+    aliases: ["Hematocrit", "HCT", "Hct"]
   },
   {
     name: "HDL Cholesterol",
-    optimalRange: "1.29-2.2 mmol/L or 50-85 mg/dL",
+    maleRange: "1.29-2.2 mmol/L (50-85 mg/dL)",
+    femaleRange: "1.29-2.2 mmol/L (50-85 mg/dL)",
     units: ["mmol/L", "mg/dL"],
-    category: "Lipids"
-  },
-  {
-    name: "HDL",
-    optimalRange: "1.29-2.2 mmol/L or 50-85 mg/dL",
-    units: ["mmol/L", "mg/dL"],
-    category: "Lipids"
+    category: "Lipids",
+    aliases: ["HDL", "HDL-C", "High Density Lipoprotein"]
   },
   {
     name: "Hemoglobin",
-    optimalRange: "145-155 g/L or 14.5-15.5 g/dL",
+    maleRange: "145-155 g/L (14.5-15.5 g/dL)",
+    femaleRange: "135-145 g/L (13.5-14.5 g/dL)",
     units: ["g/L", "g/dL"],
-    category: "Red Blood Cells"
-  },
-  {
-    name: "Haemoglobin",
-    optimalRange: "145-155 g/L or 14.5-15.5 g/dL",
-    units: ["g/L", "g/dL"],
-    category: "Red Blood Cells"
+    category: "Red Blood Cells",
+    aliases: ["Hgb", "Hb", "Haemoglobin"]
   },
   {
     name: "Homocysteine",
-    optimalRange: "6-10 μmol/L",
-    units: ["μmol/L", "umol/L"],
-    category: "Cardiovascular"
-  },
-  {
-    name: "Lactate Dehydrogenase",
-    optimalRange: "120-180 IU/L",
-    units: ["IU/L", "U/L"],
-    category: "Enzymes"
+    maleRange: "6-10 µmol/L",
+    femaleRange: "6-10 µmol/L",
+    units: ["µmol/L", "umol/L"],
+    category: "Cardiovascular",
+    aliases: ["Homocystine", "Plasma Homocysteine"]
   },
   {
     name: "LDH",
-    optimalRange: "120-180 IU/L",
+    maleRange: "140-200 IU/L",
+    femaleRange: "140-200 IU/L",
     units: ["IU/L", "U/L"],
-    category: "Enzymes"
+    category: "Enzymes",
+    aliases: ["Lactate Dehydrogenase", "LD", "LDH Total"]
   },
   {
     name: "LDL Cholesterol",
-    optimalRange: "2.07-4.4 mmol/L or 80-170 mg/dL",
+    maleRange: "2.07-4.4 mmol/L (80-170 mg/dL)",
+    femaleRange: "2.07-4.4 mmol/L (80-170 mg/dL)",
     units: ["mmol/L", "mg/dL"],
-    category: "Lipids"
-  },
-  {
-    name: "LDL",
-    optimalRange: "2.07-4.4 mmol/L or 80-170 mg/dL",
-    units: ["mmol/L", "mg/dL"],
-    category: "Lipids"
-  },
-  {
-    name: "LH",
-    optimalRange: "2.0-5.0 IU/L",
-    units: ["IU/L", "mIU/mL"],
-    category: "Hormones"
-  },
-  {
-    name: "Luteinizing Hormone",
-    optimalRange: "2.0-5.0 IU/L",
-    units: ["IU/L", "mIU/mL"],
-    category: "Hormones"
+    category: "Lipids",
+    aliases: ["LDL", "LDL-C", "Low Density Lipoprotein", "LDL Calculated"]
   },
   {
     name: "Lymphocytes",
-    optimalRange: "1.5-2.8×10³/μL",
-    units: ["×10³/μL", "×10^3/μL", "K/μL"],
-    category: "White Blood Cells"
-  },
-  {
-    name: "Magnesium",
-    optimalRange: "0.85-1.0 mmol/L or 2.0-2.4 mg/dL",
-    units: ["mmol/L", "mg/dL"],
-    category: "Minerals"
+    maleRange: "1.1-3.1 ×10³/µL",
+    femaleRange: "1.1-3.1 ×10³/µL",
+    units: ["×10³/µL", "×10^3/µL", "K/µL", "K/uL"],
+    category: "White Blood Cells",
+    aliases: ["Lymph", "Lymphocyte Count", "Absolute Lymphocytes"]
   },
   {
     name: "MCH",
-    optimalRange: "27-34 pg",
+    maleRange: "28-32 pg",
+    femaleRange: "28-32 pg",
     units: ["pg"],
-    category: "Red Blood Cells"
+    category: "Red Blood Cells",
+    aliases: ["Mean Corpuscular Hemoglobin", "Mean Cell Hemoglobin"]
   },
   {
     name: "MCHC",
-    optimalRange: "320-360 g/L",
-    units: ["g/L", "g/dL"],
-    category: "Red Blood Cells"
+    maleRange: "32-35 g/dL (320-350 g/L)",
+    femaleRange: "32-35 g/dL (320-350 g/L)",
+    units: ["g/dL", "g/L"],
+    category: "Red Blood Cells",
+    aliases: ["Mean Corpuscular Hemoglobin Concentration", "Mean Cell Hemoglobin Concentration"]
   },
   {
     name: "MCV",
-    optimalRange: "82-89 fL",
+    maleRange: "82-89 fL",
+    femaleRange: "82-89 fL",
     units: ["fL"],
-    category: "Red Blood Cells"
+    category: "Red Blood Cells",
+    aliases: ["Mean Corpuscular Volume", "Mean Cell Volume"]
+  },
+  {
+    name: "Monocytes",
+    maleRange: "0.3-0.5 ×10³/µL",
+    femaleRange: "0.3-0.5 ×10³/µL",
+    units: ["×10³/µL", "×10^3/µL", "K/µL", "K/uL"],
+    category: "White Blood Cells",
+    aliases: ["Mono", "Monocyte Count", "Absolute Monocytes"]
   },
   {
     name: "Neutrophils",
-    optimalRange: "2.0-4.0×10³/μL",
-    units: ["×10³/μL", "×10^3/μL", "K/μL"],
-    category: "White Blood Cells"
+    maleRange: "3.0-4.5 ×10³/µL",
+    femaleRange: "3.0-4.5 ×10³/µL",
+    units: ["×10³/µL", "×10^3/µL", "K/µL", "K/uL"],
+    category: "White Blood Cells",
+    aliases: ["Neut", "Neutrophil Count", "Absolute Neutrophils", "Segmented Neutrophils"]
   },
   {
-    name: "Phosphate",
-    optimalRange: "0.9-1.3 mmol/L or 2.7-4.0 mg/dL",
-    units: ["mmol/L", "mg/dL"],
-    category: "Minerals"
+    name: "Phosphorus",
+    maleRange: "3.0-4.0 mg/dL (0.97-1.29 mmol/L)",
+    femaleRange: "3.0-4.0 mg/dL (0.97-1.29 mmol/L)",
+    units: ["mg/dL", "mmol/L"],
+    category: "Minerals",
+    aliases: ["Phosphate", "Inorganic Phosphorus", "Serum Phosphorus", "P"]
+  },
+  {
+    name: "Platelets",
+    maleRange: "200-300 ×10³/µL",
+    femaleRange: "200-300 ×10³/µL",
+    units: ["×10³/µL", "×10^3/µL", "K/µL", "K/uL"],
+    category: "Blood Cells",
+    aliases: ["PLT", "Platelet Count", "Thrombocytes"]
   },
   {
     name: "Potassium",
-    optimalRange: "4.0-4.5 mmol/L",
+    maleRange: "4.0-4.5 mmol/L",
+    femaleRange: "4.0-4.5 mmol/L",
     units: ["mmol/L", "mEq/L"],
-    category: "Electrolytes"
-  },
-  {
-    name: "Prolactin",
-    optimalRange: "100-250 mIU/L or 4.7-11.8 ng/mL",
-    units: ["mIU/L", "ng/mL"],
-    category: "Hormones"
+    category: "Electrolytes",
+    aliases: ["K", "Serum Potassium"]
   },
   {
     name: "RBC",
-    optimalRange: "4.2-4.9×10¹²/L",
-    units: ["×10¹²/L", "×10^12/L", "M/μL"],
-    category: "Red Blood Cells"
-  },
-  {
-    name: "Red Blood Cell Count",
-    optimalRange: "4.2-4.9×10¹²/L",
-    units: ["×10¹²/L", "×10^12/L", "M/μL"],
-    category: "Red Blood Cells"
+    maleRange: "4.2-4.9 ×10¹²/L",
+    femaleRange: "3.9-4.5 ×10¹²/L",
+    units: ["×10¹²/L", "×10^12/L", "M/µL", "M/uL"],
+    category: "Red Blood Cells",
+    aliases: ["Red Blood Cell Count", "RBC Count", "Erythrocytes"]
   },
   {
     name: "RDW",
-    optimalRange: "10.0-17.0%",
+    maleRange: "< 13 %",
+    femaleRange: "< 13 %",
     units: ["%"],
-    category: "Red Blood Cells"
+    category: "Red Blood Cells",
+    aliases: ["Red Cell Distribution Width", "RDW-CV", "RDW-SD"]
   },
   {
-    name: "SHBG",
-    optimalRange: "40-50 nmol/L (Male)",
-    units: ["nmol/L"],
-    category: "Hormones"
-  },
-  {
-    name: "Sex Hormone Binding Globulin",
-    optimalRange: "40-50 nmol/L (Male)",
-    units: ["nmol/L"],
-    category: "Hormones"
-  },
-  {
-    name: "Sodium",
-    optimalRange: "137-143 mmol/L",
-    units: ["mmol/L", "mEq/L"],
-    category: "Electrolytes"
+    name: "Serum Folate",
+    maleRange: "34-59 nmol/L (15-26 ng/mL)",
+    femaleRange: "34-59 nmol/L (15-26 ng/mL)",
+    units: ["nmol/L", "ng/mL"],
+    category: "Vitamins",
+    aliases: ["Folate", "Folic Acid", "Folate Serum", "Vitamin B9"]
   },
   {
     name: "Serum Iron",
-    optimalRange: "14.3-23.2 μmol/L",
-    units: ["μmol/L", "umol/L", "μg/dL", "ug/dL"],
-    category: "Iron Studies"
+    maleRange: "14.3-23.2 µmol/L (80-130 µg/dL)",
+    femaleRange: "14.3-23.2 µmol/L (80-130 µg/dL)",
+    units: ["µmol/L", "umol/L", "µg/dL", "ug/dL"],
+    category: "Iron Studies",
+    aliases: ["Iron", "Fe", "Iron Total"]
   },
   {
-    name: "Iron",
-    optimalRange: "14.3-23.2 μmol/L",
-    units: ["μmol/L", "umol/L", "μg/dL", "ug/dL"],
-    category: "Iron Studies"
+    name: "Serum Magnesium",
+    maleRange: "0.9-1.0 mmol/L (2.19-2.43 mg/dL)",
+    femaleRange: "0.9-1.0 mmol/L (2.19-2.43 mg/dL)",
+    units: ["mmol/L", "mg/dL"],
+    category: "Minerals",
+    aliases: ["Magnesium", "Mg", "Mag"]
+  },
+  {
+    name: "SHBG",
+    maleRange: "40-50 nmol/L",
+    femaleRange: "50-80 nmol/L",
+    units: ["nmol/L"],
+    category: "Hormones",
+    aliases: ["Sex Hormone Binding Globulin", "Sex Hormone-Binding Globulin"]
+  },
+  {
+    name: "Sodium",
+    maleRange: "137-143 mmol/L",
+    femaleRange: "137-143 mmol/L",
+    units: ["mmol/L", "mEq/L"],
+    category: "Electrolytes",
+    aliases: ["Na", "Serum Sodium"]
   },
   {
     name: "TIBC",
-    optimalRange: "44-62 μmol/L or 250-350 mg/dL",
-    units: ["μmol/L", "umol/L", "mg/dL"],
-    category: "Iron Studies"
-  },
-  {
-    name: "Total Iron Binding Capacity",
-    optimalRange: "44-62 μmol/L or 250-350 mg/dL",
-    units: ["μmol/L", "umol/L", "mg/dL"],
-    category: "Iron Studies"
-  },
-  {
-    name: "Testosterone",
-    optimalRange: "22-30 nmol/L or 635-865 ng/dL",
-    units: ["nmol/L", "ng/dL"],
-    category: "Hormones"
-  },
-  {
-    name: "Total Testosterone",
-    optimalRange: "22-30 nmol/L or 635-865 ng/dL",
-    units: ["nmol/L", "ng/dL"],
-    category: "Hormones"
-  },
-  {
-    name: "Total Bilirubin",
-    optimalRange: "5-13.6 μmol/L or 0.29-0.8 mg/dL",
-    units: ["μmol/L", "umol/L", "mg/dL"],
-    category: "Liver Function"
-  },
-  {
-    name: "Bilirubin",
-    optimalRange: "5-13.6 μmol/L or 0.29-0.8 mg/dL",
-    units: ["μmol/L", "umol/L", "mg/dL"],
-    category: "Liver Function"
-  },
-  {
-    name: "Total Cholesterol",
-    optimalRange: "4.2-6.4 mmol/L or 162-240 mg/dL",
-    units: ["mmol/L", "mg/dL"],
-    category: "Lipids"
-  },
-  {
-    name: "Cholesterol",
-    optimalRange: "4.2-6.4 mmol/L or 162-240 mg/dL",
-    units: ["mmol/L", "mg/dL"],
-    category: "Lipids"
-  },
-  {
-    name: "Total Protein",
-    optimalRange: "62-78 g/L or 6.2-7.8 g/dL",
-    units: ["g/L", "g/dL"],
-    category: "Protein"
+    maleRange: "44-62 µmol/L (250-350 mg/dL)",
+    femaleRange: "44-62 µmol/L (250-350 mg/dL)",
+    units: ["µmol/L", "umol/L", "mg/dL", "µg/dL", "ug/dL"],
+    category: "Iron Studies",
+    aliases: ["Total Iron Binding Capacity", "Iron Binding Capacity"]
   },
   {
     name: "TPO Antibodies",
-    optimalRange: "Refer to lab specific reference range",
+    maleRange: "Refer to lab specific range",
+    femaleRange: "Refer to lab specific range",
     units: ["IU/mL", "U/mL"],
-    category: "Thyroid"
-  },
-  {
-    name: "Thyroid Peroxidase Antibodies",
-    optimalRange: "Refer to lab specific reference range",
-    units: ["IU/mL", "U/mL"],
-    category: "Thyroid"
-  },
-  {
-    name: "Transferrin Saturation",
-    optimalRange: "20-35%",
-    units: ["%"],
-    category: "Iron Studies"
-  },
-  {
-    name: "Triglycerides",
-    optimalRange: "0.6-1.0 mmol/L or 53-88.5 mg/dL",
-    units: ["mmol/L", "mg/dL"],
-    category: "Lipids"
+    category: "Thyroid",
+    aliases: ["Thyroid Peroxidase Antibodies", "Anti-TPO", "TPO Ab", "Thyroid Peroxidase Ab"]
   },
   {
     name: "TSH",
-    optimalRange: "1.0-2.5 mIU/L",
-    units: ["mIU/L", "μIU/mL"],
-    category: "Thyroid"
-  },
-  {
-    name: "Thyroid Stimulating Hormone",
-    optimalRange: "1.0-2.5 mIU/L",
-    units: ["mIU/L", "μIU/mL"],
-    category: "Thyroid"
+    maleRange: "1.0-2.5 mIU/L",
+    femaleRange: "1.0-2.5 mIU/L",
+    units: ["mIU/L", "µIU/mL", "uIU/mL"],
+    category: "Thyroid",
+    aliases: ["Thyroid Stimulating Hormone", "Thyrotropin"]
   },
   {
     name: "Thyroglobulin Antibodies",
-    optimalRange: "Refer to lab specific reference range",
+    maleRange: "Refer to lab specific range",
+    femaleRange: "Refer to lab specific range",
     units: ["IU/mL", "U/mL"],
-    category: "Thyroid"
+    category: "Thyroid",
+    aliases: ["Anti-Thyroglobulin", "TgAb", "Thyroglobulin Ab", "Anti-Tg"]
   },
   {
-    name: "Uric Acid",
-    optimalRange: "200-300 μmol/L or 3.3-5.0 mg/dL",
-    units: ["μmol/L", "umol/L", "mg/dL"],
-    category: "Metabolic"
+    name: "Total Bilirubin",
+    maleRange: "5-13.6 µmol/L (0.29-0.8 mg/dL)",
+    femaleRange: "5-13.6 µmol/L (0.29-0.8 mg/dL)",
+    units: ["µmol/L", "umol/L", "mg/dL"],
+    category: "Liver Function",
+    aliases: ["Bilirubin", "Bilirubin Total", "T Bili"]
   },
   {
-    name: "Vitamin D",
-    optimalRange: "125-225 nmol/L or 50-90 ng/mL",
-    units: ["nmol/L", "ng/mL"],
-    category: "Vitamins"
+    name: "Total Cholesterol",
+    maleRange: "4.2-6.4 mmol/L (162-240 mg/dL)",
+    femaleRange: "4.2-6.4 mmol/L (162-240 mg/dL)",
+    units: ["mmol/L", "mg/dL"],
+    category: "Lipids",
+    aliases: ["Cholesterol", "Cholesterol Total", "Total Chol"]
   },
   {
-    name: "25 Hydroxy D",
-    optimalRange: "125-225 nmol/L or 50-90 ng/mL",
-    units: ["nmol/L", "ng/mL"],
-    category: "Vitamins"
+    name: "Total Protein",
+    maleRange: "62-78 g/L (6.2-7.8 g/dL)",
+    femaleRange: "62-78 g/L (6.2-7.8 g/dL)",
+    units: ["g/L", "g/dL"],
+    category: "Protein",
+    aliases: ["Protein Total", "Serum Protein"]
+  },
+  {
+    name: "Transferrin Saturation %",
+    maleRange: "20-35 %",
+    femaleRange: "20-35 %",
+    units: ["%"],
+    category: "Iron Studies",
+    aliases: ["Transferrin Saturation", "TSAT", "Iron Saturation", "Sat %"]
+  },
+  {
+    name: "Triglycerides",
+    maleRange: "0.6-1.0 mmol/L (53-88.5 mg/dL)",
+    femaleRange: "0.6-1.0 mmol/L (53-88.5 mg/dL)",
+    units: ["mmol/L", "mg/dL"],
+    category: "Lipids",
+    aliases: ["Trig", "TG", "Triglyceride"]
   },
   {
     name: "Vitamin B12",
-    optimalRange: "400-800 pmol/L or 540-1085 pg/mL",
+    maleRange: "350-650 pmol/L (474-880 pg/mL)",
+    femaleRange: "350-650 pmol/L (474-880 pg/mL)",
     units: ["pmol/L", "pg/mL"],
-    category: "Vitamins"
+    category: "Vitamins",
+    aliases: ["B12", "Cobalamin", "Vitamin B-12"]
+  },
+  {
+    name: "Vitamin D (25-Hydroxy D)",
+    maleRange: "125-225 nmol/L (50-90 ng/mL)",
+    femaleRange: "125-225 nmol/L (50-90 ng/mL)",
+    units: ["nmol/L", "ng/mL"],
+    category: "Vitamins",
+    aliases: ["Vitamin D", "25-Hydroxy Vitamin D", "25-OH Vitamin D", "25(OH)D", "Vitamin D 25-Hydroxy"]
   },
   {
     name: "WBC",
-    optimalRange: "5.5-7.5×10³/μL",
-    units: ["×10³/μL", "×10^3/μL", "K/μL"],
-    category: "White Blood Cells"
+    maleRange: "5.5-7.5 ×10³/µL",
+    femaleRange: "5.5-7.5 ×10³/µL",
+    units: ["×10³/µL", "×10^3/µL", "K/µL", "K/uL"],
+    category: "White Blood Cells",
+    aliases: ["White Blood Cell Count", "WBC Count", "Leukocytes"]
   },
   {
-    name: "White Blood Cell Count",
-    optimalRange: "5.5-7.5×10³/μL",
-    units: ["×10³/μL", "×10^3/μL", "K/μL"],
-    category: "White Blood Cells"
+    name: "eGFR",
+    maleRange: "> 90 mL/min/m² (> 60 if high muscle mass)",
+    femaleRange: "> 90 mL/min/m² (> 60 if high muscle mass)",
+    units: ["mL/min/m²", "mL/min/1.73m2"],
+    category: "Kidney Function",
+    aliases: ["Estimated GFR", "GFR", "Glomerular Filtration Rate"]
   }
 ];
 
-// Get unique list of primary biomarkers (removing aliases)
-export const PRIMARY_BIOMARKERS = [
-  "ALP", "ALT", "AST", "Albumin", "BUN", "Basophils", "Bicarbonate", 
-  "Calcium", "Chloride", "Cortisol", "Creatinine", "C-Reactive Protein",
-  "DHEA-S", "Eosinophils", "FAI", "Fasting Glucose", "Fasting Insulin",
-  "Ferritin", "FSH", "Free T3", "Free T4", "GGT", "Globulin", "HBA1C",
-  "HCT", "HDL Cholesterol", "Hemoglobin", "Homocysteine", 
-  "Lactate Dehydrogenase", "LDL Cholesterol", "LH", "Lymphocytes",
-  "Magnesium", "MCH", "MCHC", "MCV", "Neutrophils", "Phosphate",
-  "Potassium", "Prolactin", "RBC", "RDW", "SHBG", "Sodium", "Serum Iron",
-  "TIBC", "Testosterone", "Total Bilirubin", "Total Cholesterol",
-  "Total Protein", "TPO Antibodies", "Transferrin Saturation",
-  "Triglycerides", "TSH", "Thyroglobulin Antibodies", "Uric Acid",
-  "Vitamin D", "Vitamin B12", "WBC"
-];
-
+// Get unique list of primary biomarkers (just the names)
+export const PRIMARY_BIOMARKERS = BIOMARKERS.map(b => b.name);
