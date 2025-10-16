@@ -233,12 +233,25 @@ export function AnalysisResults({ results, onReset, selectedClientId: preSelecte
             </div>
           </div>
 
-          {/* Warning if data is missing */}
+          {/* Diagnostic Info - Warning if data is missing */}
           {summary.missingBiomarkers > 0 && (
             <Alert>
               <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
-                {summary.missingBiomarkers} biomarker(s) were not found in the uploaded reports and are marked as N/A.
+              <AlertDescription className="space-y-2">
+                <div>
+                  <strong>{summary.missingBiomarkers} biomarker(s)</strong> were not found in the uploaded reports and are marked as N/A.
+                </div>
+                <details className="text-sm">
+                  <summary className="cursor-pointer hover:underline font-medium">View missing biomarkers</summary>
+                  <ul className="mt-2 ml-4 list-disc space-y-1">
+                    {results.filter(r => r.hisValue === 'N/A').map(r => (
+                      <li key={r.biomarkerName}>{r.biomarkerName}</li>
+                    ))}
+                  </ul>
+                </details>
+                <div className="text-xs text-muted-foreground mt-2">
+                  💡 <strong>Tip:</strong> Check the browser console (F12 → Console) for detailed extraction logs showing what biomarkers were found in each document and how they were matched.
+                </div>
               </AlertDescription>
             </Alert>
           )}

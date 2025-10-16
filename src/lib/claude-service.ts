@@ -24,19 +24,21 @@ export interface ClaudeResponse {
 function createExtractionPrompt(): string {
   return `You are an expert health data analyst specializing in clinical pathology and nutritional biochemistry.
 
-Your task is to extract PATIENT INFORMATION and ALL biomarker values from the provided laboratory result PDFs.
+Your task is to extract PATIENT INFORMATION and ALL biomarker values from the provided laboratory result PDFs or images.
+
+⚠️ CRITICAL: You MUST extract EVERY SINGLE biomarker visible in the document. Do NOT skip any values, even if they seem like duplicates or are in unusual formats.
 
 INSTRUCTIONS:
-1. Carefully scan all pages of all provided PDF documents
+1. THOROUGHLY scan EVERY page of the provided document(s) - look at ALL sections, tables, and data
 2. Extract PATIENT DEMOGRAPHIC INFORMATION:
    - Patient's full name (as shown on the lab report)
    - Patient's date of birth (convert to YYYY-MM-DD format)
    - Patient's gender/sex (male, female, or other)
    - Test/collection date (the most recent date if multiple reports, in YYYY-MM-DD format)
 
-3. Extract EVERY biomarker name, its numerical value, and unit of measurement
+3. Extract EVERY biomarker name, its numerical value, and unit of measurement that you can find
 4. If a biomarker appears multiple times, use the MOST RECENT value (check dates on the reports)
-5. Include ALL of these 54 core biomarkers if present (use the name as listed, but lab reports may use alternate names):
+5. Include ALL of these 54 core biomarkers if present - lab reports use MANY different name variations, so look carefully:
 
    LIVER FUNCTION (4):
    - ALP (may appear as: Alkaline Phosphatase, Alk Phos)
@@ -147,6 +149,17 @@ IMPORTANT RULES:
 - If patient info is not found, use null
 - Do NOT include any explanatory text, only the JSON object
 - Ensure the JSON is valid and parseable
+
+⚠️ EXTRACTION REQUIREMENT: 
+You should aim to extract AT LEAST 30-40 biomarkers from a typical comprehensive lab report. If you're only extracting a few biomarkers, you're likely missing data - go back and look more carefully at ALL sections of the document, including:
+- Complete Blood Count (CBC) sections
+- Comprehensive Metabolic Panel (CMP) sections  
+- Lipid Panel sections
+- Thyroid Panel sections
+- Vitamin/Mineral sections
+- Any other numerical lab values
+
+Look for values in tables, lists, and anywhere else they might appear. BE THOROUGH!
 
 Return your response now:`;
 }

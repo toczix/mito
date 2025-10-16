@@ -16,10 +16,12 @@ function normalizeName(name: string): string {
  */
 export function matchBiomarkersWithRanges(
   extractedBiomarkers: ExtractedBiomarker[],
-  gender: 'male' | 'female' = 'male'
+  gender: 'male' | 'female' = 'male',
+  debug = true
 ): AnalysisResult[] {
   const results: AnalysisResult[] = [];
   const matchedNames = new Set<string>();
+  const unmatchedExtracted: string[] = [];
 
   // Get all benchmarks (including custom ones)
   const benchmarks = getAllBenchmarks();
@@ -36,6 +38,15 @@ export function matchBiomarkersWithRanges(
     }
   }
 
+  if (debug) {
+    console.group('🔍 Detailed Biomarker Matching');
+    console.log('Extracted biomarker names (normalized):');
+    console.log(Array.from(extractedMap.keys()).sort());
+  }
+
+  // Track which extracted biomarkers didn't match any benchmark
+  const extractedNormalized = new Set(extractedMap.keys());
+
   // Process all benchmarks
   for (const benchmark of benchmarks) {
     // Try to find a match by checking the biomarker name and all its aliases
@@ -45,6 +56,7 @@ export function matchBiomarkersWithRanges(
     }
     
     let extractedData: ExtractedBiomarker | undefined = undefined;
+    let matchedAlias: string | undefined = undefined;
     
     // Check all possible names (primary name + aliases)
     for (const nameToCheck of namesToCheck) {
@@ -52,7 +64,9 @@ export function matchBiomarkersWithRanges(
       const found = extractedMap.get(normalized);
       if (found) {
         extractedData = found;
+        matchedAlias = nameToCheck;
         matchedNames.add(normalized);
+        extractedNormalized.delete(normalized); // Remove from unmatched set
         break; // Found a match, no need to check other aliases
       }
     }
@@ -64,6 +78,9 @@ export function matchBiomarkersWithRanges(
     
     if (extractedData) {
       // We have data for this biomarker
+      if (debug && extractedData.name !== benchmark.name) {
+        console.log(`✅ Matched: "${extractedData.name}" → "${benchmark.name}" (via alias: "${matchedAlias}")`);
+      }
       results.push({
         biomarkerName: benchmark.name,
         hisValue: extractedData.value,
@@ -73,6 +90,9 @@ export function matchBiomarkersWithRanges(
       });
     } else {
       // No data found, mark as N/A
+      if (debug) {
+        console.warn(`❌ Not found: "${benchmark.name}" (tried: ${namesToCheck.join(', ')})`);
+      }
       results.push({
         biomarkerName: benchmark.name,
         hisValue: 'N/A',
@@ -81,6 +101,22 @@ export function matchBiomarkersWithRanges(
         testDate: undefined,
       });
     }
+  }
+
+  // Log any extracted biomarkers that didn't match any benchmark
+  if (debug && extractedNormalized.size > 0) {
+    console.group('⚠️ Extracted biomarkers that didn\'t match any benchmark:');
+    extractedNormalized.forEach(normalized => {
+      const biomarker = extractedMap.get(normalized);
+      if (biomarker) {
+        console.log(`"${biomarker.name}" (normalized: "${normalized}")`);
+      }
+    });
+    console.groupEnd();
+  }
+
+  if (debug) {
+    console.groupEnd();
   }
 
   // Sort results by biomarker name

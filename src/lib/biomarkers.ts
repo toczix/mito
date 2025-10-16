@@ -73,7 +73,7 @@ export const BIOMARKERS: Biomarker[] = [
     femaleRange: "0-1 % (≤ 0.09 ×10³/µL)",
     units: ["%", "×10³/µL", "×10^3/µL", "K/µL", "K/uL"],
     category: "White Blood Cells",
-    aliases: ["Baso", "Basophil Count", "Absolute Basophils"]
+    aliases: ["Baso", "Basophil Count", "Absolute Basophils", "Basophil %", "Basophil Percentage", "Basos"]
   },
   {
     name: "Bicarbonate",
@@ -113,7 +113,7 @@ export const BIOMARKERS: Biomarker[] = [
     femaleRange: "1-4 % (0.0-0.3 ×10³/µL)",
     units: ["%", "×10³/µL", "×10^3/µL", "K/µL", "K/uL"],
     category: "White Blood Cells",
-    aliases: ["Eos", "Eosinophil Count", "Absolute Eosinophils"]
+    aliases: ["Eos", "Eosinophil Count", "Absolute Eosinophils", "Eosinophil %", "Eosinophil Percentage", "Eosin"]
   },
   {
     name: "Fasting Glucose",
@@ -121,7 +121,7 @@ export const BIOMARKERS: Biomarker[] = [
     femaleRange: "4.44-5.0 mmol/L (80-90 mg/dL)",
     units: ["mmol/L", "mg/dL"],
     category: "Metabolic",
-    aliases: ["Glucose", "Glucose Fasting", "FBG", "Fasting Blood Glucose", "Blood Glucose", "Gluc", "Glucosa", "Glucose (Fasting)", "GLU"]
+    aliases: ["Glucose", "Glucose Fasting", "FBG", "Fasting Blood Glucose", "Blood Glucose", "Gluc", "Glucosa", "Glucose (Fasting)", "GLU", "Blood Glucose Level", "Serum Glucose", "Plasma Glucose"]
   },
   {
     name: "Fasting Insulin",
@@ -185,7 +185,7 @@ export const BIOMARKERS: Biomarker[] = [
     femaleRange: "38-48 %",
     units: ["%", "L/L"],
     category: "Red Blood Cells",
-    aliases: ["Hematocrit", "HCT", "Hct"]
+    aliases: ["Hematocrit", "HCT", "Hct", "Haematocrit", "Hematocrit Level"]
   },
   {
     name: "HDL Cholesterol",
@@ -201,7 +201,7 @@ export const BIOMARKERS: Biomarker[] = [
     femaleRange: "135-145 g/L (13.5-14.5 g/dL)",
     units: ["g/L", "g/dL"],
     category: "Red Blood Cells",
-    aliases: ["Hgb", "Hb", "Haemoglobin"]
+    aliases: ["Hgb", "Hb", "Haemoglobin", "HGB", "Hemoglobin Level"]
   },
   {
     name: "Homocysteine",
@@ -233,7 +233,7 @@ export const BIOMARKERS: Biomarker[] = [
     femaleRange: "20-40 % (1.1-3.1 ×10³/µL)",
     units: ["%", "×10³/µL", "×10^3/µL", "K/µL", "K/uL"],
     category: "White Blood Cells",
-    aliases: ["Lymph", "Lymphocyte Count", "Absolute Lymphocytes"]
+    aliases: ["Lymph", "Lymphocyte Count", "Absolute Lymphocytes", "Lymphocyte %", "Lymphocyte Percentage", "Lymphs"]
   },
   {
     name: "MCH",
@@ -265,7 +265,7 @@ export const BIOMARKERS: Biomarker[] = [
     femaleRange: "2-8 % (0.3-0.5 ×10³/µL)",
     units: ["%", "×10³/µL", "×10^3/µL", "K/µL", "K/uL"],
     category: "White Blood Cells",
-    aliases: ["Mono", "Monocyte Count", "Absolute Monocytes"]
+    aliases: ["Mono", "Monocyte Count", "Absolute Monocytes", "Monocyte %", "Monocyte Percentage", "Monos"]
   },
   {
     name: "Neutrophils",
@@ -273,7 +273,7 @@ export const BIOMARKERS: Biomarker[] = [
     femaleRange: "40-70 % (3.0-4.5 ×10³/µL)",
     units: ["%", "×10³/µL", "×10^3/µL", "K/µL", "K/uL"],
     category: "White Blood Cells",
-    aliases: ["Neut", "Neutrophil Count", "Absolute Neutrophils", "Segmented Neutrophils"]
+    aliases: ["Neut", "Neutrophil Count", "Absolute Neutrophils", "Segmented Neutrophils", "Neutrophil %", "Neutrophil Percentage", "Segs", "Polys", "PMN"]
   },
   {
     name: "Phosphorus",
@@ -289,7 +289,7 @@ export const BIOMARKERS: Biomarker[] = [
     femaleRange: "200-300 ×10³/µL",
     units: ["×10³/µL", "×10^3/µL", "K/µL", "K/uL"],
     category: "Blood Cells",
-    aliases: ["PLT", "Platelet Count", "Thrombocytes"]
+    aliases: ["PLT", "Platelet Count", "Thrombocytes", "Platelet", "Thrombocyte Count"]
   },
   {
     name: "Potassium",
@@ -305,7 +305,7 @@ export const BIOMARKERS: Biomarker[] = [
     femaleRange: "3.9-4.5 ×10¹²/L",
     units: ["×10¹²/L", "×10^12/L", "M/µL", "M/uL"],
     category: "Red Blood Cells",
-    aliases: ["Red Blood Cell Count", "RBC Count", "Erythrocytes"]
+    aliases: ["Red Blood Cell Count", "RBC Count", "Erythrocytes", "Red Cell Count", "Erythrocyte Count"]
   },
   {
     name: "RDW",
@@ -449,7 +449,7 @@ export const BIOMARKERS: Biomarker[] = [
     femaleRange: "5.5-7.5 ×10³/µL",
     units: ["×10³/µL", "×10^3/µL", "K/µL", "K/uL"],
     category: "White Blood Cells",
-    aliases: ["White Blood Cell Count", "WBC Count", "Leukocytes"]
+    aliases: ["White Blood Cell Count", "WBC Count", "Leukocytes", "White Cell Count", "Leukocyte Count", "Total WBC"]
   },
   {
     name: "eGFR",
@@ -457,7 +457,7 @@ export const BIOMARKERS: Biomarker[] = [
     femaleRange: "> 90 mL/min/m² (> 60 if high muscle mass)",
     units: ["mL/min/m²", "mL/min/1.73m2"],
     category: "Kidney Function",
-    aliases: ["Estimated GFR", "GFR", "Glomerular Filtration Rate"]
+    aliases: ["Estimated GFR", "GFR", "Glomerular Filtration Rate", "eGFR (CKD-EPI)", "eGFR (MDRD)", "Estimated Glomerular Filtration Rate"]
   }
 ];
 

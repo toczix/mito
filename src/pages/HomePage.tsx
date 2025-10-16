@@ -111,6 +111,20 @@ export function HomePage() {
         console.warn('Low confidence in patient info consolidation:', discrepancies);
       }
       
+      // ENHANCED LOGGING: Show what Claude extracted from each PDF
+      console.group('📊 Biomarker Extraction Summary');
+      claudeResponses.forEach((response, idx) => {
+        console.group(`📄 PDF ${idx + 1}: ${validPdfs[idx].fileName}`);
+        console.log(`✅ Extracted ${response.biomarkers.length} biomarkers:`);
+        console.table(response.biomarkers.map(b => ({
+          name: b.name,
+          value: b.value,
+          unit: b.unit
+        })));
+        console.groupEnd();
+      });
+      console.groupEnd();
+      
       const allAnalyses: typeof extractedAnalyses = [];
       const allBiomarkersWithMeta: Array<{ biomarker: ExtractedBiomarker; testDate: string | null; pdfIndex: number }> = [];
       
@@ -172,9 +186,32 @@ export function HomePage() {
         ...item.biomarker,
         testDate: item.testDate || undefined,
       }));
+      
+      // ENHANCED LOGGING: Show deduplicated biomarkers before matching
+      console.group('🔄 Biomarker Consolidation');
+      console.log(`Total extracted across all PDFs: ${allBiomarkersWithMeta.length}`);
+      console.log(`After deduplication: ${deduplicatedBiomarkers.length}`);
+      console.table(deduplicatedBiomarkers.map(b => ({
+        name: b.name,
+        value: b.value,
+        unit: b.unit
+      })));
+      console.groupEnd();
+      
       // Use consolidated gender for combined results
       const consolidatedGender = consolidatedPatientInfo.gender === 'female' ? 'female' : 'male';
       const combinedResults = matchBiomarkersWithRanges(deduplicatedBiomarkers, consolidatedGender);
+      
+      // ENHANCED LOGGING: Show matching results
+      const matched = combinedResults.filter(r => r.hisValue !== 'N/A');
+      const missing = combinedResults.filter(r => r.hisValue === 'N/A');
+      console.group('🎯 Biomarker Matching Results');
+      console.log(`✅ Matched: ${matched.length}`);
+      console.log(`❌ Missing: ${missing.length}`);
+      if (missing.length > 0) {
+        console.warn('Missing biomarkers:', missing.map(m => m.biomarkerName));
+      }
+      console.groupEnd();
       
       const uniqueTestDates = Array.from(
         new Set(
