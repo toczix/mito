@@ -18,6 +18,7 @@ export function HomePage() {
   const [state, setState] = useState<AppState>('upload');
   const [selectedClientId, setSelectedClientId] = useState<string>('');
   const [selectedClientName, setSelectedClientName] = useState<string>('');
+  const [selectedGender, setSelectedGender] = useState<'male' | 'female'>('male');
   const [files, setFiles] = useState<File[]>([]);
   const [results, setResults] = useState<AnalysisResult[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -129,7 +130,9 @@ export function HomePage() {
           });
         });
         
-        const analysisResults = matchBiomarkersWithRanges(claudeResponse.biomarkers);
+        // Use gender from patient info, default to 'male' if not specified
+        const gender = claudeResponse.patientInfo.gender === 'female' ? 'female' : 'male';
+        const analysisResults = matchBiomarkersWithRanges(claudeResponse.biomarkers, gender);
         
         allAnalyses.push({
           patientInfo: claudeResponse.patientInfo,
@@ -169,7 +172,9 @@ export function HomePage() {
         ...item.biomarker,
         testDate: item.testDate || undefined,
       }));
-      const combinedResults = matchBiomarkersWithRanges(deduplicatedBiomarkers);
+      // Use consolidated gender for combined results
+      const consolidatedGender = consolidatedPatientInfo.gender === 'female' ? 'female' : 'male';
+      const combinedResults = matchBiomarkersWithRanges(deduplicatedBiomarkers, consolidatedGender);
       
       const uniqueTestDates = Array.from(
         new Set(
@@ -216,7 +221,8 @@ export function HomePage() {
               .filter(item => item.testDate === testDate)
               .map(item => item.biomarker);
             
-            const resultsForDate = matchBiomarkersWithRanges(biomarkersForDate);
+            // Use consolidated gender for each analysis
+            const resultsForDate = matchBiomarkersWithRanges(biomarkersForDate, consolidatedGender);
             
             await createAnalysis(clientId, resultsForDate, testDate);
             savedCount++;
@@ -232,6 +238,7 @@ export function HomePage() {
       setExtractedAnalyses(allAnalyses);
       setSavedAnalysesCount(savedCount);
       setResults(combinedResults);
+      setSelectedGender(consolidatedGender);
       
       setProcessingProgress(100);
       setState('results');
@@ -371,6 +378,7 @@ export function HomePage() {
             onReset={handleReset}
             selectedClientId={selectedClientId}
             selectedClientName={selectedClientName}
+            gender={selectedGender}
           />
         </div>
       )}

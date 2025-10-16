@@ -23,9 +23,10 @@ interface AnalysisResultsProps {
   onReset?: () => void;
   selectedClientId?: string;
   selectedClientName?: string;
+  gender?: 'male' | 'female';
 }
 
-export function AnalysisResults({ results, onReset, selectedClientId: preSelectedClientId, selectedClientName: preSelectedClientName }: AnalysisResultsProps) {
+export function AnalysisResults({ results, onReset, selectedClientId: preSelectedClientId, selectedClientName: preSelectedClientName, gender = 'male' }: AnalysisResultsProps) {
   const [copied, setCopied] = useState(false);
   const [clients, setClients] = useState<Client[]>([]);
   const [manualClientId, setManualClientId] = useState<string>('');
@@ -71,14 +72,14 @@ export function AnalysisResults({ results, onReset, selectedClientId: preSelecte
 
   const copyToClipboard = () => {
     // Generate markdown table
-    const markdown = generateMarkdownTable(results, preSelectedClientName);
+    const markdown = generateMarkdownTable(results, preSelectedClientName, gender);
     navigator.clipboard.writeText(markdown);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
   const downloadAsMarkdown = () => {
-    const markdown = generateMarkdownTable(results, preSelectedClientName);
+    const markdown = generateMarkdownTable(results, preSelectedClientName, gender);
     const blob = new Blob([markdown], { type: 'text/markdown' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -350,7 +351,7 @@ export function AnalysisResults({ results, onReset, selectedClientId: preSelecte
         <CardHeader>
           <CardTitle>Comprehensive Biomarker Analysis</CardTitle>
           <CardDescription>
-            All 57 biomarkers with values compared against optimal ranges for males
+            All 57 biomarkers with values compared against optimal ranges for {gender === 'female' ? 'females' : 'males'}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -360,9 +361,9 @@ export function AnalysisResults({ results, onReset, selectedClientId: preSelecte
                 <TableRow className="hover:bg-transparent">
                   <TableHead className="w-16 text-center">#</TableHead>
                   <TableHead className="min-w-[180px]">Biomarker Name</TableHead>
-                  <TableHead className="min-w-[100px] text-right">His Value</TableHead>
+                  <TableHead className="min-w-[100px] text-right">Value</TableHead>
                   <TableHead className="min-w-[80px]">Unit</TableHead>
-                  <TableHead className="min-w-[220px]">Optimal Range (Male)</TableHead>
+                  <TableHead className="min-w-[220px]">Optimal Range ({gender === 'female' ? 'Female' : 'Male'})</TableHead>
                   <TableHead className="w-[180px] text-center">Status</TableHead>
                 </TableRow>
               </TableHeader>
@@ -433,7 +434,7 @@ export function AnalysisResults({ results, onReset, selectedClientId: preSelecte
 /**
  * Generate markdown table from results
  */
-function generateMarkdownTable(results: AnalysisResult[], clientName?: string): string {
+function generateMarkdownTable(results: AnalysisResult[], clientName?: string, gender: 'male' | 'female' = 'male'): string {
   let markdown = '# Biomarker Analysis Results\n\n';
   if (clientName) {
     markdown += `**Patient:** ${clientName}\n`;
@@ -441,8 +442,9 @@ function generateMarkdownTable(results: AnalysisResult[], clientName?: string): 
   markdown += `**Date:** ${new Date().toLocaleDateString()}\n\n`;
   
   markdown += '## Comprehensive Biomarker Analysis\n\n';
-  markdown += '| Biomarker Name | His Value | Unit | Optimal Range (Male) |\n';
-  markdown += '|:---------------|:----------|:-----|:---------------------|\n';
+  const genderLabel = gender === 'female' ? 'Female' : 'Male';
+  markdown += `| Biomarker Name | Value | Unit | Optimal Range (${genderLabel}) |\n`;
+  markdown += '|:---------------|:------|:-----|:-------------------------------|\n';
 
   for (const result of results) {
     markdown += `| ${result.biomarkerName} | ${result.hisValue} | ${result.unit} | ${result.optimalRange} |\n`;
