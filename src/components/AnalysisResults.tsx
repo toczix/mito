@@ -125,6 +125,77 @@ export function AnalysisResults({ results, onReset, selectedClientId: preSelecte
     }
   };
 
+  /**
+   * Highlight the active unit range in the optimal range string
+   * Makes it easier to see which range is being used for comparison
+   */
+  const highlightActiveRange = (optimalRange: string, unit: string) => {
+    if (!unit || !optimalRange) return optimalRange;
+
+    // Normalize the unit for matching
+    const normalizedUnit = unit.replace(/umol/gi, 'µmol')
+      .replace(/ug/gi, 'µg')
+      .replace(/uIU/gi, 'µIU')
+      .replace(/uL/gi, 'µL');
+
+    // Escape special regex characters
+    const escapedUnit = normalizedUnit.replace(/[.*+?^${}()|[\]\\/]/g, '\\$&');
+
+    // Try to find parenthetical range with this unit (e.g., "(0.68-1.13 mg/dL)")
+    const parenthesesPattern = new RegExp(`(\\([^)]*${escapedUnit}[^)]*\\))`, 'i');
+    const parenthesesMatch = optimalRange.match(parenthesesPattern);
+    
+    if (parenthesesMatch) {
+      // Highlight the parenthetical range
+      const parts = optimalRange.split(parenthesesMatch[0]);
+      return (
+        <>
+          {parts[0]}
+          <span className="font-semibold text-gray-900 bg-blue-50 px-1.5 py-0.5 rounded">
+            {parenthesesMatch[0]}
+          </span>
+          {parts[1]}
+        </>
+      );
+    }
+
+    // Try to find primary range with this unit (e.g., "162-240 mg/dL")
+    const unitPattern = new RegExp(`([\\d.]+\\s*-\\s*[\\d.]+\\s*${escapedUnit}(?:\\s|$|\\(|,))`, 'i');
+    const unitMatch = optimalRange.match(unitPattern);
+    
+    if (unitMatch) {
+      const parts = optimalRange.split(unitMatch[0]);
+      return (
+        <>
+          <span className="font-semibold text-gray-900 bg-blue-50 px-1.5 py-0.5 rounded">
+            {unitMatch[0].trim()}
+          </span>
+          {parts[1]}
+        </>
+      );
+    }
+
+    // Try to find < or > or ≤ formats with the unit
+    const operatorPattern = new RegExp(`([<>≤]\\s*[\\d.]+\\s*${escapedUnit})`, 'i');
+    const operatorMatch = optimalRange.match(operatorPattern);
+    
+    if (operatorMatch) {
+      const parts = optimalRange.split(operatorMatch[0]);
+      return (
+        <>
+          {parts[0]}
+          <span className="font-semibold text-gray-900 bg-blue-50 px-1.5 py-0.5 rounded">
+            {operatorMatch[0]}
+          </span>
+          {parts[1]}
+        </>
+      );
+    }
+
+    // No match found, return as-is
+    return optimalRange;
+  };
+
   return (
     <TooltipProvider>
     <div className="w-full max-w-7xl mx-auto space-y-6">
@@ -341,7 +412,7 @@ export function AnalysisResults({ results, onReset, selectedClientId: preSelecte
                         {result.unit}
                       </TableCell>
                       <TableCell className="text-sm text-gray-700 py-4">
-                        {result.optimalRange}
+                        {highlightActiveRange(result.optimalRange, result.unit)}
                       </TableCell>
                       <TableCell className="py-4">
                         {!isNA && getStatusBadge(status)}
