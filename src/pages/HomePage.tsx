@@ -10,7 +10,7 @@ import { matchBiomarkersWithRanges } from '@/lib/analyzer';
 import { createAnalysis } from '@/lib/analysis-service';
 import { matchOrCreateClient, autoCreateClient, type ClientMatchResult } from '@/lib/client-matcher';
 import type { AnalysisResult, ExtractedBiomarker } from '@/lib/biomarkers';
-import { AlertCircle, UserCircle, CheckCircle2 } from 'lucide-react';
+import { AlertCircle } from 'lucide-react';
 import { getClaudeApiKey, isSupabaseEnabled } from '@/lib/supabase';
 
 type AppState = 'upload' | 'processing' | 'confirmation' | 'analyzing' | 'results' | 'error';

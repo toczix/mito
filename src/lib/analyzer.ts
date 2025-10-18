@@ -21,7 +21,6 @@ export function matchBiomarkersWithRanges(
 ): AnalysisResult[] {
   const results: AnalysisResult[] = [];
   const matchedNames = new Set<string>();
-  const unmatchedExtracted: string[] = [];
 
   // Get all benchmarks (including custom ones)
   const benchmarks = getAllBenchmarks();
