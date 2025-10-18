@@ -34,13 +34,56 @@ export function AnalysisResults({ results, onReset, selectedClientId: preSelecte
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
-  const summary = generateSummary(results);
+  
+  // Inline editing state
+  const [editableResults, setEditableResults] = useState<AnalysisResult[]>(results);
+  const [editingCell, setEditingCell] = useState<{index: number, field: 'value' | 'unit'} | null>(null);
+  const [editValue, setEditValue] = useState('');
+  
+  const summary = generateSummary(editableResults);
 
   useEffect(() => {
     if (isSupabaseEnabled && !preSelectedClientId) {
       loadClients();
     }
   }, [preSelectedClientId]);
+
+  // Update editable results when original results change
+  useEffect(() => {
+    setEditableResults(results);
+  }, [results]);
+
+  // Handle editing
+  const startEditing = (index: number, field: 'value' | 'unit', currentValue: string) => {
+    setEditingCell({ index, field });
+    setEditValue(currentValue);
+  };
+
+  const saveEdit = () => {
+    if (editingCell) {
+      const newResults = [...editableResults];
+      if (editingCell.field === 'value') {
+        newResults[editingCell.index].hisValue = editValue;
+      } else {
+        newResults[editingCell.index].unit = editValue;
+      }
+      setEditableResults(newResults);
+      setEditingCell(null);
+    }
+  };
+
+  const cancelEdit = () => {
+    setEditingCell(null);
+    setEditValue('');
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      saveEdit();
+    } else if (e.key === 'Escape') {
+      cancelEdit();
+    }
+  };
 
   async function loadClients() {
     const activeClients = await getActiveClients();
@@ -54,7 +97,7 @@ export function AnalysisResults({ results, onReset, selectedClientId: preSelecte
     }
 
     setIsSaving(true);
-    const analysis = await createAnalysis(manualClientId, results, notes);
+    const analysis = await createAnalysis(manualClientId, editableResults, notes);
     setIsSaving(false);
 
     if (analysis) {
@@ -71,15 +114,15 @@ export function AnalysisResults({ results, onReset, selectedClientId: preSelecte
   }
 
   const copyToClipboard = () => {
-    // Generate markdown table
-    const markdown = generateMarkdownTable(results, preSelectedClientName, gender);
+    // Generate markdown table with edited results
+    const markdown = generateMarkdownTable(editableResults, preSelectedClientName, gender);
     navigator.clipboard.writeText(markdown);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
   const downloadAsMarkdown = () => {
-    const markdown = generateMarkdownTable(results, preSelectedClientName, gender);
+    const markdown = generateMarkdownTable(editableResults, preSelectedClientName, gender);
     const blob = new Blob([markdown], { type: 'text/markdown' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -381,10 +424,12 @@ export function AnalysisResults({ results, onReset, selectedClientId: preSelecte
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {results.map((result, index) => {
+                {editableResults.map((result, index) => {
                   const status = getValueStatus(result.hisValue, result.optimalRange, result.unit);
                   const isNA = result.hisValue === 'N/A';
                   const isOutOfRange = status === 'out-of-range';
+                  const isEditingValue = editingCell?.index === index && editingCell?.field === 'value';
+                  const isEditingUnit = editingCell?.index === index && editingCell?.field === 'unit';
 
                   return (
                     <TableRow 
@@ -405,25 +450,61 @@ export function AnalysisResults({ results, onReset, selectedClientId: preSelecte
                         ${isNA ? 'text-muted-foreground' : ''} 
                         ${isOutOfRange ? 'font-bold text-red-700 text-base' : 'font-semibold'}
                       `}>
-                        {!isNA && result.testDate ? (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <span className="cursor-help border-b border-dashed border-gray-400 hover:border-gray-600">
-                                {result.hisValue}
-                              </span>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p className="text-xs">
-                                Tested on: <span className="font-semibold">{formatDate(result.testDate)}</span>
-                              </p>
-                            </TooltipContent>
-                          </Tooltip>
+                        {isEditingValue ? (
+                          <Input
+                            type="text"
+                            value={editValue}
+                            onChange={(e) => setEditValue(e.target.value)}
+                            onKeyDown={handleKeyDown}
+                            onBlur={saveEdit}
+                            autoFocus
+                            className="w-24 h-8 text-sm text-right font-mono"
+                          />
                         ) : (
-                          result.hisValue
+                          <span
+                            onClick={() => startEditing(index, 'value', result.hisValue)}
+                            className="cursor-pointer hover:bg-blue-50 px-2 py-1 rounded transition-colors"
+                            title="Click to edit"
+                          >
+                            {!isNA && result.testDate ? (
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className="border-b border-dashed border-gray-400 hover:border-gray-600">
+                                    {result.hisValue}
+                                  </span>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p className="text-xs">
+                                    Tested on: <span className="font-semibold">{formatDate(result.testDate)}</span>
+                                  </p>
+                                </TooltipContent>
+                              </Tooltip>
+                            ) : (
+                              result.hisValue
+                            )}
+                          </span>
                         )}
                       </TableCell>
                       <TableCell className="text-muted-foreground text-sm py-4">
-                        {result.unit}
+                        {isEditingUnit ? (
+                          <Input
+                            type="text"
+                            value={editValue}
+                            onChange={(e) => setEditValue(e.target.value)}
+                            onKeyDown={handleKeyDown}
+                            onBlur={saveEdit}
+                            autoFocus
+                            className="w-20 h-8 text-sm"
+                          />
+                        ) : (
+                          <span
+                            onClick={() => startEditing(index, 'unit', result.unit)}
+                            className="cursor-pointer hover:bg-blue-50 px-2 py-1 rounded transition-colors"
+                            title="Click to edit"
+                          >
+                            {result.unit}
+                          </span>
+                        )}
                       </TableCell>
                       <TableCell className="text-sm text-gray-700 py-4">
                         {highlightActiveRange(result.optimalRange, result.unit)}

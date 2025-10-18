@@ -2,17 +2,18 @@ import { useState } from 'react';
 import { PdfUploader } from '@/components/PdfUploader';
 import { LoadingState } from '@/components/LoadingState';
 import { AnalysisResults } from '@/components/AnalysisResults';
+import { ClientConfirmation } from '@/components/ClientConfirmation';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { processMultiplePdfs, type ProcessedPDF } from '@/lib/pdf-processor';
 import { extractBiomarkersFromPdfs, type PatientInfo, consolidatePatientInfo } from '@/lib/claude-service';
 import { matchBiomarkersWithRanges } from '@/lib/analyzer';
 import { createAnalysis } from '@/lib/analysis-service';
-import { matchOrCreateClient, autoCreateClient } from '@/lib/client-matcher';
+import { matchOrCreateClient, autoCreateClient, type ClientMatchResult } from '@/lib/client-matcher';
 import type { AnalysisResult, ExtractedBiomarker } from '@/lib/biomarkers';
 import { AlertCircle, UserCircle, CheckCircle2 } from 'lucide-react';
 import { getClaudeApiKey, isSupabaseEnabled } from '@/lib/supabase';
 
-type AppState = 'upload' | 'processing' | 'results' | 'error';
+type AppState = 'upload' | 'processing' | 'confirmation' | 'analyzing' | 'results' | 'error';
 
 export function HomePage() {
   const [state, setState] = useState<AppState>('upload');
@@ -24,6 +25,11 @@ export function HomePage() {
   const [error, setError] = useState<string | null>(null);
   const [processingMessage, setProcessingMessage] = useState<string>('Processing...');
   const [processingProgress, setProcessingProgress] = useState<number>(0);
+  
+  // Step 1: Confirmation state
+  const [consolidatedPatientInfo, setConsolidatedPatientInfo] = useState<PatientInfo | null>(null);
+  const [matchResult, setMatchResult] = useState<ClientMatchResult | null>(null);
+  const [extractedBiomarkers, setExtractedBiomarkers] = useState<ExtractedBiomarker[]>([]);
   
   const [extractedAnalyses, setExtractedAnalyses] = useState<Array<{
     patientInfo: PatientInfo;
@@ -198,123 +204,132 @@ export function HomePage() {
       })));
       console.groupEnd();
       
-      // Use consolidated gender for initial combined results
-      const extractedGender = consolidatedPatientInfo.gender === 'female' ? 'female' : 'male';
-      let finalGender = extractedGender; // Will be overridden if client exists with different gender
-      
-      const uniqueTestDates = Array.from(
-        new Set(
-          allBiomarkersWithMeta
-            .map(item => item.testDate)
-            .filter((date): date is string => date !== null)
-        )
-      );
-      const hasMultipleDates = uniqueTestDates.length > 1;
-      
+      // STEP 1: Save extracted data and show confirmation dialog
       setProcessingProgress(90);
-      let savedCount = 0;
+      setConsolidatedPatientInfo(consolidatedPatientInfo);
+      setExtractedBiomarkers(deduplicatedBiomarkers);
+      setExtractedAnalyses(allAnalyses);
       
+      // Check if Supabase is enabled and we have patient info
       if (isSupabaseEnabled && consolidatedPatientInfo.name) {
-        setProcessingMessage('Matching or creating client...');
-        
+        setProcessingMessage('Matching client...');
         const matchResult = await matchOrCreateClient(consolidatedPatientInfo);
+        setMatchResult(matchResult);
+        setProcessingProgress(100);
         
-        let clientId: string;
-        let clientName: string;
-        
-        if (matchResult.client) {
-          clientId = matchResult.client.id;
-          clientName = matchResult.client.full_name;
-          // IMPORTANT: Use the client's stored gender, not the extracted gender
-          if (matchResult.client.gender === 'female' || matchResult.client.gender === 'male') {
-            finalGender = matchResult.client.gender;
-            console.log(`✅ Using existing client's gender: ${finalGender}`);
-          }
-          console.log(`Matched existing client: ${clientName} (${finalGender})`);
-        } else {
-          const newClient = await autoCreateClient(consolidatedPatientInfo);
-          if (!newClient) {
-            throw new Error('Failed to create client');
-          }
-          clientId = newClient.id;
-          clientName = newClient.full_name;
-          if (newClient.gender === 'female' || newClient.gender === 'male') {
-            finalGender = newClient.gender;
-          }
-          console.log(`Created new client: ${clientName} (${finalGender})`);
-        }
-        
-        setSelectedClientId(clientId);
-        setSelectedClientName(clientName);
-        
-        // Now generate results with the correct gender (client's stored gender or extracted gender)
-        const combinedResults = matchBiomarkersWithRanges(deduplicatedBiomarkers, finalGender);
-        
-        // ENHANCED LOGGING: Show matching results
-        const matched = combinedResults.filter(r => r.hisValue !== 'N/A');
-        const missing = combinedResults.filter(r => r.hisValue === 'N/A');
-        console.group('🎯 Biomarker Matching Results');
-        console.log(`Gender used: ${finalGender}`);
-        console.log(`✅ Matched: ${matched.length}`);
-        console.log(`❌ Missing: ${missing.length}`);
-        if (missing.length > 0) {
-          console.warn('Missing biomarkers:', missing.map(m => m.biomarkerName));
-        }
-        console.groupEnd();
-        
-        if (hasMultipleDates) {
-          setProcessingMessage(`Saving ${uniqueTestDates.length} analyses for ${clientName}...`);
-          
-          for (const testDate of uniqueTestDates) {
-            const biomarkersForDate = allBiomarkersWithMeta
-              .filter(item => item.testDate === testDate)
-              .map(item => item.biomarker);
-            
-            // Use the client's gender for each analysis
-            const resultsForDate = matchBiomarkersWithRanges(biomarkersForDate, finalGender);
-            
-            await createAnalysis(clientId, resultsForDate, testDate);
-            savedCount++;
-          }
-        } else {
-          setProcessingMessage(`Saving analysis for ${clientName}...`);
-          
-          await createAnalysis(clientId, combinedResults, consolidatedPatientInfo.testDate);
-          savedCount = 1;
-        }
-        
-        setExtractedAnalyses(allAnalyses);
-        setSavedAnalysesCount(savedCount);
-        setResults(combinedResults);
+        // Show confirmation dialog
+        setState('confirmation');
       } else {
-        // No Supabase or no patient name - use extracted gender
-        const combinedResults = matchBiomarkersWithRanges(deduplicatedBiomarkers, finalGender);
+        // No Supabase - go straight to results with extracted gender
+        const extractedGender = consolidatedPatientInfo.gender === 'female' ? 'female' : 'male';
+        const combinedResults = matchBiomarkersWithRanges(deduplicatedBiomarkers, extractedGender);
         
-        // ENHANCED LOGGING: Show matching results
-        const matched = combinedResults.filter(r => r.hisValue !== 'N/A');
-        const missing = combinedResults.filter(r => r.hisValue === 'N/A');
         console.group('🎯 Biomarker Matching Results');
-        console.log(`Gender used: ${finalGender}`);
-        console.log(`✅ Matched: ${matched.length}`);
-        console.log(`❌ Missing: ${missing.length}`);
-        if (missing.length > 0) {
-          console.warn('Missing biomarkers:', missing.map(m => m.biomarkerName));
-        }
+        console.log(`Gender used: ${extractedGender}`);
+        console.log(`✅ Matched: ${combinedResults.filter(r => r.hisValue !== 'N/A').length}`);
         console.groupEnd();
         
-        setExtractedAnalyses(allAnalyses);
         setResults(combinedResults);
+        setSelectedGender(extractedGender);
+        setProcessingProgress(100);
+        setState('results');
       }
-      
-      setSelectedGender(finalGender);
-      
-      setProcessingProgress(100);
-      setState('results');
     } catch (err) {
       console.error('Analysis error:', err);
       setError(err instanceof Error ? err.message : 'An unexpected error occurred');
       setState('error');
     }
+  };
+
+  // STEP 2: After user confirms patient info, create/update client and run analysis
+  const handleConfirmClient = async (confirmedInfo: PatientInfo, useExistingClient: boolean) => {
+    if (!extractedBiomarkers.length) {
+      setError('No biomarker data available');
+      setState('error');
+      return;
+    }
+
+    setState('analyzing');
+    setProcessingMessage('Creating analysis...');
+    setProcessingProgress(0);
+
+    try {
+      let clientId: string;
+      let clientName: string;
+      let finalGender: 'male' | 'female';
+
+      setProcessingProgress(20);
+
+      if (useExistingClient && matchResult?.client) {
+        // Use existing client
+        clientId = matchResult.client.id;
+        clientName = matchResult.client.full_name;
+        // Use the client's stored gender (most accurate)
+        finalGender = (matchResult.client.gender === 'female' || matchResult.client.gender === 'male') 
+          ? matchResult.client.gender 
+          : (confirmedInfo.gender === 'female' ? 'female' : 'male');
+        console.log(`✅ Using existing client: ${clientName} (${finalGender})`);
+      } else {
+        // Create new client with confirmed info
+        setProcessingMessage('Creating new client...');
+        const newClient = await autoCreateClient(confirmedInfo);
+        if (!newClient) {
+          throw new Error('Failed to create client');
+        }
+        clientId = newClient.id;
+        clientName = newClient.full_name;
+        finalGender = (newClient.gender === 'female' || newClient.gender === 'male') 
+          ? newClient.gender 
+          : 'male';
+        console.log(`✅ Created new client: ${clientName} (${finalGender})`);
+      }
+
+      setSelectedClientId(clientId);
+      setSelectedClientName(clientName);
+      setSelectedGender(finalGender);
+
+      setProcessingProgress(40);
+      setProcessingMessage('Generating analysis results...');
+
+      // Generate results with the correct gender
+      const combinedResults = matchBiomarkersWithRanges(extractedBiomarkers, finalGender);
+
+      // ENHANCED LOGGING
+      const matched = combinedResults.filter(r => r.hisValue !== 'N/A');
+      const missing = combinedResults.filter(r => r.hisValue === 'N/A');
+      console.group('🎯 Biomarker Matching Results');
+      console.log(`Gender used: ${finalGender}`);
+      console.log(`✅ Matched: ${matched.length}`);
+      console.log(`❌ Missing: ${missing.length}`);
+      if (missing.length > 0) {
+        console.warn('Missing biomarkers:', missing.map(m => m.biomarkerName));
+      }
+      console.groupEnd();
+
+      setProcessingProgress(60);
+      setProcessingMessage(`Saving analysis for ${clientName}...`);
+
+      // Save to database
+      await createAnalysis(clientId, combinedResults, confirmedInfo.testDate);
+      setSavedAnalysesCount(1);
+
+      setProcessingProgress(80);
+
+      // Update results
+      setResults(combinedResults);
+
+      setProcessingProgress(100);
+      setState('results');
+    } catch (err) {
+      console.error('Error creating analysis:', err);
+      setError(err instanceof Error ? err.message : 'An unexpected error occurred');
+      setState('error');
+    }
+  };
+
+  const handleCancelConfirmation = () => {
+    // Go back to upload
+    setState('upload');
   };
 
   const handleReset = () => {
@@ -325,6 +340,9 @@ export function HomePage() {
     setSavedAnalysesCount(0);
     setProcessingProgress(0);
     setPatientInfoDiscrepancies([]);
+    setConsolidatedPatientInfo(null);
+    setMatchResult(null);
+    setExtractedBiomarkers([]);
     setState('upload');
   };
 
@@ -433,8 +451,23 @@ export function HomePage() {
         />
       )}
 
-      {/* Processing */}
+      {/* Processing (Extraction) */}
       {state === 'processing' && (
+        <LoadingState message={processingMessage} progress={processingProgress} />
+      )}
+
+      {/* Patient Info Confirmation */}
+      {state === 'confirmation' && consolidatedPatientInfo && matchResult && (
+        <ClientConfirmation
+          patientInfo={consolidatedPatientInfo}
+          matchResult={matchResult}
+          onConfirm={handleConfirmClient}
+          onCancel={handleCancelConfirmation}
+        />
+      )}
+
+      {/* Analyzing (After confirmation) */}
+      {state === 'analyzing' && (
         <LoadingState message={processingMessage} progress={processingProgress} />
       )}
 
