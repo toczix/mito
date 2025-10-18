@@ -198,20 +198,9 @@ export function HomePage() {
       })));
       console.groupEnd();
       
-      // Use consolidated gender for combined results
-      const consolidatedGender = consolidatedPatientInfo.gender === 'female' ? 'female' : 'male';
-      const combinedResults = matchBiomarkersWithRanges(deduplicatedBiomarkers, consolidatedGender);
-      
-      // ENHANCED LOGGING: Show matching results
-      const matched = combinedResults.filter(r => r.hisValue !== 'N/A');
-      const missing = combinedResults.filter(r => r.hisValue === 'N/A');
-      console.group('🎯 Biomarker Matching Results');
-      console.log(`✅ Matched: ${matched.length}`);
-      console.log(`❌ Missing: ${missing.length}`);
-      if (missing.length > 0) {
-        console.warn('Missing biomarkers:', missing.map(m => m.biomarkerName));
-      }
-      console.groupEnd();
+      // Use consolidated gender for initial combined results
+      const extractedGender = consolidatedPatientInfo.gender === 'female' ? 'female' : 'male';
+      let finalGender = extractedGender; // Will be overridden if client exists with different gender
       
       const uniqueTestDates = Array.from(
         new Set(
@@ -236,7 +225,12 @@ export function HomePage() {
         if (matchResult.client) {
           clientId = matchResult.client.id;
           clientName = matchResult.client.full_name;
-          console.log(`Matched existing client: ${clientName}`);
+          // IMPORTANT: Use the client's stored gender, not the extracted gender
+          if (matchResult.client.gender === 'female' || matchResult.client.gender === 'male') {
+            finalGender = matchResult.client.gender;
+            console.log(`✅ Using existing client's gender: ${finalGender}`);
+          }
+          console.log(`Matched existing client: ${clientName} (${finalGender})`);
         } else {
           const newClient = await autoCreateClient(consolidatedPatientInfo);
           if (!newClient) {
@@ -244,11 +238,29 @@ export function HomePage() {
           }
           clientId = newClient.id;
           clientName = newClient.full_name;
-          console.log(`Created new client: ${clientName}`);
+          if (newClient.gender === 'female' || newClient.gender === 'male') {
+            finalGender = newClient.gender;
+          }
+          console.log(`Created new client: ${clientName} (${finalGender})`);
         }
         
         setSelectedClientId(clientId);
         setSelectedClientName(clientName);
+        
+        // Now generate results with the correct gender (client's stored gender or extracted gender)
+        const combinedResults = matchBiomarkersWithRanges(deduplicatedBiomarkers, finalGender);
+        
+        // ENHANCED LOGGING: Show matching results
+        const matched = combinedResults.filter(r => r.hisValue !== 'N/A');
+        const missing = combinedResults.filter(r => r.hisValue === 'N/A');
+        console.group('🎯 Biomarker Matching Results');
+        console.log(`Gender used: ${finalGender}`);
+        console.log(`✅ Matched: ${matched.length}`);
+        console.log(`❌ Missing: ${missing.length}`);
+        if (missing.length > 0) {
+          console.warn('Missing biomarkers:', missing.map(m => m.biomarkerName));
+        }
+        console.groupEnd();
         
         if (hasMultipleDates) {
           setProcessingMessage(`Saving ${uniqueTestDates.length} analyses for ${clientName}...`);
@@ -258,8 +270,8 @@ export function HomePage() {
               .filter(item => item.testDate === testDate)
               .map(item => item.biomarker);
             
-            // Use consolidated gender for each analysis
-            const resultsForDate = matchBiomarkersWithRanges(biomarkersForDate, consolidatedGender);
+            // Use the client's gender for each analysis
+            const resultsForDate = matchBiomarkersWithRanges(biomarkersForDate, finalGender);
             
             await createAnalysis(clientId, resultsForDate, testDate);
             savedCount++;
@@ -270,12 +282,31 @@ export function HomePage() {
           await createAnalysis(clientId, combinedResults, consolidatedPatientInfo.testDate);
           savedCount = 1;
         }
+        
+        setExtractedAnalyses(allAnalyses);
+        setSavedAnalysesCount(savedCount);
+        setResults(combinedResults);
+      } else {
+        // No Supabase or no patient name - use extracted gender
+        const combinedResults = matchBiomarkersWithRanges(deduplicatedBiomarkers, finalGender);
+        
+        // ENHANCED LOGGING: Show matching results
+        const matched = combinedResults.filter(r => r.hisValue !== 'N/A');
+        const missing = combinedResults.filter(r => r.hisValue === 'N/A');
+        console.group('🎯 Biomarker Matching Results');
+        console.log(`Gender used: ${finalGender}`);
+        console.log(`✅ Matched: ${matched.length}`);
+        console.log(`❌ Missing: ${missing.length}`);
+        if (missing.length > 0) {
+          console.warn('Missing biomarkers:', missing.map(m => m.biomarkerName));
+        }
+        console.groupEnd();
+        
+        setExtractedAnalyses(allAnalyses);
+        setResults(combinedResults);
       }
       
-      setExtractedAnalyses(allAnalyses);
-      setSavedAnalysesCount(savedCount);
-      setResults(combinedResults);
-      setSelectedGender(consolidatedGender);
+      setSelectedGender(finalGender);
       
       setProcessingProgress(100);
       setState('results');
