@@ -40,6 +40,14 @@ INSTRUCTIONS:
 4. If a biomarker appears multiple times, use the MOST RECENT value (check dates on the reports)
 5. Include ALL of these 54 core biomarkers if present - lab reports use MANY different name variations, so look carefully:
 
+   ⚠️ IMPORTANT PATTERN RECOGNITION NOTES:
+   - Lab reports vary significantly across countries, languages, and institutions
+   - Be flexible with word order: "B12 Vitamin" vs "Vitamin B12", "D Vitamin" vs "Vitamin D"
+   - Look for variations with/without hyphens and spaces: "B12", "B-12", "B 12"
+   - Check for international language variations: Spanish (Vitamina, Glucosa, Colesterol), Portuguese (Vitamina, Glicose), French (Vitamine, Glucose), German (Vitamin, Glukose), Italian (Vitamina, Glucosio)
+   - Common abbreviations may vary: FT3/fT3/F.T.3, HbA1C/HbA1c/HBA1C, etc.
+   - Some biomarkers have scientific names: Cobalamin (B12), Calcidiol (Vitamin D), Triiodothyronine (T3)
+
    LIVER FUNCTION (4):
    - ALP (may appear as: Alkaline Phosphatase, Alk Phos)
    - ALT (may appear as: Alanine Aminotransferase, SGPT)
@@ -93,22 +101,22 @@ INSTRUCTIONS:
      (may appear as: Baso, Absolute Basophils, Basos)
 
    LIPIDS (4):
-   - Total Cholesterol (may appear as: Cholesterol, Cholesterol Total)
-   - HDL Cholesterol (may appear as: HDL, HDL-C)
-   - LDL Cholesterol (may appear as: LDL, LDL-C, LDL Calculated)
-   - Triglycerides (may appear as: Trig, TG)
+   - Total Cholesterol (may appear as: Cholesterol, Chol, CHOL, Total Cholesterol, Cholesterol Total, Colesterol [Spanish/Portuguese/Italian], Cholestérol [French], Cholesterin [German])
+   - HDL Cholesterol (may appear as: HDL, HDL-C, HDL C, HDL Cholesterol, Cholesterol HDL, HDL Chol, Colesterol HDL [Spanish], Cholestérol HDL [French])
+   - LDL Cholesterol (may appear as: LDL, LDL-C, LDL C, LDL Cholesterol, Cholesterol LDL, LDL Calculated, LDL Calc, LDL Direct, Colesterol LDL [Spanish], Cholestérol LDL [French])
+   - Triglycerides (may appear as: Trig, TG, TRIG, Triglyceride, Triglycérides [French], Triglicéridos [Spanish])
 
    METABOLIC (3):
-   - Fasting Glucose (may appear as: Glucose, Glucose Fasting, FBG, Blood Glucose)
-   - HbA1C (may appear as: HbA1c, Hemoglobin A1C, A1C, Glycated Hemoglobin)
-   - Fasting Insulin (may appear as: Insulin, Insulin Fasting)
+   - Fasting Glucose (may appear as: Glucose, Gluc, GLU, Glucose Fasting, FBG, FBS, Blood Glucose, Blood Sugar, Glucosa [Spanish], Glicose [Portuguese], Glycémie [French], Glukose [German], Glucosio [Italian])
+   - HbA1C (may appear as: HbA1c, HbA1C, HBA1C, Hb A1C, A1C, A1c, Hemoglobin A1C, Glycated Hemoglobin, Glycosylated Hemoglobin, Hemoglobina Glicada [Spanish/Portuguese], Hémoglobine Glyquée [French])
+   - Fasting Insulin (may appear as: Insulin, Insulin Fasting, Serum Insulin)
 
    THYROID (5):
-   - TSH (may appear as: Thyroid Stimulating Hormone, Thyrotropin)
-   - Free T3 (may appear as: FT3, Free Triiodothyronine)
-   - Free T4 (may appear as: FT4, Free Thyroxine)
-   - TPO Antibodies (may appear as: Thyroid Peroxidase Antibodies, Anti-TPO, TPO Ab)
-   - Thyroglobulin Antibodies (may appear as: Anti-Thyroglobulin, TgAb, Anti-Tg)
+   - TSH (may appear as: TSH, T.S.H., Thyroid Stimulating Hormone, Thyroid-Stimulating Hormone, Thyrotropin, Tirotropina [Spanish/Italian], Tireotropina [Portuguese], Thyréostimuline [French])
+   - Free T3 (may appear as: Free T3, FT3, F T3, fT3, F.T.3, T3 Free, T3 Libre [Spanish/French], T3 Livre [Portuguese], Freies T3 [German], T3 Libero [Italian])
+   - Free T4 (may appear as: Free T4, FT4, F T4, fT4, F.T.4, T4 Free, T4 Libre [Spanish/French], T4 Livre [Portuguese], Freies T4 [German], T4 Libero [Italian])
+   - TPO Antibodies (may appear as: TPO Antibodies, TPO Ab, Thyroid Peroxidase Antibodies, Anti-TPO, Thyroid Peroxidase Ab)
+   - Thyroglobulin Antibodies (may appear as: Thyroglobulin Antibodies, TgAb, Anti-Thyroglobulin, Anti-Tg, Thyroglobulin Ab)
 
    HORMONES (1):
    - SHBG (may appear as: Sex Hormone Binding Globulin)
@@ -120,10 +128,10 @@ INSTRUCTIONS:
    - Transferrin Saturation % (may appear as: Transferrin Saturation, TSAT, Iron Saturation)
 
    VITAMINS (3):
-   - Vitamin D (25-Hydroxy D) (may appear as: Vitamin D, 25-Hydroxy Vitamin D, 25-OH Vitamin D, 25(OH)D)
-   - Vitamin B12 (may appear as: B12, Cobalamin, Vitamin B-12, VitB12, Vit B12, Vitamin B 12, B-12)
-     IMPORTANT: This is a critical biomarker - look carefully for it in all sections
-   - Serum Folate (may appear as: Folate, Folic Acid, Vitamin B9)
+   - Vitamin D (25-Hydroxy D) (may appear as: Vitamin D, D Vitamin, 25-Hydroxy Vitamin D, 25-OH Vitamin D, 25(OH)D, Calcidiol, Vitamina D [Spanish/Portuguese/Italian], Vitamine D [French])
+   - Vitamin B12 (may appear as: B12, B-12, B 12, Vitamin B12, B12 Vitamin, Cobalamin, Vitamin B-12, VitB12, Vit B12, Vitamin B 12, B12 Vitamina [Spanish], B12 Vitamine [French])
+     IMPORTANT: This is a critical biomarker - look carefully for it in all sections and check for various word orders (e.g., "B12 Vitamin" vs "Vitamin B12")
+   - Serum Folate (may appear as: Folate, Folic Acid, Vitamin B9, B9, Folato [Spanish/Italian], Acide Folique [French], Folsäure [German])
 
    OTHER (3):
    - Homocysteine (may appear as: Homocystine, Plasma Homocysteine)
@@ -164,6 +172,12 @@ IMPORTANT RULES:
 - If patient info is not found, use null
 - Do NOT include any explanatory text, only the JSON object
 - Ensure the JSON is valid and parseable
+- ⚠️ BE EXTREMELY FLEXIBLE with biomarker name matching - check for ALL possible variations including:
+  * Different word orders (e.g., "B12 Vitamin" vs "Vitamin B12")
+  * With/without hyphens and spaces (e.g., "B12", "B-12", "B 12")
+  * Abbreviations and full names (e.g., "TSH" vs "Thyroid Stimulating Hormone")
+  * International language variations (Spanish, Portuguese, French, German, Italian)
+  * Scientific names (e.g., Cobalamin for B12, Calcidiol for Vitamin D)
 
 ⚠️ EXTRACTION REQUIREMENT: 
 You should aim to extract AT LEAST 30-40 biomarkers from a typical comprehensive lab report. If you're only extracting a few biomarkers, you're likely missing data - go back and look more carefully at ALL sections of the document, including:

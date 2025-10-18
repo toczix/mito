@@ -26,7 +26,14 @@ export function ClientConfirmation({
   const [editedInfo, setEditedInfo] = useState<PatientInfo>(patientInfo);
   const [useExisting, setUseExisting] = useState(matchResult.matched);
 
+  // Debug logging
   useEffect(() => {
+    console.log('📋 ClientConfirmation received patientInfo:', patientInfo);
+    console.log('📋 Match result:', matchResult);
+  }, []);
+
+  useEffect(() => {
+    console.log('📋 Updating editedInfo with patientInfo:', patientInfo);
     setEditedInfo(patientInfo);
     setUseExisting(matchResult.matched);
   }, [patientInfo, matchResult]);
@@ -163,15 +170,15 @@ export function ClientConfirmation({
 
             {/* Gender */}
             <div className="space-y-2">
-              <Label htmlFor="patient-gender">Gender</Label>
+              <Label htmlFor="patient-gender">Gender *</Label>
               <Select
-                value={editedInfo.gender || 'other'}
+                value={editedInfo.gender || undefined}
                 onValueChange={(value: 'male' | 'female' | 'other') => 
                   setEditedInfo({ ...editedInfo, gender: value })
                 }
               >
                 <SelectTrigger id="patient-gender">
-                  <SelectValue />
+                  <SelectValue placeholder="Select gender..." />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="male">Male</SelectItem>
@@ -179,20 +186,6 @@ export function ClientConfirmation({
                   <SelectItem value="other">Other</SelectItem>
                 </SelectContent>
               </Select>
-            </div>
-
-            {/* Test Date */}
-            <div className="space-y-2">
-              <Label htmlFor="test-date">Lab Test Date</Label>
-              <div className="flex items-center gap-2">
-                <Calendar className="h-4 w-4 text-muted-foreground" />
-                <Input
-                  id="test-date"
-                  type="date"
-                  value={editedInfo.testDate || ''}
-                  onChange={(e) => setEditedInfo({ ...editedInfo, testDate: e.target.value })}
-                />
-              </div>
             </div>
           </div>
         </div>
@@ -205,10 +198,10 @@ export function ClientConfirmation({
           <Button 
             onClick={handleConfirm} 
             className="flex-1 gap-2"
-            disabled={!editedInfo.name}
+            disabled={!editedInfo.name || !editedInfo.gender}
           >
             <CheckCircle2 className="h-4 w-4" />
-            {useExisting && matchResult.client ? 'Add to Existing Client' : 'Create Client & Continue'}
+            {useExisting && matchResult.client ? 'Use This Client & Continue' : 'Continue to Analysis'}
           </Button>
         </div>
       </CardContent>

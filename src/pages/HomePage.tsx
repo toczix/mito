@@ -34,6 +34,7 @@ export function HomePage() {
   const [extractedAnalyses, setExtractedAnalyses] = useState<Array<{
     patientInfo: PatientInfo;
     results: AnalysisResult[];
+    biomarkers: ExtractedBiomarker[];
     fileName: string;
     panelName: string;
   }>>([]);
@@ -109,7 +110,12 @@ export function HomePage() {
       setProcessingProgress(70);
       
       const allPatientInfos = claudeResponses.map(r => r.patientInfo);
+      console.log('📊 All extracted patient infos:', allPatientInfos);
+      
       const { consolidated: consolidatedPatientInfo, discrepancies, confidence } = consolidatePatientInfo(allPatientInfos);
+      console.log('✅ Consolidated patient info:', consolidatedPatientInfo);
+      console.log('⚠️ Discrepancies:', discrepancies);
+      console.log('📊 Confidence:', confidence);
       
       setPatientInfoDiscrepancies(discrepancies);
       
@@ -157,6 +163,7 @@ export function HomePage() {
         allAnalyses.push({
           patientInfo: claudeResponse.patientInfo,
           results: analysisResults,
+          biomarkers: claudeResponse.biomarkers, // Store original extracted biomarkers
           fileName: processedPdf.fileName,
           panelName: claudeResponse.panelName,
         });
@@ -210,30 +217,25 @@ export function HomePage() {
       setExtractedBiomarkers(deduplicatedBiomarkers);
       setExtractedAnalyses(allAnalyses);
       
-      // Check if Supabase is enabled and we have patient info
+      // ALWAYS show confirmation dialog so user can review/edit patient info
       if (isSupabaseEnabled && consolidatedPatientInfo.name) {
+        // With Supabase: Try to match existing client
         setProcessingMessage('Matching client...');
         const matchResult = await matchOrCreateClient(consolidatedPatientInfo);
         setMatchResult(matchResult);
-        setProcessingProgress(100);
-        
-        // Show confirmation dialog
-        setState('confirmation');
       } else {
-        // No Supabase - go straight to results with extracted gender
-        const extractedGender = consolidatedPatientInfo.gender === 'female' ? 'female' : 'male';
-        const combinedResults = matchBiomarkersWithRanges(deduplicatedBiomarkers, extractedGender);
-        
-        console.group('🎯 Biomarker Matching Results');
-        console.log(`Gender used: ${extractedGender}`);
-        console.log(`✅ Matched: ${combinedResults.filter(r => r.hisValue !== 'N/A').length}`);
-        console.groupEnd();
-        
-        setResults(combinedResults);
-        setSelectedGender(extractedGender);
-        setProcessingProgress(100);
-        setState('results');
+        // Without Supabase: Create a dummy match result for new client
+        setMatchResult({
+          matched: false,
+          client: null,
+          confidence: 'low',
+          needsConfirmation: true,
+          suggestedAction: 'create-new'
+        });
       }
+      
+      setProcessingProgress(100);
+      setState('confirmation');
     } catch (err) {
       console.error('Analysis error:', err);
       setError(err instanceof Error ? err.message : 'An unexpected error occurred');
@@ -254,69 +256,167 @@ export function HomePage() {
     setProcessingProgress(0);
 
     try {
-      let clientId: string;
-      let clientName: string;
-      let finalGender: 'male' | 'female';
+      let clientId: string = '';
+      let clientName: string = confirmedInfo.name || 'Unknown';
+      let finalGender: 'male' | 'female' = confirmedInfo.gender === 'female' ? 'female' : 'male';
 
       setProcessingProgress(20);
 
-      if (useExistingClient && matchResult?.client) {
-        // Use existing client
-        clientId = matchResult.client.id;
-        clientName = matchResult.client.full_name;
-        // Use the client's stored gender (most accurate)
-        finalGender = (matchResult.client.gender === 'female' || matchResult.client.gender === 'male') 
-          ? matchResult.client.gender 
-          : (confirmedInfo.gender === 'female' ? 'female' : 'male');
-        console.log(`✅ Using existing client: ${clientName} (${finalGender})`);
-      } else {
-        // Create new client with confirmed info
-        setProcessingMessage('Creating new client...');
-        const newClient = await autoCreateClient(confirmedInfo);
-        if (!newClient) {
-          throw new Error('Failed to create client');
+      // Only create/use client if Supabase is enabled
+      if (isSupabaseEnabled) {
+        if (useExistingClient && matchResult?.client) {
+          // Use existing client
+          clientId = matchResult.client.id;
+          clientName = matchResult.client.full_name;
+          // Use the client's stored gender (most accurate)
+          finalGender = (matchResult.client.gender === 'female' || matchResult.client.gender === 'male') 
+            ? matchResult.client.gender 
+            : finalGender;
+          console.log(`✅ Using existing client: ${clientName} (${finalGender})`);
+        } else {
+          // Create new client with confirmed info
+          setProcessingMessage('Creating new client...');
+          const newClient = await autoCreateClient(confirmedInfo);
+          if (!newClient) {
+            throw new Error('Failed to create client');
+          }
+          clientId = newClient.id;
+          clientName = newClient.full_name;
+          finalGender = (newClient.gender === 'female' || newClient.gender === 'male') 
+            ? newClient.gender 
+            : finalGender;
+          console.log(`✅ Created new client: ${clientName} (${finalGender})`);
         }
-        clientId = newClient.id;
-        clientName = newClient.full_name;
-        finalGender = (newClient.gender === 'female' || newClient.gender === 'male') 
-          ? newClient.gender 
-          : 'male';
-        console.log(`✅ Created new client: ${clientName} (${finalGender})`);
+
+        setSelectedClientId(clientId);
+      } else {
+        // No Supabase - just use the confirmed info
+        console.log(`✅ Using confirmed info: ${clientName} (${finalGender}) [No database]`);
       }
 
-      setSelectedClientId(clientId);
       setSelectedClientName(clientName);
       setSelectedGender(finalGender);
 
       setProcessingProgress(40);
-      setProcessingMessage('Generating analysis results...');
+      setProcessingMessage('Grouping biomarkers by test date...');
 
-      // Generate results with the correct gender
-      const combinedResults = matchBiomarkersWithRanges(extractedBiomarkers, finalGender);
+      // Group biomarkers by their test date using the ORIGINAL extracted biomarkers
+      const biomarkersByDate = new Map<string, ExtractedBiomarker[]>();
+      
+      extractedAnalyses.forEach(analysis => {
+        const testDate = analysis.patientInfo.testDate || 'no-date';
+        if (!biomarkersByDate.has(testDate)) {
+          biomarkersByDate.set(testDate, []);
+        }
+        
+        // Use the original biomarkers from the Claude extraction (not the matched results)
+        // This preserves the actual values from each test date
+        biomarkersByDate.get(testDate)!.push(...analysis.biomarkers);
+      });
 
-      // ENHANCED LOGGING
-      const matched = combinedResults.filter(r => r.hisValue !== 'N/A');
-      const missing = combinedResults.filter(r => r.hisValue === 'N/A');
-      console.group('🎯 Biomarker Matching Results');
-      console.log(`Gender used: ${finalGender}`);
-      console.log(`✅ Matched: ${matched.length}`);
-      console.log(`❌ Missing: ${missing.length}`);
-      if (missing.length > 0) {
-        console.warn('Missing biomarkers:', missing.map(m => m.biomarkerName));
-      }
+      // Deduplicate biomarkers within each date group
+      biomarkersByDate.forEach((biomarkers, date) => {
+        const deduped = new Map<string, ExtractedBiomarker>();
+        biomarkers.forEach(biomarker => {
+          const key = biomarker.name.toLowerCase().trim();
+          // If we haven't seen this biomarker yet, or this one has a non-N/A value, keep it
+          if (!deduped.has(key) || (biomarker.value !== 'N/A' && deduped.get(key)?.value === 'N/A')) {
+            deduped.set(key, biomarker);
+          }
+        });
+        biomarkersByDate.set(date, Array.from(deduped.values()));
+      });
+
+      console.group('📅 Biomarkers Grouped by Date');
+      console.log(`Found ${biomarkersByDate.size} unique date(s)`);
+      biomarkersByDate.forEach((biomarkers, date) => {
+        console.log(`  ${date}: ${biomarkers.length} biomarkers`);
+      });
       console.groupEnd();
 
-      setProcessingProgress(60);
-      setProcessingMessage(`Saving analysis for ${clientName}...`);
+      setProcessingProgress(50);
+      setProcessingMessage('Generating analysis results...');
 
-      // Save to database
-      await createAnalysis(clientId, combinedResults, confirmedInfo.testDate);
-      setSavedAnalysesCount(1);
+      // If we have multiple dates, create separate analyses for each
+      let analysesCreated = 0;
+      let allResults: AnalysisResult[] = [];
+
+      if (biomarkersByDate.size > 1 && isSupabaseEnabled && clientId) {
+        // Multiple test dates - create separate analyses
+        console.log('🔄 Creating separate analyses for each test date...');
+        
+        let dateIndex = 0;
+        for (const [testDate, dateBiomarkers] of biomarkersByDate.entries()) {
+          dateIndex++;
+          const progressInStep = 50 + (dateIndex / biomarkersByDate.size) * 30;
+          setProcessingProgress(Math.round(progressInStep));
+          
+          if (testDate === 'no-date') {
+            console.warn('⚠️ Skipping biomarkers with no test date');
+            continue;
+          }
+          
+          setProcessingMessage(`Saving analysis ${dateIndex} of ${biomarkersByDate.size}...`);
+          
+          // Generate results for this date's biomarkers
+          const dateResults = matchBiomarkersWithRanges(dateBiomarkers, finalGender);
+          
+          // Save analysis with the specific test date
+          await createAnalysis(clientId, dateResults, testDate);
+          analysesCreated++;
+          
+          // Merge results for display (keep the most complete/recent biomarker values)
+          dateResults.forEach(newResult => {
+            const existingIndex = allResults.findIndex(
+              r => r.biomarkerName.toLowerCase() === newResult.biomarkerName.toLowerCase()
+            );
+            if (existingIndex === -1) {
+              allResults.push(newResult);
+            } else if (newResult.hisValue !== 'N/A' && allResults[existingIndex].hisValue === 'N/A') {
+              allResults[existingIndex] = newResult;
+            }
+          });
+        }
+        
+        setSavedAnalysesCount(analysesCreated);
+        console.log(`✅ Created ${analysesCreated} separate analyses`);
+      } else {
+        // Single test date or no Supabase - create one combined analysis
+        const combinedResults = matchBiomarkersWithRanges(extractedBiomarkers, finalGender);
+        allResults = combinedResults;
+
+        // ENHANCED LOGGING
+        const matched = combinedResults.filter(r => r.hisValue !== 'N/A');
+        const missing = combinedResults.filter(r => r.hisValue === 'N/A');
+        console.group('🎯 Biomarker Matching Results');
+        console.log(`Gender used: ${finalGender}`);
+        console.log(`✅ Matched: ${matched.length}`);
+        console.log(`❌ Missing: ${missing.length}`);
+        if (missing.length > 0) {
+          console.warn('Missing biomarkers:', missing.map(m => m.biomarkerName));
+        }
+        console.groupEnd();
+
+        setProcessingProgress(60);
+
+        // Save to database only if Supabase is enabled and we have a client ID
+        if (isSupabaseEnabled && clientId) {
+          setProcessingMessage(`Saving analysis for ${clientName}...`);
+          // Use the single test date if available, otherwise null
+          const singleTestDate = biomarkersByDate.size === 1 
+            ? Array.from(biomarkersByDate.keys())[0]
+            : null;
+          const finalTestDate = (singleTestDate && singleTestDate !== 'no-date') ? singleTestDate : null;
+          
+          await createAnalysis(clientId, combinedResults, finalTestDate);
+          setSavedAnalysesCount(1);
+        }
+      }
 
       setProcessingProgress(80);
 
-      // Update results
-      setResults(combinedResults);
+      // Update results for display (show combined results from all dates)
+      setResults(allResults);
 
       setProcessingProgress(100);
       setState('results');
@@ -360,60 +460,20 @@ export function HomePage() {
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-4">
       {/* Hero Section */}
       {state === 'upload' && (
-        <div className="text-center max-w-2xl mx-auto mb-8">
-          <h2 className="text-2xl font-bold mb-3">
+        <div className="text-center max-w-3xl mx-auto">
+          <h2 className="text-xl font-bold mb-2">
             Automated Biomarker Analysis
           </h2>
-          <p className="text-muted-foreground">
+          <p className="text-sm text-muted-foreground">
             Upload clinical pathology reports and patient information will be automatically detected.
             Get instant comparison against optimal reference ranges for all 54 biomarkers.
           </p>
         </div>
       )}
 
-      {/* Summary Badge */}
-      {(state === 'results') && extractedAnalyses.length > 0 && (
-        <div className="max-w-2xl mx-auto space-y-3">
-          {patientInfoDiscrepancies.length > 0 && (
-            <Alert>
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
-                <p className="font-semibold text-sm">Patient info consolidated from multiple documents:</p>
-                <div className="mt-2 space-y-1 text-xs">
-                  {patientInfoDiscrepancies.map((discrepancy, i) => (
-                    <div key={i} className="flex items-center gap-2">
-                      <span className="text-muted-foreground">•</span>
-                      <span>{discrepancy}</span>
-                    </div>
-                  ))}
-                </div>
-              </AlertDescription>
-            </Alert>
-          )}
-          
-          <div className="p-4 bg-secondary rounded-lg">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <UserCircle className="h-5 w-5 text-muted-foreground" />
-                <span className="text-sm font-semibold">
-                  {extractedAnalyses.length === 1 
-                    ? 'Processed 1 document'
-                    : `${extractedAnalyses.length} documents`}
-                </span>
-              </div>
-              {savedAnalysesCount > 0 && (
-                <div className="text-sm text-muted-foreground flex items-center gap-1">
-                  <CheckCircle2 className="h-4 w-4 text-green-600" />
-                  <span>{savedAnalysesCount} {savedAnalysesCount > 1 ? 'analyses' : 'analysis'} saved to {selectedClientName}</span>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Error Display */}
       {state === 'error' && error && (
@@ -480,6 +540,9 @@ export function HomePage() {
             selectedClientId={selectedClientId}
             selectedClientName={selectedClientName}
             gender={selectedGender}
+            documentCount={extractedAnalyses.length}
+            savedAnalysesCount={savedAnalysesCount}
+            patientInfoDiscrepancies={patientInfoDiscrepancies}
           />
         </div>
       )}

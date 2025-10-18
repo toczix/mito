@@ -105,7 +105,22 @@ export const BIOMARKERS: Biomarker[] = [
     femaleRange: "60-100 µmol/L (0.68-1.13 mg/dL)",
     units: ["µmol/L", "umol/L", "mg/dL"],
     category: "Kidney Function",
-    aliases: ["Serum Creatinine", "Creat", "CREA", "Creatinina", "S-Creatinine"]
+    aliases: [
+      // English variations
+      "Creatinine", "Creat", "CREA", "Cre", "CR",
+      "Serum Creatinine", "Creatinine Serum", "S-Creatinine",
+      "Blood Creatinine", "Creatinine Level",
+      // Spanish
+      "Creatinina", "Creatinina Sérica",
+      // Portuguese
+      "Creatinina", "Creatinina Sérica",
+      // French
+      "Créatinine", "Créatinine Sérique",
+      // German
+      "Kreatinin", "Serum-Kreatinin",
+      // Italian
+      "Creatinina", "Creatinina Sierica"
+    ]
   },
   {
     name: "Eosinophils",
@@ -121,7 +136,25 @@ export const BIOMARKERS: Biomarker[] = [
     femaleRange: "4.44-5.0 mmol/L (80-90 mg/dL)",
     units: ["mmol/L", "mg/dL"],
     category: "Metabolic",
-    aliases: ["Glucose", "Glucose Fasting", "FBG", "Fasting Blood Glucose", "Blood Glucose", "Gluc", "Glucosa", "Glucose (Fasting)", "GLU", "Blood Glucose Level", "Serum Glucose", "Plasma Glucose"]
+    aliases: [
+      // English variations
+      "Glucose", "Gluc", "GLU", "Glu",
+      "Fasting Glucose", "Glucose Fasting", "Glucose (Fasting)", "Glucose, Fasting",
+      "FBG", "FBS", "Fasting Blood Glucose", "Fasting Blood Sugar",
+      "Blood Glucose", "Blood Sugar", "Blood Glucose Level", "Blood Sugar Level",
+      "Serum Glucose", "Plasma Glucose", "Glucose Serum", "Glucose Plasma",
+      "Glucose Level", "Sugar Level",
+      // Spanish
+      "Glucosa", "Glucosa en Ayunas", "Glucosa Sanguínea", "Azúcar en Sangre", "Glicemia",
+      // Portuguese
+      "Glicose", "Glicose em Jejum", "Glicose Sanguínea", "Glicemia",
+      // French
+      "Glucose", "Glycémie", "Glycémie à Jeun", "Glucose à Jeun",
+      // German
+      "Glukose", "Nüchtern-Glukose", "Blutzucker",
+      // Italian
+      "Glucosio", "Glicemia", "Glucosio a Digiuno"
+    ]
   },
   {
     name: "Fasting Insulin",
@@ -137,7 +170,22 @@ export const BIOMARKERS: Biomarker[] = [
     femaleRange: "50-150 µg/L",
     units: ["µg/L", "ug/L", "ng/mL"],
     category: "Iron Studies",
-    aliases: ["Serum Ferritin"]
+    aliases: [
+      // English variations
+      "Ferritin", "Ferr", "FER",
+      "Serum Ferritin", "Ferritin Serum", "S-Ferritin",
+      "Ferritin Level",
+      // Spanish
+      "Ferritina", "Ferritina Sérica",
+      // Portuguese
+      "Ferritina", "Ferritina Sérica",
+      // French
+      "Ferritine", "Ferritine Sérique",
+      // German
+      "Ferritin", "Serum-Ferritin",
+      // Italian
+      "Ferritina", "Ferritina Sierica"
+    ]
   },
   {
     name: "Free T3",
@@ -145,7 +193,23 @@ export const BIOMARKERS: Biomarker[] = [
     femaleRange: "3.0-4.5 pg/mL (4.6-6.9 pmol/L)",
     units: ["pg/mL", "pmol/L"],
     category: "Thyroid",
-    aliases: ["FT3", "Free Triiodothyronine", "Triiodothyronine Free"]
+    aliases: [
+      // English variations
+      "Free T3", "FT3", "F T3", "F.T.3", "fT3",
+      "T3 Free", "T3, Free", "Free T 3",
+      "Free Triiodothyronine", "Triiodothyronine Free", "Triiodothyronine, Free",
+      "Free Tri-iodothyronine",
+      // Spanish
+      "T3 Libre", "FT3", "Triyodotironina Libre",
+      // Portuguese
+      "T3 Livre", "FT3", "Triiodotironina Livre",
+      // French
+      "T3 Libre", "FT3", "Triiodothyronine Libre",
+      // German
+      "Freies T3", "FT3", "Freies Triiodthyronin",
+      // Italian
+      "T3 Libero", "FT3", "Triiodotironina Libera"
+    ]
   },
   {
     name: "Free T4",
@@ -153,7 +217,23 @@ export const BIOMARKERS: Biomarker[] = [
     femaleRange: "1.0-1.55 ng/dL (13-20 pmol/L)",
     units: ["ng/dL", "pmol/L"],
     category: "Thyroid",
-    aliases: ["FT4", "Free Thyroxine", "Thyroxine Free"]
+    aliases: [
+      // English variations
+      "Free T4", "FT4", "F T4", "F.T.4", "fT4",
+      "T4 Free", "T4, Free", "Free T 4",
+      "Free Thyroxine", "Thyroxine Free", "Thyroxine, Free",
+      "Free Tetraiodothyronine",
+      // Spanish
+      "T4 Libre", "FT4", "Tiroxina Libre",
+      // Portuguese
+      "T4 Livre", "FT4", "Tiroxina Livre",
+      // French
+      "T4 Libre", "FT4", "Thyroxine Libre",
+      // German
+      "Freies T4", "FT4", "Freies Thyroxin",
+      // Italian
+      "T4 Libero", "FT4", "Tiroxina Libera"
+    ]
   },
   {
     name: "GGT",
@@ -177,7 +257,25 @@ export const BIOMARKERS: Biomarker[] = [
     femaleRange: "5.0-5.3 % (31-34 mmol/mol)",
     units: ["%", "mmol/mol"],
     category: "Metabolic",
-    aliases: ["HbA1c", "Hemoglobin A1C", "A1C", "Glycated Hemoglobin", "Glycohemoglobin", "Haemoglobin A1C", "Hb A1c", "Hgb A1C"]
+    aliases: [
+      // English variations
+      "HbA1C", "HbA1c", "Hb A1C", "Hb A1c", "HBA1C", "HBA1c",
+      "A1C", "A1c", "Hemoglobin A1C", "Hemoglobin A1c",
+      "Glycated Hemoglobin", "Glycosylated Hemoglobin", "Glycohemoglobin",
+      "Haemoglobin A1C", "Haemoglobin A1c",
+      "Hgb A1C", "Hgb A1c", "HGB A1C",
+      "Glycated Hb", "Glycated HGB", "GHb",
+      // Spanish
+      "Hemoglobina Glicosilada", "Hemoglobina Glicada", "HbA1c", "A1C",
+      // Portuguese
+      "Hemoglobina Glicada", "HbA1c", "A1C",
+      // French
+      "Hémoglobine Glyquée", "HbA1c", "A1C",
+      // German
+      "Glykiertes Hämoglobin", "HbA1c", "A1C",
+      // Italian
+      "Emoglobina Glicata", "HbA1c", "A1C"
+    ]
   },
   {
     name: "HCT",
@@ -193,7 +291,23 @@ export const BIOMARKERS: Biomarker[] = [
     femaleRange: "1.29-2.2 mmol/L (50-85 mg/dL)",
     units: ["mmol/L", "mg/dL"],
     category: "Lipids",
-    aliases: ["HDL", "HDL-C", "HDL-Cholesterol", "High Density Lipoprotein", "HDL Colesterol", "HDL-Colesterol", "HDL Chol", "HDL-Chol"]
+    aliases: [
+      // English variations
+      "HDL", "HDL-C", "HDL C", "HDLC",
+      "HDL Cholesterol", "HDL-Cholesterol", "Cholesterol HDL",
+      "HDL Chol", "HDL-Chol", "Chol HDL",
+      "High Density Lipoprotein", "High-Density Lipoprotein",
+      // Spanish
+      "HDL", "Colesterol HDL", "HDL Colesterol", "HDL-Colesterol",
+      // Portuguese
+      "HDL", "Colesterol HDL", "HDL Colesterol",
+      // French
+      "HDL", "Cholestérol HDL", "HDL Cholestérol",
+      // German
+      "HDL", "HDL Cholesterin", "HDL-Cholesterin",
+      // Italian
+      "HDL", "Colesterolo HDL", "HDL Colesterolo"
+    ]
   },
   {
     name: "Hemoglobin",
@@ -225,7 +339,25 @@ export const BIOMARKERS: Biomarker[] = [
     femaleRange: "2.07-4.4 mmol/L (80-170 mg/dL)",
     units: ["mmol/L", "mg/dL"],
     category: "Lipids",
-    aliases: ["LDL", "LDL-C", "LDL-Cholesterol", "Low Density Lipoprotein", "LDL Calculated", "LDL Colesterol", "LDL-Colesterol", "LDL Chol", "LDL-Chol"]
+    aliases: [
+      // English variations
+      "LDL", "LDL-C", "LDL C", "LDLC",
+      "LDL Cholesterol", "LDL-Cholesterol", "Cholesterol LDL",
+      "LDL Chol", "LDL-Chol", "Chol LDL",
+      "Low Density Lipoprotein", "Low-Density Lipoprotein",
+      "LDL Calculated", "LDL Calc", "Calculated LDL",
+      "LDL Direct", "Direct LDL",
+      // Spanish
+      "LDL", "Colesterol LDL", "LDL Colesterol", "LDL-Colesterol",
+      // Portuguese
+      "LDL", "Colesterol LDL", "LDL Colesterol",
+      // French
+      "LDL", "Cholestérol LDL", "LDL Cholestérol",
+      // German
+      "LDL", "LDL Cholesterin", "LDL-Cholesterin",
+      // Italian
+      "LDL", "Colesterolo LDL", "LDL Colesterolo"
+    ]
   },
   {
     name: "Lymphocytes",
@@ -321,7 +453,22 @@ export const BIOMARKERS: Biomarker[] = [
     femaleRange: "34-59 nmol/L (15-26 ng/mL)",
     units: ["nmol/L", "ng/mL"],
     category: "Vitamins",
-    aliases: ["Folate", "Folic Acid", "Folate Serum", "Vitamin B9"]
+    aliases: [
+      // English variations
+      "Folate", "Folic Acid", "Serum Folate", "Folate Serum",
+      "Vitamin B9", "Vitamin B-9", "B9", "B-9",
+      "Folate Level", "Folic Acid Level",
+      // Spanish
+      "Folato", "Ácido Fólico", "Vitamina B9", "Folato Sérico",
+      // Portuguese
+      "Folato", "Ácido Fólico", "Vitamina B9", "Folato Sérico",
+      // French
+      "Folate", "Acide Folique", "Vitamine B9",
+      // German
+      "Folsäure", "Folat", "Vitamin B9",
+      // Italian
+      "Folato", "Acido Folico", "Vitamina B9"
+    ]
   },
   {
     name: "Serum Iron",
@@ -377,7 +524,23 @@ export const BIOMARKERS: Biomarker[] = [
     femaleRange: "1.0-2.5 mIU/L",
     units: ["mIU/L", "µIU/mL", "uIU/mL"],
     category: "Thyroid",
-    aliases: ["Thyroid Stimulating Hormone", "Thyrotropin"]
+    aliases: [
+      // English variations
+      "TSH", "T.S.H.", "T S H",
+      "Thyroid Stimulating Hormone", "Thyroid-Stimulating Hormone",
+      "Thyrotropin", "Thyrotropic Hormone",
+      "Serum TSH", "TSH Serum",
+      // Spanish
+      "TSH", "Hormona Estimulante de Tiroides", "Tirotropina",
+      // Portuguese
+      "TSH", "Hormônio Estimulante da Tireoide", "Tireotropina",
+      // French
+      "TSH", "Thyréostimuline", "Hormone Thyréotrope",
+      // German
+      "TSH", "Thyreoidea-stimulierendes Hormon", "Thyreotropin",
+      // Italian
+      "TSH", "Ormone Tireostimolante", "Tireotropina"
+    ]
   },
   {
     name: "Thyroglobulin Antibodies",
@@ -401,7 +564,23 @@ export const BIOMARKERS: Biomarker[] = [
     femaleRange: "4.2-6.4 mmol/L (162-240 mg/dL)",
     units: ["mmol/L", "mg/dL"],
     category: "Lipids",
-    aliases: ["Cholesterol", "Cholesterol Total", "Total Chol", "Colesterol", "Total Colesterol", "Colesterol Total", "Chol Total"]
+    aliases: [
+      // English variations
+      "Cholesterol", "Chol", "CHOL",
+      "Total Cholesterol", "Cholesterol Total", "Total Chol", "Chol Total",
+      "Serum Cholesterol", "Cholesterol Serum",
+      "T-CHOL", "T-Chol", "T Chol",
+      // Spanish
+      "Colesterol", "Colesterol Total", "Total Colesterol",
+      // Portuguese
+      "Colesterol", "Colesterol Total",
+      // French
+      "Cholestérol", "Cholestérol Total",
+      // German
+      "Cholesterin", "Gesamtcholesterin",
+      // Italian
+      "Colesterolo", "Colesterolo Totale"
+    ]
   },
   {
     name: "Total Protein",
@@ -433,7 +612,25 @@ export const BIOMARKERS: Biomarker[] = [
     femaleRange: "350-650 pmol/L (474-880 pg/mL)",
     units: ["pmol/L", "pg/mL"],
     category: "Vitamins",
-    aliases: ["B12", "Cobalamin", "Vitamin B-12", "VitB12", "Vit B12", "Vitamina B12"]
+    aliases: [
+      // English variations
+      "B12", "B-12", "B 12",
+      "Vitamin B12", "Vitamin B-12", "Vitamin B 12",
+      "B12 Vitamin", "B-12 Vitamin", "B 12 Vitamin",
+      "VitB12", "Vit B12", "Vit B-12", "Vit B 12",
+      "Cobalamin", "Cyanocobalamin", "Methylcobalamin",
+      "Serum B12", "Serum Cobalamin",
+      // Spanish
+      "Vitamina B12", "Vitamina B-12", "Vitamina B 12", "B12 Vitamina", "Cobalamina",
+      // Portuguese
+      "Vitamina B12", "B12 Vitamina", "Cobalamina",
+      // French
+      "Vitamine B12", "B12 Vitamine",
+      // German
+      "Vitamin B12",
+      // Italian
+      "Vitamina B12", "B12 Vitamina"
+    ]
   },
   {
     name: "Vitamin D (25-Hydroxy D)",
@@ -441,7 +638,26 @@ export const BIOMARKERS: Biomarker[] = [
     femaleRange: "125-225 nmol/L (50-90 ng/mL)",
     units: ["nmol/L", "ng/mL"],
     category: "Vitamins",
-    aliases: ["Vitamin D", "25-Hydroxy Vitamin D", "25-OH Vitamin D", "25(OH)D", "Vitamin D 25-Hydroxy", "VitD", "Vit D", "Vitamina D", "25-OH-D3", "25-Hydroxyvitamin D"]
+    aliases: [
+      // English variations
+      "Vitamin D", "Vit D", "VitD", "Vit. D",
+      "25-Hydroxy Vitamin D", "25-OH Vitamin D", "25(OH)D", "25 OH D", "25-OH-D",
+      "Vitamin D 25-Hydroxy", "Vitamin D 25 Hydroxy", "Vitamin D, 25-Hydroxy",
+      "25-Hydroxyvitamin D", "25 Hydroxyvitamin D", "25-OH-D3", "25-OH D3",
+      "Calcidiol", "Cholecalciferol", "25-Hydroxycholecalciferol",
+      "Serum Vitamin D", "Total Vitamin D", "Vitamin D Total",
+      "D Vitamin", "D-Vitamin",
+      // Spanish
+      "Vitamina D", "25-Hidroxi Vitamina D", "Vitamina D 25-Hidroxi", "D Vitamina",
+      // Portuguese  
+      "Vitamina D", "25-Hidroxi Vitamina D", "D Vitamina",
+      // French
+      "Vitamine D", "25-Hydroxy Vitamine D", "D Vitamine",
+      // German
+      "Vitamin D", "25-Hydroxy Vitamin D",
+      // Italian
+      "Vitamina D", "25-Idrossi Vitamina D", "D Vitamina"
+    ]
   },
   {
     name: "WBC",

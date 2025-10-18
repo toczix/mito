@@ -8,6 +8,7 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
+import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { generateSummary, getValueStatus } from '@/lib/analyzer';
@@ -24,9 +25,21 @@ interface AnalysisResultsProps {
   selectedClientId?: string;
   selectedClientName?: string;
   gender?: 'male' | 'female';
+  documentCount?: number;
+  savedAnalysesCount?: number;
+  patientInfoDiscrepancies?: string[];
 }
 
-export function AnalysisResults({ results, onReset, selectedClientId: preSelectedClientId, selectedClientName: preSelectedClientName, gender = 'male' }: AnalysisResultsProps) {
+export function AnalysisResults({ 
+  results, 
+  onReset, 
+  selectedClientId: preSelectedClientId, 
+  selectedClientName: preSelectedClientName, 
+  gender = 'male',
+  documentCount = 0,
+  savedAnalysesCount = 0,
+  patientInfoDiscrepancies = []
+}: AnalysisResultsProps) {
   const [copied, setCopied] = useState(false);
   const [clients, setClients] = useState<Client[]>([]);
   const [manualClientId, setManualClientId] = useState<string>('');
@@ -242,59 +255,68 @@ export function AnalysisResults({ results, onReset, selectedClientId: preSelecte
 
   return (
     <TooltipProvider>
-    <div className="w-full max-w-7xl mx-auto space-y-6">
-      {/* Summary Card */}
+    <div className="w-full max-w-7xl mx-auto space-y-4">
+      {/* Summary Card - Compact Version */}
       <Card>
-        <CardHeader>
-          <CardTitle>Analysis Complete</CardTitle>
-          <CardDescription>
-            {preSelectedClientName ? `Biomarker analysis for ${preSelectedClientName}` : 'Biomarker analysis'}
-          </CardDescription>
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-xl">Analysis Complete</CardTitle>
+              <CardDescription className="text-sm mt-1">
+                {preSelectedClientName ? `Biomarker analysis for ${preSelectedClientName}` : 'Biomarker analysis'}
+              </CardDescription>
+            </div>
+            {savedAnalysesCount > 0 && (
+              <div className="flex items-center gap-1.5 text-sm text-green-600 bg-green-50 px-3 py-1.5 rounded-full">
+                <CheckCircle2 className="h-4 w-4" />
+                <span className="font-medium">Saved</span>
+              </div>
+            )}
+          </div>
         </CardHeader>
-        <CardContent className="space-y-6">
-          {/* Summary Stats */}
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-            <div className="text-center p-4 bg-secondary rounded-lg">
+        <CardContent className="space-y-4">
+          {/* Summary Stats - More Compact */}
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+            <div className="text-center p-3 bg-secondary rounded-lg">
               <p className="text-2xl font-bold">{summary.totalBiomarkers}</p>
-              <p className="text-sm text-muted-foreground">Total Biomarkers</p>
+              <p className="text-xs text-muted-foreground">Total Biomarkers</p>
             </div>
-            <div className="text-center p-4 bg-blue-50 rounded-lg">
+            <div className="text-center p-3 bg-blue-50 rounded-lg">
               <p className="text-2xl font-bold text-blue-700">{summary.measuredBiomarkers}</p>
-              <p className="text-sm text-blue-600">Measured</p>
+              <p className="text-xs text-blue-600">Measured</p>
             </div>
-            <div className="text-center p-4 bg-green-50 rounded-lg">
+            <div className="text-center p-3 bg-green-50 rounded-lg">
               <p className="text-2xl font-bold text-green-700">{summary.inRangeCount}</p>
-              <p className="text-sm text-green-600">In Range</p>
+              <p className="text-xs text-green-600">In Range</p>
             </div>
-            <div className="text-center p-4 bg-red-50 rounded-lg">
+            <div className="text-center p-3 bg-red-50 rounded-lg">
               <p className="text-2xl font-bold text-red-700">{summary.outOfRangeCount}</p>
-              <p className="text-sm text-red-600">Out of Range</p>
+              <p className="text-xs text-red-600">Out of Range</p>
             </div>
-            <div className="text-center p-4 bg-gray-50 rounded-lg">
+            <div className="text-center p-3 bg-gray-50 rounded-lg">
               <p className="text-2xl font-bold text-gray-700">{summary.missingBiomarkers}</p>
-              <p className="text-sm text-gray-600">Missing</p>
+              <p className="text-xs text-gray-600">Missing</p>
             </div>
           </div>
 
-          {/* Diagnostic Info - Warning if data is missing */}
+          {/* Diagnostic Info - Warning if data is missing - More Compact */}
           {summary.missingBiomarkers > 0 && (
-            <Alert>
+            <Alert className="py-3 [&>svg]:top-3.5">
               <AlertCircle className="h-4 w-4" />
-              <AlertDescription className="space-y-2">
-                <div>
-                  <strong>{summary.missingBiomarkers} biomarker(s)</strong> were not found in the uploaded reports and are marked as N/A.
-                </div>
+              <AlertDescription>
                 <details className="text-sm">
-                  <summary className="cursor-pointer hover:underline font-medium">View missing biomarkers</summary>
-                  <ul className="mt-2 ml-4 list-disc space-y-1">
+                  <summary className="cursor-pointer hover:underline font-medium">
+                    {summary.missingBiomarkers} biomarker(s) were not found in the uploaded reports
+                  </summary>
+                  <ul className="mt-2 ml-4 list-disc space-y-0.5 text-xs">
                     {results.filter(r => r.hisValue === 'N/A').map(r => (
                       <li key={r.biomarkerName}>{r.biomarkerName}</li>
                     ))}
                   </ul>
+                  <div className="text-xs text-muted-foreground mt-2">
+                    💡 Check the browser console (F12 → Console) for detailed extraction logs.
+                  </div>
                 </details>
-                <div className="text-xs text-muted-foreground mt-2">
-                  💡 <strong>Tip:</strong> Check the browser console (F12 → Console) for detailed extraction logs showing what biomarkers were found in each document and how they were matched.
-                </div>
               </AlertDescription>
             </Alert>
           )}
@@ -399,8 +421,6 @@ export function AnalysisResults({ results, onReset, selectedClientId: preSelecte
           </div>
         </CardContent>
       </Card>
-
-      <Separator />
 
       {/* Results Table */}
       <Card>
@@ -520,6 +540,31 @@ export function AnalysisResults({ results, onReset, selectedClientId: preSelecte
           </div>
         </CardContent>
       </Card>
+
+      {/* Miscellaneous Information - Compact */}
+      {(documentCount > 0 || patientInfoDiscrepancies.length > 0) && (
+        <details className="text-sm text-muted-foreground bg-muted/30 rounded-lg p-3">
+          <summary className="cursor-pointer hover:underline font-medium flex items-center gap-2">
+            <AlertCircle className="h-3.5 w-3.5" />
+            Processing Information ({documentCount} {documentCount === 1 ? 'document' : 'documents'} analyzed)
+          </summary>
+          <div className="mt-3 space-y-2 text-xs pl-5">
+            {patientInfoDiscrepancies.length > 0 && (
+              <div>
+                <p className="font-semibold mb-1">Patient info consolidated from multiple documents:</p>
+                <ul className="space-y-0.5">
+                  {patientInfoDiscrepancies.map((discrepancy, i) => (
+                    <li key={i} className="flex items-start gap-2">
+                      <span className="text-muted-foreground">•</span>
+                      <span>{discrepancy}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        </details>
+      )}
     </div>
     </TooltipProvider>
   );
