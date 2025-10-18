@@ -53,8 +53,9 @@ INSTRUCTIONS:
    - eGFR (may appear as: Estimated GFR, GFR)
 
    PROTEINS (3):
-   - Albumin (may appear as: Serum Albumin)
-   - Globulin (may appear as: Serum Globulin, Calculated Globulin)
+   - Albumin (may appear as: Serum Albumin, ALB)
+   - Globulin (may appear as: Serum Globulin, Calculated Globulin, Total Globulin)
+     Note: Sometimes calculated as Total Protein - Albumin, but extract if shown
    - Total Protein (may appear as: Protein Total, Serum Protein)
 
    ELECTROLYTES (4):
@@ -80,11 +81,16 @@ INSTRUCTIONS:
 
    WHITE BLOOD CELLS (6):
    - WBC (may appear as: White Blood Cell Count, Leukocytes)
-   - Neutrophils (may appear as: Neut, Absolute Neutrophils, Segmented Neutrophils)
-   - Lymphocytes (may appear as: Lymph, Absolute Lymphocytes)
-   - Monocytes (may appear as: Mono, Absolute Monocytes)
-   - Eosinophils (may appear as: Eos, Absolute Eosinophils)
-   - Basophils (may appear as: Baso, Absolute Basophils)
+   - Neutrophils - IMPORTANT: Extract ONLY the ABSOLUTE COUNT (×10³/µL, K/µL units), NOT the percentage (%)
+     (may appear as: Neut, Absolute Neutrophils, Segmented Neutrophils, Segs, Polys, PMN)
+   - Lymphocytes - IMPORTANT: Extract ONLY the ABSOLUTE COUNT (×10³/µL, K/µL units), NOT the percentage (%)
+     (may appear as: Lymph, Absolute Lymphocytes, Lymphs)
+   - Monocytes - IMPORTANT: Extract ONLY the ABSOLUTE COUNT (×10³/µL, K/µL units), NOT the percentage (%)
+     (may appear as: Mono, Absolute Monocytes, Monos)
+   - Eosinophils - IMPORTANT: Extract ONLY the ABSOLUTE COUNT (×10³/µL, K/µL units), NOT the percentage (%)
+     (may appear as: Eos, Absolute Eosinophils, Eosin)
+   - Basophils - IMPORTANT: Extract ONLY the ABSOLUTE COUNT (×10³/µL, K/µL units), NOT the percentage (%)
+     (may appear as: Baso, Absolute Basophils, Basos)
 
    LIPIDS (4):
    - Total Cholesterol (may appear as: Cholesterol, Cholesterol Total)
@@ -115,14 +121,22 @@ INSTRUCTIONS:
 
    VITAMINS (3):
    - Vitamin D (25-Hydroxy D) (may appear as: Vitamin D, 25-Hydroxy Vitamin D, 25-OH Vitamin D, 25(OH)D)
-   - Vitamin B12 (may appear as: B12, Cobalamin, Vitamin B-12)
+   - Vitamin B12 (may appear as: B12, Cobalamin, Vitamin B-12, VitB12, Vit B12, Vitamin B 12, B-12)
+     IMPORTANT: This is a critical biomarker - look carefully for it in all sections
    - Serum Folate (may appear as: Folate, Folic Acid, Vitamin B9)
 
    OTHER (3):
    - Homocysteine (may appear as: Homocystine, Plasma Homocysteine)
    - LDH (may appear as: Lactate Dehydrogenase, LD, LDH Total)
 
-6. Return ONLY a valid JSON object with this EXACT structure:
+6. ⚠️ CRITICAL RULE FOR WHITE BLOOD CELL DIFFERENTIALS:
+   For Neutrophils, Lymphocytes, Monocytes, Eosinophils, and Basophils:
+   - ONLY extract the ABSOLUTE COUNT values (units: ×10³/µL, K/µL, K/uL, ×10^3/µL)
+   - DO NOT extract percentage (%) values for these markers
+   - Lab reports often show BOTH percentage and absolute count - you MUST choose the absolute count
+   - Example: If you see "Neutrophils: 55% | 3.2 K/µL" → extract "3.2" with unit "K/µL", NOT "55" with "%"
+
+7. Return ONLY a valid JSON object with this EXACT structure:
 {
   "patientInfo": {
     "name": "Patient Full Name or null if not found",
@@ -143,6 +157,7 @@ IMPORTANT RULES:
 - Use the PRIMARY biomarker names (e.g., "ALP" not "Alkaline Phosphatase", "Bicarbonate" not "CO2")
 - Extract ONLY numerical values for biomarkers (no text descriptions)
 - Include the unit exactly as shown
+- ⚠️ CRITICAL: For WBC differentials (Neutrophils, Lymphocytes, Monocytes, Eosinophils, Basophils), extract ONLY absolute counts (×10³/µL, K/µL), NEVER percentages (%)
 - If a value is marked as "<0.1" or similar, extract "0.1" and note in the unit
 - For dates, always convert to YYYY-MM-DD format
 - For gender, normalize to: "male", "female", or "other"

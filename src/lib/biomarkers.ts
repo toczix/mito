@@ -69,11 +69,11 @@ export const BIOMARKERS: Biomarker[] = [
   },
   {
     name: "Basophils",
-    maleRange: "0-1 % (≤ 0.09 ×10³/µL)",
-    femaleRange: "0-1 % (≤ 0.09 ×10³/µL)",
-    units: ["%", "×10³/µL", "×10^3/µL", "K/µL", "K/uL"],
+    maleRange: "≤ 0.09 ×10³/µL",
+    femaleRange: "≤ 0.09 ×10³/µL",
+    units: ["×10³/µL", "×10^3/µL", "K/µL", "K/uL"],
     category: "White Blood Cells",
-    aliases: ["Baso", "Basophil Count", "Absolute Basophils", "Basophil %", "Basophil Percentage", "Basos"]
+    aliases: ["Baso", "Basophil Count", "Absolute Basophils", "Basos", "Basophil Absolute", "Abs Basophils"]
   },
   {
     name: "Bicarbonate",
@@ -109,11 +109,11 @@ export const BIOMARKERS: Biomarker[] = [
   },
   {
     name: "Eosinophils",
-    maleRange: "1-4 % (0.0-0.3 ×10³/µL)",
-    femaleRange: "1-4 % (0.0-0.3 ×10³/µL)",
-    units: ["%", "×10³/µL", "×10^3/µL", "K/µL", "K/uL"],
+    maleRange: "0.0-0.3 ×10³/µL",
+    femaleRange: "0.0-0.3 ×10³/µL",
+    units: ["×10³/µL", "×10^3/µL", "K/µL", "K/uL"],
     category: "White Blood Cells",
-    aliases: ["Eos", "Eosinophil Count", "Absolute Eosinophils", "Eosinophil %", "Eosinophil Percentage", "Eosin"]
+    aliases: ["Eos", "Eosinophil Count", "Absolute Eosinophils", "Eosin", "Eosinophil Absolute", "Abs Eosinophils"]
   },
   {
     name: "Fasting Glucose",
@@ -169,7 +169,7 @@ export const BIOMARKERS: Biomarker[] = [
     femaleRange: "22-28 g/L (2.2-2.8 g/dL)",
     units: ["g/L", "g/dL"],
     category: "Protein",
-    aliases: ["Serum Globulin", "Calculated Globulin"]
+    aliases: ["Serum Globulin", "Calculated Globulin", "Total Globulin", "Glob", "Globulina"]
   },
   {
     name: "HbA1C",
@@ -229,11 +229,11 @@ export const BIOMARKERS: Biomarker[] = [
   },
   {
     name: "Lymphocytes",
-    maleRange: "20-40 % (1.1-3.1 ×10³/µL)",
-    femaleRange: "20-40 % (1.1-3.1 ×10³/µL)",
-    units: ["%", "×10³/µL", "×10^3/µL", "K/µL", "K/uL"],
+    maleRange: "1.1-3.1 ×10³/µL",
+    femaleRange: "1.1-3.1 ×10³/µL",
+    units: ["×10³/µL", "×10^3/µL", "K/µL", "K/uL"],
     category: "White Blood Cells",
-    aliases: ["Lymph", "Lymphocyte Count", "Absolute Lymphocytes", "Lymphocyte %", "Lymphocyte Percentage", "Lymphs"]
+    aliases: ["Lymph", "Lymphocyte Count", "Absolute Lymphocytes", "Lymphs", "Lymphocyte Absolute", "Abs Lymphocytes"]
   },
   {
     name: "MCH",
@@ -261,19 +261,19 @@ export const BIOMARKERS: Biomarker[] = [
   },
   {
     name: "Monocytes",
-    maleRange: "2-8 % (0.3-0.5 ×10³/µL)",
-    femaleRange: "2-8 % (0.3-0.5 ×10³/µL)",
-    units: ["%", "×10³/µL", "×10^3/µL", "K/µL", "K/uL"],
+    maleRange: "0.3-0.5 ×10³/µL",
+    femaleRange: "0.3-0.5 ×10³/µL",
+    units: ["×10³/µL", "×10^3/µL", "K/µL", "K/uL"],
     category: "White Blood Cells",
-    aliases: ["Mono", "Monocyte Count", "Absolute Monocytes", "Monocyte %", "Monocyte Percentage", "Monos"]
+    aliases: ["Mono", "Monocyte Count", "Absolute Monocytes", "Monos", "Monocyte Absolute", "Abs Monocytes"]
   },
   {
     name: "Neutrophils",
-    maleRange: "40-70 % (3.0-4.5 ×10³/µL)",
-    femaleRange: "40-70 % (3.0-4.5 ×10³/µL)",
-    units: ["%", "×10³/µL", "×10^3/µL", "K/µL", "K/uL"],
+    maleRange: "3.0-4.5 ×10³/µL",
+    femaleRange: "3.0-4.5 ×10³/µL",
+    units: ["×10³/µL", "×10^3/µL", "K/µL", "K/uL"],
     category: "White Blood Cells",
-    aliases: ["Neut", "Neutrophil Count", "Absolute Neutrophils", "Segmented Neutrophils", "Neutrophil %", "Neutrophil Percentage", "Segs", "Polys", "PMN"]
+    aliases: ["Neut", "Neutrophil Count", "Absolute Neutrophils", "Segmented Neutrophils", "Segs", "Polys", "PMN", "Neutrophil Absolute", "Abs Neutrophils"]
   },
   {
     name: "Phosphorus",
