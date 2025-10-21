@@ -161,6 +161,8 @@ INSTRUCTIONS:
   ]
 }
 
+⚠️ CRITICAL: Your response MUST be ONLY the JSON object - no explanations, no comments, no additional text before or after the JSON.
+
 IMPORTANT RULES:
 - Use the PRIMARY biomarker names (e.g., "ALP" not "Alkaline Phosphatase", "Bicarbonate" not "CO2")
 - Extract ONLY numerical values for biomarkers (no text descriptions)
@@ -189,6 +191,8 @@ You should aim to extract AT LEAST 30-40 biomarkers from a typical comprehensive
 - Any other numerical lab values
 
 Look for values in tables, lists, and anywhere else they might appear. BE THOROUGH!
+
+⚠️ REMINDER: Return ONLY valid JSON - no text before or after. Start your response with { and end with }
 
 Return your response now:`;
 }
@@ -393,22 +397,56 @@ function parseClaudeResponse(text: string): { biomarkers: ExtractedBiomarker[]; 
     // Try to extract JSON from markdown code blocks if present
     let jsonText = text.trim();
     
-    // Remove markdown code blocks
+    // Strategy 1: Remove markdown code blocks
     const codeBlockMatch = jsonText.match(/```(?:json)?\s*(\{[\s\S]*\})\s*```/);
     if (codeBlockMatch) {
-      jsonText = codeBlockMatch[1];
+      jsonText = codeBlockMatch[1].trim();
     }
 
-    // Try to find JSON object in the text
-    const jsonMatch = jsonText.match(/\{[\s\S]*"biomarkers"[\s\S]*\}/);
-    if (jsonMatch) {
-      jsonText = jsonMatch[0];
+    // Strategy 2: Find JSON object with "biomarkers" field (more flexible regex)
+    if (!jsonText.startsWith('{')) {
+      const jsonMatch = jsonText.match(/\{[\s\S]*?"biomarkers"[\s\S]*?\}/);
+      if (jsonMatch) {
+        jsonText = jsonMatch[0];
+      }
     }
+
+    // Strategy 3: Try to find balanced braces if previous strategies failed
+    if (!jsonText.startsWith('{')) {
+      const firstBrace = jsonText.indexOf('{');
+      if (firstBrace !== -1) {
+        let depth = 0;
+        let endIndex = firstBrace;
+        for (let i = firstBrace; i < jsonText.length; i++) {
+          if (jsonText[i] === '{') depth++;
+          if (jsonText[i] === '}') depth--;
+          if (depth === 0) {
+            endIndex = i + 1;
+            break;
+          }
+        }
+        jsonText = jsonText.substring(firstBrace, endIndex);
+      }
+    }
+
+    // Clean up common JSON issues
+    jsonText = jsonText
+      .replace(/,\s*([}\]])/g, '$1') // Remove trailing commas
+      .replace(/\n/g, ' ') // Remove newlines that might break parsing
+      .trim();
+
+    console.log('Attempting to parse JSON:', jsonText.substring(0, 200) + '...');
 
     const parsed = JSON.parse(jsonText);
     
     if (!parsed.biomarkers || !Array.isArray(parsed.biomarkers)) {
-      throw new Error('Invalid response format: missing biomarkers array');
+      console.error('Parsed object:', parsed);
+      throw new Error('Invalid response format: missing or invalid biomarkers array');
+    }
+
+    if (parsed.biomarkers.length === 0) {
+      console.warn('Warning: Claude returned 0 biomarkers');
+      throw new Error('No biomarkers were extracted from the document. Please ensure the file contains lab results.');
     }
 
     // Extract patient info (with defaults if missing)
@@ -428,11 +466,28 @@ function parseClaudeResponse(text: string): { biomarkers: ExtractedBiomarker[]; 
     // Generate panel name based on biomarkers (fast, client-side)
     const panelName = generatePanelName(biomarkers);
 
+    console.log(`Successfully parsed ${biomarkers.length} biomarkers`);
+
     return { biomarkers, patientInfo, panelName };
   } catch (error) {
     console.error('Failed to parse Claude response:', error);
-    console.log('Raw response:', text);
-    throw new Error('Failed to parse biomarker data from API response. The response may not be in the expected format.');
+    console.error('Raw response (first 500 chars):', text.substring(0, 500));
+    console.error('Raw response (last 500 chars):', text.substring(Math.max(0, text.length - 500)));
+    
+    // Provide more specific error messages
+    if (error instanceof SyntaxError) {
+      throw new Error('Claude returned invalid JSON. This may be due to a malformed response. Please try again.');
+    }
+    
+    if (text.length < 50) {
+      throw new Error('Claude returned an unusually short response. Please try uploading the file again.');
+    }
+    
+    if (text.toLowerCase().includes('error') || text.toLowerCase().includes('sorry')) {
+      throw new Error('Claude encountered an issue processing the document. The document may be unreadable or corrupted. Please try a different file or re-scan the document.');
+    }
+    
+    throw new Error('Failed to parse biomarker data from API response. The document may not contain standard lab results, or the format is unusual. Please try again or contact support if the issue persists.');
   }
 }
 
