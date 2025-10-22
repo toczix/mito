@@ -145,6 +145,7 @@ export async function processPdfFile(file: File): Promise<ProcessedPDF> {
     await page.render({
       canvasContext: context,
       viewport: viewport,
+      canvas: canvas,
     }).promise;
     
     // Convert canvas to base64 image
