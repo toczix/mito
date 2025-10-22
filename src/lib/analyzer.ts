@@ -146,6 +146,9 @@ export function isValueInRange(value: string, optimalRange: string, unit?: strin
   // Normalize common unit variations for better matching
   valueUnit = normalizeUnit(valueUnit);
   
+  // Also normalize the optimal range string for consistent unit matching
+  const normalizedRange = normalizeUnit(optimalRange);
+  
   // Try to find a range that matches the value's unit
   // Look for patterns like "min-max unit" where unit matches the value's unit
   // We need to escape special regex characters in the unit
@@ -154,7 +157,7 @@ export function isValueInRange(value: string, optimalRange: string, unit?: strin
   // Try to find a range with the matching unit in parentheses first (e.g., "(162-240 mg/dL)")
   if (valueUnit) {
     const parenthesesPattern = new RegExp(`\\((\\d+\\.?\\d*)\\s*-\\s*(\\d+\\.?\\d*)\\s*${escapedUnit}\\)`, 'i');
-    const parenthesesMatch = optimalRange.match(parenthesesPattern);
+    const parenthesesMatch = normalizedRange.match(parenthesesPattern);
     if (parenthesesMatch) {
       const min = parseFloat(parenthesesMatch[1]);
       const max = parseFloat(parenthesesMatch[2]);
@@ -163,7 +166,7 @@ export function isValueInRange(value: string, optimalRange: string, unit?: strin
     
     // Try to find a range with the matching unit (e.g., "162-240 mg/dL")
     const unitPattern = new RegExp(`(\\d+\\.?\\d*)\\s*-\\s*(\\d+\\.?\\d*)\\s*${escapedUnit}(?:\\s|$|\\(|,)`, 'i');
-    const unitMatch = optimalRange.match(unitPattern);
+    const unitMatch = normalizedRange.match(unitPattern);
     if (unitMatch) {
       const min = parseFloat(unitMatch[1]);
       const max = parseFloat(unitMatch[2]);
@@ -172,7 +175,7 @@ export function isValueInRange(value: string, optimalRange: string, unit?: strin
 
     // Handle "<X" format with unit matching
     const lessThanWithUnit = new RegExp(`<\\s*${escapedUnit.replace(/^\\s*/, '')}\\s*(\\d+\\.?\\d*)\\s*${escapedUnit}`, 'i');
-    const lessThanUnitMatch = optimalRange.match(lessThanWithUnit);
+    const lessThanUnitMatch = normalizedRange.match(lessThanWithUnit);
     if (lessThanUnitMatch) {
       const max = parseFloat(lessThanUnitMatch[1]);
       return numValue < max;
@@ -180,7 +183,7 @@ export function isValueInRange(value: string, optimalRange: string, unit?: strin
 
     // Handle ">X" format with unit matching
     const greaterThanWithUnit = new RegExp(`>\\s*(\\d+\\.?\\d*)\\s*${escapedUnit}`, 'i');
-    const greaterThanUnitMatch = optimalRange.match(greaterThanWithUnit);
+    const greaterThanUnitMatch = normalizedRange.match(greaterThanWithUnit);
     if (greaterThanUnitMatch) {
       const min = parseFloat(greaterThanUnitMatch[1]);
       return numValue > min;
@@ -188,7 +191,7 @@ export function isValueInRange(value: string, optimalRange: string, unit?: strin
 
     // Handle "≤X" format with unit matching
     const lessThanOrEqualWithUnit = new RegExp(`[≤<=]\\s*(\\d+\\.?\\d*)\\s*${escapedUnit}`, 'i');
-    const lessThanOrEqualMatch = optimalRange.match(lessThanOrEqualWithUnit);
+    const lessThanOrEqualMatch = normalizedRange.match(lessThanOrEqualWithUnit);
     if (lessThanOrEqualMatch) {
       const max = parseFloat(lessThanOrEqualMatch[1]);
       return numValue <= max;
@@ -197,7 +200,7 @@ export function isValueInRange(value: string, optimalRange: string, unit?: strin
 
   // If no unit-specific match, fall back to the first range found
   // This handles cases where there's only one range or no clear unit distinction
-  const rangeMatch = optimalRange.match(/(\d+\.?\d*)\s*-\s*(\d+\.?\d*)/);
+  const rangeMatch = normalizedRange.match(/(\d+\.?\d*)\s*-\s*(\d+\.?\d*)/);
   if (rangeMatch) {
     const min = parseFloat(rangeMatch[1]);
     const max = parseFloat(rangeMatch[2]);
@@ -205,21 +208,21 @@ export function isValueInRange(value: string, optimalRange: string, unit?: strin
   }
 
   // Handle "<X" format without unit
-  const lessThanMatch = optimalRange.match(/[<]\s*(\d+\.?\d*)/);
+  const lessThanMatch = normalizedRange.match(/[<]\s*(\d+\.?\d*)/);
   if (lessThanMatch) {
     const max = parseFloat(lessThanMatch[1]);
     return numValue < max;
   }
 
   // Handle ">X" format without unit
-  const greaterThanMatch = optimalRange.match(/[>]\s*(\d+\.?\d*)/);
+  const greaterThanMatch = normalizedRange.match(/[>]\s*(\d+\.?\d*)/);
   if (greaterThanMatch) {
     const min = parseFloat(greaterThanMatch[1]);
     return numValue > min;
   }
 
   // Handle "≤X" format without unit
-  const lessThanOrEqualMatch = optimalRange.match(/[≤<=]\s*(\d+\.?\d*)/);
+  const lessThanOrEqualMatch = normalizedRange.match(/[≤<=]\s*(\d+\.?\d*)/);
   if (lessThanOrEqualMatch) {
     const max = parseFloat(lessThanOrEqualMatch[1]);
     return numValue <= max;
@@ -236,7 +239,7 @@ function normalizeUnit(unit: string): string {
   if (!unit) return '';
   
   // Normalize common variations
-  const normalized = unit
+  let normalized = unit
     .replace(/umol/gi, 'µmol')
     .replace(/ug/gi, 'µg')
     .replace(/uIU/gi, 'µIU')
@@ -246,6 +249,9 @@ function normalizeUnit(unit: string): string {
     .replace(/×10\^12/gi, '×10¹²')
     .replace(/K\/uL/gi, 'K/µL')
     .replace(/M\/uL/gi, 'M/µL');
+  
+  // Normalize µIU/mL to mIU/L (they are equivalent: 1 µIU/mL = 1 mIU/L)
+  normalized = normalized.replace(/µIU\/mL/gi, 'mIU/L');
   
   return normalized;
 }
