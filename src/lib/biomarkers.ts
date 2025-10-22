@@ -158,8 +158,8 @@ export const BIOMARKERS: Biomarker[] = [
   },
   {
     name: "Fasting Insulin",
-    maleRange: "13-40 pmol/L (2-6 µIU/mL)",
-    femaleRange: "13-40 pmol/L (2-6 µIU/mL)",
+    maleRange: "13-40 pmol/L (2-6 µIU/mL/mU/L/mIU/L)",
+    femaleRange: "13-40 pmol/L (2-6 µIU/mL/mU/L/mIU/L)",
     units: ["pmol/L", "µIU/mL", "uIU/mL", "mIU/L", "mU/L"],
     category: "Metabolic",
     aliases: ["Insulin", "Insulin Fasting", "Serum Insulin"]
@@ -520,9 +520,9 @@ export const BIOMARKERS: Biomarker[] = [
   },
   {
     name: "TSH",
-    maleRange: "1.0-2.5 mIU/L",
-    femaleRange: "1.0-2.5 mIU/L",
-    units: ["mIU/L", "µIU/mL", "uIU/mL"],
+    maleRange: "1.0-2.5 mIU/L/µIU/mL/mU/L",
+    femaleRange: "1.0-2.5 mIU/L/µIU/mL/mU/L",
+    units: ["mIU/L", "µIU/mL", "uIU/mL", "mU/L"],
     category: "Thyroid",
     aliases: [
       // English variations
