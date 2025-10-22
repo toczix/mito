@@ -241,6 +241,7 @@ function normalizeUnit(unit: string): string {
     .replace(/ug/gi, 'µg')
     .replace(/uIU/gi, 'µIU')
     .replace(/uL/gi, 'µL')
+    .replace(/\bmU\/L\b/gi, 'mIU/L')  // mU/L is equivalent to mIU/L
     .replace(/×10\^3/gi, '×10³')
     .replace(/×10\^12/gi, '×10¹²')
     .replace(/K\/uL/gi, 'K/µL')

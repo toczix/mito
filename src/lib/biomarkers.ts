@@ -160,7 +160,7 @@ export const BIOMARKERS: Biomarker[] = [
     name: "Fasting Insulin",
     maleRange: "13-40 pmol/L (2-6 µIU/mL)",
     femaleRange: "13-40 pmol/L (2-6 µIU/mL)",
-    units: ["pmol/L", "µIU/mL", "uIU/mL", "mIU/L"],
+    units: ["pmol/L", "µIU/mL", "uIU/mL", "mIU/L", "mU/L"],
     category: "Metabolic",
     aliases: ["Insulin", "Insulin Fasting", "Serum Insulin"]
   },
