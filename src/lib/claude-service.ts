@@ -26,27 +26,44 @@ function createExtractionPrompt(): string {
 
 Your task is to extract PATIENT INFORMATION and ALL biomarker values from the provided laboratory result PDFs or images.
 
+🌍 MULTILINGUAL SUPPORT: This system supports lab reports in ANY LANGUAGE. Lab reports may be in English, Spanish, Portuguese, French, German, Italian, Chinese, Japanese, Korean, Arabic, Russian, Dutch, Polish, Turkish, or any other language. You MUST accurately extract biomarkers regardless of the language used in the document.
+
 ⚠️ CRITICAL: You MUST extract EVERY SINGLE biomarker visible in the document. Do NOT skip any values, even if they seem like duplicates or are in unusual formats.
 
 INSTRUCTIONS:
 1. THOROUGHLY scan EVERY page of the provided document(s) - look at ALL sections, tables, and data
 2. Extract PATIENT DEMOGRAPHIC INFORMATION:
-   - Patient's full name (as shown on the lab report)
-   - Patient's date of birth (convert to YYYY-MM-DD format)
-   - Patient's gender/sex (male, female, or other)
+   - Patient's full name (as shown on the lab report, in any language/script)
+   - Patient's date of birth (convert to YYYY-MM-DD format, regardless of original date format)
+   - Patient's gender/sex (normalize to: male, female, or other - recognize terms like: masculino/femenino, homme/femme, männlich/weiblich, мужской/женский, etc.)
    - Test/collection date (the most recent date if multiple reports, in YYYY-MM-DD format)
 
 3. Extract EVERY biomarker name, its numerical value, and unit of measurement that you can find
 4. If a biomarker appears multiple times, use the MOST RECENT value (check dates on the reports)
-5. Include ALL of these 54 core biomarkers if present - lab reports use MANY different name variations, so look carefully:
+5. Include ALL of these 54 core biomarkers if present - lab reports use MANY different name variations across languages, so look carefully:
 
-   ⚠️ IMPORTANT PATTERN RECOGNITION NOTES:
-   - Lab reports vary significantly across countries, languages, and institutions
-   - Be flexible with word order: "B12 Vitamin" vs "Vitamin B12", "D Vitamin" vs "Vitamin D"
-   - Look for variations with/without hyphens and spaces: "B12", "B-12", "B 12"
-   - Check for international language variations: Spanish (Vitamina, Glucosa, Colesterol), Portuguese (Vitamina, Glicose), French (Vitamine, Glucose), German (Vitamin, Glukose), Italian (Vitamina, Glucosio)
+   ⚠️ IMPORTANT MULTILINGUAL PATTERN RECOGNITION:
+   - Lab reports vary significantly across countries, languages, scripts, and institutions
+   - Be EXTREMELY flexible with word order: "B12 Vitamin" vs "Vitamin B12", "D Vitamin" vs "Vitamin D"
+   - Look for variations with/without hyphens, spaces, and punctuation: "B12", "B-12", "B 12"
+   - Recognize biomarker names in ALL major languages:
+     * English: Glucose, Cholesterol, Vitamin
+     * Spanish: Glucosa, Colesterol, Vitamina
+     * Portuguese: Glicose, Colesterol, Vitamina
+     * French: Glucose, Cholestérol, Vitamine
+     * German: Glukose, Cholesterin, Vitamin
+     * Italian: Glucosio, Colesterolo, Vitamina
+     * Chinese: 葡萄糖 (glucose), 胆固醇 (cholesterol), 维生素 (vitamin)
+     * Japanese: グルコース (glucose), コレステロール (cholesterol), ビタミン (vitamin)
+     * Korean: 포도당 (glucose), 콜레스테롤 (cholesterol), 비타민 (vitamin)
+     * Arabic: الجلوكوز (glucose), الكوليسترول (cholesterol), فيتامين (vitamin)
+     * Russian: Глюкоза (glucose), Холестерин (cholesterol), Витамин (vitamin)
+     * Dutch: Glucose, Cholesterol, Vitamine
+     * Polish: Glukoza, Cholesterol, Witamina
+     * Turkish: Glikoz, Kolesterol, Vitamin
    - Common abbreviations may vary: FT3/fT3/F.T.3, HbA1C/HbA1c/HBA1C, etc.
    - Some biomarkers have scientific names: Cobalamin (B12), Calcidiol (Vitamin D), Triiodothyronine (T3)
+   - Date formats vary: DD/MM/YYYY, MM/DD/YYYY, YYYY-MM-DD, DD.MM.YYYY, etc. - always convert to YYYY-MM-DD
 
    LIVER FUNCTION (4):
    - ALP (may appear as: Alkaline Phosphatase, Alk Phos)
@@ -101,22 +118,22 @@ INSTRUCTIONS:
      (may appear as: Baso, Absolute Basophils, Basos)
 
    LIPIDS (4):
-   - Total Cholesterol (may appear as: Cholesterol, Chol, CHOL, Total Cholesterol, Cholesterol Total, Colesterol [Spanish/Portuguese/Italian], Cholestérol [French], Cholesterin [German])
-   - HDL Cholesterol (may appear as: HDL, HDL-C, HDL C, HDL Cholesterol, Cholesterol HDL, HDL Chol, Colesterol HDL [Spanish], Cholestérol HDL [French])
-   - LDL Cholesterol (may appear as: LDL, LDL-C, LDL C, LDL Cholesterol, Cholesterol LDL, LDL Calculated, LDL Calc, LDL Direct, Colesterol LDL [Spanish], Cholestérol LDL [French])
-   - Triglycerides (may appear as: Trig, TG, TRIG, Triglyceride, Triglycérides [French], Triglicéridos [Spanish])
+   - Total Cholesterol (may appear as: Cholesterol, Chol, CHOL, Total Cholesterol, Cholesterol Total, Colesterol [Spanish/Portuguese/Italian], Cholestérol [French], Cholesterin [German], Холестерин [Russian], コレステロール [Japanese], 胆固醇 [Chinese], 콜레스테롤 [Korean], الكوليسترول [Arabic], Kolesterol [Turkish/Dutch], Cholesterol [Polish])
+   - HDL Cholesterol (may appear as: HDL, HDL-C, HDL C, HDL Cholesterol, Cholesterol HDL, HDL Chol, Colesterol HDL [Spanish/Portuguese], Cholestérol HDL [French], HDL-Cholesterin [German])
+   - LDL Cholesterol (may appear as: LDL, LDL-C, LDL C, LDL Cholesterol, Cholesterol LDL, LDL Calculated, LDL Calc, LDL Direct, Colesterol LDL [Spanish/Portuguese], Cholestérol LDL [French], LDL-Cholesterin [German])
+   - Triglycerides (may appear as: Trig, TG, TRIG, Triglyceride, Triglycérides [French], Triglicéridos [Spanish/Portuguese], Triglyceride [German], Триглицериды [Russian], トリグリセリド [Japanese], 甘油三酯 [Chinese], 중성지방 [Korean], الدهون الثلاثية [Arabic], Trigliserit [Turkish])
 
    METABOLIC (3):
-   - Fasting Glucose (may appear as: Glucose, Gluc, GLU, Glucose Fasting, FBG, FBS, Blood Glucose, Blood Sugar, Glucosa [Spanish], Glicose [Portuguese], Glycémie [French], Glukose [German], Glucosio [Italian])
-   - HbA1C (may appear as: HbA1c, HbA1C, HBA1C, Hb A1C, A1C, A1c, Hemoglobin A1C, Glycated Hemoglobin, Glycosylated Hemoglobin, Hemoglobina Glicada [Spanish/Portuguese], Hémoglobine Glyquée [French])
-   - Fasting Insulin (may appear as: Insulin, Insulin Fasting, Serum Insulin)
+   - Fasting Glucose (may appear as: Glucose, Gluc, GLU, Glucose Fasting, FBG, FBS, Blood Glucose, Blood Sugar, Glucosa [Spanish], Glicose [Portuguese], Glycémie [French], Glukose [German], Glucosio [Italian], Глюкоза [Russian], グルコース [Japanese], 葡萄糖 [Chinese], 포도당 [Korean], الجلوكوز [Arabic], Glikoz [Turkish], Glukoza [Polish])
+   - HbA1C (may appear as: HbA1c, HbA1C, HBA1C, Hb A1C, A1C, A1c, Hemoglobin A1C, Glycated Hemoglobin, Glycosylated Hemoglobin, Hemoglobina Glicada [Spanish/Portuguese], Hémoglobine Glyquée [French], Glykiertes Hämoglobin [German], 糖化血红蛋白 [Chinese], 糖化ヘモグロビン [Japanese])
+   - Fasting Insulin (may appear as: Insulin, Insulin Fasting, Serum Insulin, Insulina [Spanish/Portuguese/Italian], Insuline [French], Инсулин [Russian], インスリン [Japanese], 胰岛素 [Chinese], 인슐린 [Korean])
 
    THYROID (5):
-   - TSH (may appear as: TSH, T.S.H., Thyroid Stimulating Hormone, Thyroid-Stimulating Hormone, Thyrotropin, Tirotropina [Spanish/Italian], Tireotropina [Portuguese], Thyréostimuline [French])
-   - Free T3 (may appear as: Free T3, FT3, F T3, fT3, F.T.3, T3 Free, T3 Libre [Spanish/French], T3 Livre [Portuguese], Freies T3 [German], T3 Libero [Italian])
-   - Free T4 (may appear as: Free T4, FT4, F T4, fT4, F.T.4, T4 Free, T4 Libre [Spanish/French], T4 Livre [Portuguese], Freies T4 [German], T4 Libero [Italian])
-   - TPO Antibodies (may appear as: TPO Antibodies, TPO Ab, Thyroid Peroxidase Antibodies, Anti-TPO, Thyroid Peroxidase Ab)
-   - Thyroglobulin Antibodies (may appear as: Thyroglobulin Antibodies, TgAb, Anti-Thyroglobulin, Anti-Tg, Thyroglobulin Ab)
+   - TSH (may appear as: TSH, T.S.H., Thyroid Stimulating Hormone, Thyroid-Stimulating Hormone, Thyrotropin, Tirotropina [Spanish/Italian], Tireotropina [Portuguese], Thyréostimuline [French], Тиреотропный гормон [Russian], 甲状腺刺激ホルモン [Japanese], 促甲状腺激素 [Chinese], 갑상선자극호르몬 [Korean])
+   - Free T3 (may appear as: Free T3, FT3, F T3, fT3, F.T.3, T3 Free, T3 Libre [Spanish/French], T3 Livre [Portuguese], Freies T3 [German], T3 Libero [Italian], Свободный T3 [Russian], 遊離T3 [Japanese], 游离T3 [Chinese], 유리T3 [Korean])
+   - Free T4 (may appear as: Free T4, FT4, F T4, fT4, F.T.4, T4 Free, T4 Libre [Spanish/French], T4 Livre [Portuguese], Freies T4 [German], T4 Libero [Italian], Свободный T4 [Russian], 遊離T4 [Japanese], 游离T4 [Chinese], 유리T4 [Korean])
+   - TPO Antibodies (may appear as: TPO Antibodies, TPO Ab, Thyroid Peroxidase Antibodies, Anti-TPO, Thyroid Peroxidase Ab, Anticuerpos anti-TPO [Spanish], Anticorpos anti-TPO [Portuguese], Anticorps anti-TPO [French])
+   - Thyroglobulin Antibodies (may appear as: Thyroglobulin Antibodies, TgAb, Anti-Thyroglobulin, Anti-Tg, Thyroglobulin Ab, Anticuerpos antitiroglobulina [Spanish], Anticorpos antitiroglobulina [Portuguese])
 
    HORMONES (1):
    - SHBG (may appear as: Sex Hormone Binding Globulin)
@@ -128,10 +145,10 @@ INSTRUCTIONS:
    - Transferrin Saturation % (may appear as: Transferrin Saturation, TSAT, Iron Saturation)
 
    VITAMINS (3):
-   - Vitamin D (25-Hydroxy D) (may appear as: Vitamin D, D Vitamin, 25-Hydroxy Vitamin D, 25-OH Vitamin D, 25(OH)D, Calcidiol, Vitamina D [Spanish/Portuguese/Italian], Vitamine D [French])
-   - Vitamin B12 (may appear as: B12, B-12, B 12, Vitamin B12, B12 Vitamin, Cobalamin, Vitamin B-12, VitB12, Vit B12, Vitamin B 12, B12 Vitamina [Spanish], B12 Vitamine [French])
-     IMPORTANT: This is a critical biomarker - look carefully for it in all sections and check for various word orders (e.g., "B12 Vitamin" vs "Vitamin B12")
-   - Serum Folate (may appear as: Folate, Folic Acid, Vitamin B9, B9, Folato [Spanish/Italian], Acide Folique [French], Folsäure [German])
+   - Vitamin D (25-Hydroxy D) (may appear as: Vitamin D, D Vitamin, 25-Hydroxy Vitamin D, 25-OH Vitamin D, 25(OH)D, Calcidiol, Vitamina D [Spanish/Portuguese/Italian], Vitamine D [French], Vitamin D [German], Витамин D [Russian], ビタミンD [Japanese], 维生素D [Chinese], 비타민D [Korean], فيتامين د [Arabic], D Vitamini [Turkish], Witamina D [Polish])
+   - Vitamin B12 (may appear as: B12, B-12, B 12, Vitamin B12, B12 Vitamin, Cobalamin, Vitamin B-12, VitB12, Vit B12, Vitamin B 12, B12 Vitamina [Spanish], Vitamina B12 [Spanish/Portuguese/Italian], B12 Vitamine [French], Vitamine B12 [French], Vitamin B12 [German], Витамин B12 [Russian], ビタミンB12 [Japanese], 维生素B12 [Chinese], 비타민B12 [Korean], فيتامين ب12 [Arabic], B12 Vitamini [Turkish], Witamina B12 [Polish])
+     IMPORTANT: This is a critical biomarker - look carefully for it in all sections and check for various word orders (e.g., "B12 Vitamin" vs "Vitamin B12" vs "Vitamina B12")
+   - Serum Folate (may appear as: Folate, Folic Acid, Vitamin B9, B9, Folato [Spanish/Italian], Acido Folico [Spanish/Italian], Folato [Portuguese], Acide Folique [French], Folsäure [German], Фолиевая кислота [Russian], 葉酸 [Japanese], 叶酸 [Chinese], 엽산 [Korean], حمض الفوليك [Arabic], Folik Asit [Turkish])
 
    OTHER (3):
    - Homocysteine (may appear as: Homocystine, Plasma Homocysteine)
@@ -194,6 +211,14 @@ Look for values in tables, lists, and anywhere else they might appear. BE THOROU
 
 ⚠️ REMINDER: Return ONLY valid JSON - no text before or after. Start your response with { and end with }
 
+🌍 MULTILINGUAL EXTRACTION REMINDER:
+- Documents can be in ANY language or mix of languages
+- Patient names can use ANY script (Latin, Cyrillic, Arabic, CJK, etc.)
+- Biomarker names should be normalized to the PRIMARY English names in your JSON output (e.g., always use "Glucose" not "Glucosa" or "Glicose")
+- Units should be preserved exactly as shown in the document
+- Dates should always be converted to YYYY-MM-DD format
+- Gender should always be normalized to: "male", "female", or "other"
+
 Return your response now:`;
 }
 
@@ -215,11 +240,17 @@ export async function extractBiomarkersFromPdf(
       dangerouslyAllowBrowser: true, // Required for client-side usage
     });
 
-    // Prepare content - handle both PDFs and images
+    // Prepare content - handle both PDFs, Word docs, and images
     let content: Anthropic.MessageParam[];
+    
+    console.log(`📄 Processing file: ${processedPdf.fileName}`);
+    console.log(`   - Is Image: ${processedPdf.isImage}`);
+    console.log(`   - Page Count: ${processedPdf.pageCount}`);
+    console.log(`   - Extracted Text Length: ${processedPdf.extractedText?.length || 0} chars`);
     
     if (processedPdf.isImage && processedPdf.imageData && processedPdf.mimeType) {
       // For images, use Claude's vision API
+      console.log('   - Using Vision API for image');
       content = [
         {
           role: 'user',
@@ -240,8 +271,18 @@ export async function extractBiomarkersFromPdf(
         },
       ];
     } else {
-      // For PDFs, use text extraction
+      // For PDFs and Word documents, use text extraction
+      console.log('   - Using text extraction');
+      
+      // Check if we have extracted text
+      if (!processedPdf.extractedText || processedPdf.extractedText.trim().length === 0) {
+        throw new Error(`No text content found in ${processedPdf.fileName}. The file may be empty, corrupted, or contain only images. Try uploading as an image file (PNG/JPG) instead.`);
+      }
+      
       const pdfText = `\n=== ${processedPdf.fileName} (${processedPdf.pageCount} pages) ===\n${processedPdf.extractedText}`;
+      console.log(`   - Sending ${pdfText.length} characters to Claude (including prompt)`);
+      console.log(`   - First 200 chars of text: "${processedPdf.extractedText.substring(0, 200)}"`);
+      
       content = [
         {
           role: 'user',
@@ -251,11 +292,27 @@ export async function extractBiomarkersFromPdf(
     }
 
     // Create message
+    console.log('🚀 Sending request to Claude API...');
+    console.log('   - Model:', MODEL_NAME);
+    console.log('   - Messages array length:', content.length);
+    console.log('   - First message role:', content[0]?.role);
+    if (typeof content[0]?.content === 'string') {
+      console.log('   - Message content type: string');
+      console.log('   - Total content length:', content[0].content.length);
+    } else if (Array.isArray(content[0]?.content)) {
+      console.log('   - Message content type: array (multimodal)');
+      console.log('   - Content blocks:', content[0].content.length);
+    }
+    
     const message = await client.messages.create({
       model: MODEL_NAME,
       max_tokens: 4096,
       messages: content,
     });
+    
+    console.log('✅ Received response from Claude');
+    console.log('   - Stop reason:', message.stop_reason);
+    console.log('   - Content blocks:', message.content.length);
 
     // Extract text from response
     const textContent = message.content.find((block) => block.type === 'text');
@@ -397,47 +454,106 @@ function parseClaudeResponse(text: string): { biomarkers: ExtractedBiomarker[]; 
     // Try to extract JSON from markdown code blocks if present
     let jsonText = text.trim();
     
+    console.log('Raw response length:', text.length);
+    console.log('First 300 chars:', text.substring(0, 300));
+    console.log('Last 300 chars:', text.substring(Math.max(0, text.length - 300)));
+    
     // Strategy 1: Remove markdown code blocks
     const codeBlockMatch = jsonText.match(/```(?:json)?\s*(\{[\s\S]*\})\s*```/);
     if (codeBlockMatch) {
       jsonText = codeBlockMatch[1].trim();
+      console.log('Extracted from code block');
     }
 
-    // Strategy 2: Find JSON object with "biomarkers" field (more flexible regex)
-    if (!jsonText.startsWith('{')) {
-      const jsonMatch = jsonText.match(/\{[\s\S]*?"biomarkers"[\s\S]*?\}/);
-      if (jsonMatch) {
-        jsonText = jsonMatch[0];
-      }
-    }
-
-    // Strategy 3: Try to find balanced braces if previous strategies failed
+    // Strategy 2: Try to find balanced braces - more robust version
     if (!jsonText.startsWith('{')) {
       const firstBrace = jsonText.indexOf('{');
       if (firstBrace !== -1) {
         let depth = 0;
         let endIndex = firstBrace;
+        let inString = false;
+        let escapeNext = false;
+        
         for (let i = firstBrace; i < jsonText.length; i++) {
-          if (jsonText[i] === '{') depth++;
-          if (jsonText[i] === '}') depth--;
-          if (depth === 0) {
-            endIndex = i + 1;
-            break;
+          const char = jsonText[i];
+          
+          // Handle escape sequences
+          if (escapeNext) {
+            escapeNext = false;
+            continue;
+          }
+          
+          if (char === '\\') {
+            escapeNext = true;
+            continue;
+          }
+          
+          // Track if we're inside a string
+          if (char === '"') {
+            inString = !inString;
+            continue;
+          }
+          
+          // Only count braces outside of strings
+          if (!inString) {
+            if (char === '{') depth++;
+            if (char === '}') {
+              depth--;
+              if (depth === 0) {
+                endIndex = i + 1;
+                break;
+              }
+            }
           }
         }
         jsonText = jsonText.substring(firstBrace, endIndex);
+        console.log('Extracted using balanced braces');
       }
     }
 
-    // Clean up common JSON issues
+    // Clean up common JSON issues but be more careful
     jsonText = jsonText
       .replace(/,\s*([}\]])/g, '$1') // Remove trailing commas
-      .replace(/\n/g, ' ') // Remove newlines that might break parsing
       .trim();
 
-    console.log('Attempting to parse JSON:', jsonText.substring(0, 200) + '...');
+    console.log('Attempting to parse JSON (first 500 chars):', jsonText.substring(0, 500));
 
-    const parsed = JSON.parse(jsonText);
+    let parsed;
+    try {
+      parsed = JSON.parse(jsonText);
+    } catch (firstParseError) {
+      console.warn('First JSON parse failed, trying alternative approach');
+      
+      // Try to find and extract just the JSON portion more aggressively
+      const jsonPattern = /\{[^{}]*"biomarkers"\s*:\s*\[[^\]]*\][^{}]*\}/;
+      const simpleMatch = text.match(jsonPattern);
+      
+      if (simpleMatch) {
+        try {
+          parsed = JSON.parse(simpleMatch[0]);
+          console.log('Successfully parsed using simple pattern match');
+        } catch (secondParseError) {
+          console.error('Second parse attempt also failed');
+          throw firstParseError; // Throw the original error
+        }
+      } else {
+        // Last resort: try to extract between first { and last }
+        const start = text.indexOf('{');
+        const end = text.lastIndexOf('}');
+        if (start !== -1 && end !== -1 && end > start) {
+          try {
+            const lastResort = text.substring(start, end + 1).replace(/,\s*([}\]])/g, '$1');
+            parsed = JSON.parse(lastResort);
+            console.log('Successfully parsed using last resort method');
+          } catch (thirdParseError) {
+            console.error('All parse attempts failed');
+            throw firstParseError; // Throw the original error
+          }
+        } else {
+          throw firstParseError;
+        }
+      }
+    }
     
     if (!parsed.biomarkers || !Array.isArray(parsed.biomarkers)) {
       console.error('Parsed object:', parsed);
@@ -471,23 +587,39 @@ function parseClaudeResponse(text: string): { biomarkers: ExtractedBiomarker[]; 
     return { biomarkers, patientInfo, panelName };
   } catch (error) {
     console.error('Failed to parse Claude response:', error);
-    console.error('Raw response (first 500 chars):', text.substring(0, 500));
-    console.error('Raw response (last 500 chars):', text.substring(Math.max(0, text.length - 500)));
+    console.error('Raw response (full):', text);
+    console.error('Raw response length:', text.length);
+    
+    // Store the full response in sessionStorage for debugging
+    try {
+      sessionStorage.setItem('lastClaudeError', JSON.stringify({
+        error: error instanceof Error ? error.message : String(error),
+        rawResponse: text,
+        timestamp: new Date().toISOString()
+      }));
+      console.log('💡 Full error details saved to sessionStorage.lastClaudeError');
+    } catch (storageError) {
+      console.warn('Could not save error to sessionStorage:', storageError);
+    }
     
     // Provide more specific error messages
     if (error instanceof SyntaxError) {
-      throw new Error('Claude returned invalid JSON. This may be due to a malformed response. Please try again.');
+      throw new Error(`Claude returned invalid JSON. Please check browser console (F12) for full response. Error: ${error.message}`);
     }
     
     if (text.length < 50) {
-      throw new Error('Claude returned an unusually short response. Please try uploading the file again.');
+      throw new Error(`Claude returned an unusually short response (${text.length} chars): "${text}". Please try uploading the file again.`);
     }
     
-    if (text.toLowerCase().includes('error') || text.toLowerCase().includes('sorry')) {
-      throw new Error('Claude encountered an issue processing the document. The document may be unreadable or corrupted. Please try a different file or re-scan the document.');
+    if (text.toLowerCase().includes('error') || text.toLowerCase().includes('sorry') || text.toLowerCase().includes('unable')) {
+      throw new Error(`Claude encountered an issue processing the document: "${text.substring(0, 200)}...". The document may be unreadable or corrupted.`);
     }
     
-    throw new Error('Failed to parse biomarker data from API response. The document may not contain standard lab results, or the format is unusual. Please try again or contact support if the issue persists.');
+    if (!text.includes('{') || !text.includes('}')) {
+      throw new Error('Claude did not return JSON data. Response did not contain any JSON objects. Check console for full response.');
+    }
+    
+    throw new Error(`Failed to parse biomarker data from Claude's response. Check browser console (F12 → Console) for the full raw response. Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
 

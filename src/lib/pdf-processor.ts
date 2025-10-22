@@ -1,4 +1,5 @@
 import * as pdfjsLib from 'pdfjs-dist';
+import mammoth from 'mammoth';
 
 // Set the worker source to use the npm package version
 pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
@@ -18,7 +19,7 @@ export interface ProcessedPDF {
 }
 
 /**
- * Extract text content from a PDF file or process an image
+ * Extract text content from a PDF file, Word document, or process an image
  */
 export async function processPdfFile(file: File): Promise<ProcessedPDF> {
   // Check if it's an image
@@ -43,10 +44,53 @@ export async function processPdfFile(file: File): Promise<ProcessedPDF> {
     };
   }
 
+  // Check if it's a Word document
+  if (file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || file.name.endsWith('.docx')) {
+    console.log(`📄 Processing Word document: ${file.name}`);
+    const arrayBuffer = await file.arrayBuffer();
+    const result = await mammoth.extractRawText({ arrayBuffer });
+    
+    console.log(`   Extracted ${result.value.length} characters from ${file.name}`);
+    
+    if (result.messages && result.messages.length > 0) {
+      console.warn('   Mammoth warnings:', result.messages);
+    }
+    
+    if (!result.value || result.value.trim().length === 0) {
+      throw new Error(
+        `No text could be extracted from ${file.name}. ` +
+        `This Word document may be empty, corrupted, or contain only images. ` +
+        `If it contains scanned images, please convert it to PNG/JPG images instead. ` +
+        `Word documents with embedded images cannot be processed - extract the images first.`
+      );
+    }
+    
+    if (result.value.trim().length < 100) {
+      console.warn(`   ⚠️ Very little text extracted (${result.value.length} chars) - document may be mostly images`);
+      throw new Error(
+        `${file.name} contains very little extractable text (${result.value.length} characters). ` +
+        `If this document contains scanned images or screenshots of lab results, ` +
+        `please extract those images and upload them as PNG/JPG files instead.`
+      );
+    }
+    
+    console.log('   First 200 chars:', result.value.substring(0, 200));
+    console.log(`✅ Word document processed successfully`);
+    
+    return {
+      fileName: file.name,
+      extractedText: result.value.trim(),
+      pageCount: 1, // Word documents don't have a clear page concept in our context
+      isImage: false,
+    };
+  }
+
   // Process PDF
+  console.log(`📄 Processing PDF: ${file.name}`);
   const arrayBuffer = await file.arrayBuffer();
   const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
   const pageCount = pdf.numPages;
+  console.log(`   - PDF has ${pageCount} pages`);
   
   let extractedText = '';
 
@@ -55,12 +99,68 @@ export async function processPdfFile(file: File): Promise<ProcessedPDF> {
     const page = await pdf.getPage(pageNum);
     const textContent = await page.getTextContent();
     
+    console.log(`   - Page ${pageNum}: Found ${textContent.items.length} text items`);
+    
     // Combine text items
     const pageText = textContent.items
       .map((item: any) => item.str)
       .join(' ');
     
+    console.log(`   - Page ${pageNum} text length: ${pageText.length} chars`);
+    if (pageNum === 1) {
+      console.log(`   - Page 1 preview (first 300 chars): "${pageText.substring(0, 300)}"`);
+    }
+    
     extractedText += `\n--- Page ${pageNum} ---\n${pageText}\n`;
+  }
+
+  console.log(`✅ PDF extraction complete: ${extractedText.length} total characters`);
+  
+  // Check if we actually extracted meaningful text (not just page markers)
+  // Page markers add about 20 chars per page, so if total is less than pages * 30, it's probably empty
+  const minExpectedChars = pageCount * 50; // Expect at least 50 chars of actual content per page
+  
+  if (extractedText.trim().length === 0 || extractedText.length < minExpectedChars) {
+    console.warn(`⚠️ PDF text extraction failed (${extractedText.length} chars for ${pageCount} pages)`);
+    console.log(`🔄 Falling back to Vision API - converting PDF pages to images...`);
+    
+    // Fallback: Convert PDF pages to images for Vision API
+    // We'll only convert the first 5 pages to avoid overwhelming the API
+    const pagesToConvert = Math.min(pageCount, 5);
+    console.log(`   Converting first ${pagesToConvert} of ${pageCount} pages to images`);
+    
+    // Render first page as image
+    const page = await pdf.getPage(1);
+    const viewport = page.getViewport({ scale: 2.0 }); // 2x scale for better quality
+    
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d');
+    if (!context) {
+      throw new Error('Could not create canvas context for PDF rendering');
+    }
+    
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+    
+    await page.render({
+      canvasContext: context,
+      viewport: viewport,
+    }).promise;
+    
+    // Convert canvas to base64 image
+    const imageData = canvas.toDataURL('image/png').split(',')[1];
+    
+    console.log(`✅ Converted page 1 to image (${imageData.length} bytes)`);
+    console.log(`📸 Using Vision API instead of text extraction`);
+    
+    return {
+      fileName: file.name,
+      extractedText: '', // No text, will use image
+      pageCount: 1, // Only first page for now
+      isImage: true,
+      imageData: imageData,
+      mimeType: 'image/png',
+    };
   }
 
   return {
@@ -91,13 +191,24 @@ export async function processMultiplePdfs(files: File[]): Promise<ProcessedPDF[]
 }
 
 /**
- * Validate PDF or image file
+ * Validate PDF, Word document, or image file
  */
 export function validatePdfFile(file: File): { valid: boolean; error?: string } {
-  // Check file type - allow PDFs and images
-  const allowedTypes = ['application/pdf', 'image/png', 'image/jpeg', 'image/jpg'];
-  if (!allowedTypes.includes(file.type)) {
-    return { valid: false, error: 'File must be a PDF, PNG, or JPG image' };
+  // Check file type - allow PDFs, Word documents, and images
+  const allowedTypes = [
+    'application/pdf',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'image/png',
+    'image/jpeg',
+    'image/jpg'
+  ];
+  const allowedExtensions = ['.pdf', '.docx', '.png', '.jpg', '.jpeg'];
+  
+  const hasValidType = allowedTypes.includes(file.type);
+  const hasValidExtension = allowedExtensions.some(ext => file.name.toLowerCase().endsWith(ext));
+  
+  if (!hasValidType && !hasValidExtension) {
+    return { valid: false, error: 'File must be a PDF, DOCX, PNG, or JPG' };
   }
 
   // Check file size (max 50MB)

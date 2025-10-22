@@ -35,6 +35,7 @@ export function PdfUploader({ onFilesSelected, onAnalyze, isProcessing = false }
     onDrop,
     accept: {
       'application/pdf': ['.pdf'],
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
       'image/png': ['.png'],
       'image/jpeg': ['.jpg', '.jpeg']
     },
@@ -65,7 +66,7 @@ export function PdfUploader({ onFilesSelected, onAnalyze, isProcessing = false }
       <CardHeader>
         <CardTitle>Upload Lab Reports</CardTitle>
         <CardDescription>
-          Upload PDF files or images (PNG/JPG) containing laboratory results
+          Upload PDF, Word (.docx), or image files (PNG/JPG) containing laboratory results
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -89,7 +90,7 @@ export function PdfUploader({ onFilesSelected, onAnalyze, isProcessing = false }
               ) : (
                 <div className="space-y-2">
                   <p className="text-lg font-medium">Drag & drop files here</p>
-                  <p className="text-sm text-muted-foreground">PDFs, PNG, or JPG images</p>
+                  <p className="text-sm text-muted-foreground">PDF, DOCX, PNG, or JPG files</p>
                   <p className="text-xs text-muted-foreground">Maximum file size: 50MB per file</p>
                 </div>
               )}

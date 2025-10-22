@@ -5,7 +5,9 @@ A modern web application that uses Claude AI to automatically analyze clinical p
 ## Features
 
 ### Core Analysis
-- **AI-Powered PDF Analysis** - Upload multiple lab report PDFs and let Claude AI extract biomarker data (text extraction only for low API costs)
+- **🌍 Multilingual Support** - Process lab reports in **any language** (Spanish, Portuguese, French, German, Italian, Chinese, Japanese, Korean, Arabic, Russian, and more)
+- **📄 Multiple File Formats** - Upload PDF, Word (.docx), or image files (PNG/JPG)
+- **AI-Powered Analysis** - Upload multiple lab reports and let Claude AI extract biomarker data automatically
 - **Comprehensive Biomarker Coverage** - Tracks 57 essential biomarkers across multiple categories
 - **Custom Benchmarks** - Edit and manage your own biomarker optimal ranges
 - **Optimal Range Comparison** - Compares patient values against evidence-based optimal ranges (male/female)
