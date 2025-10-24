@@ -5,7 +5,7 @@ import { AnalysisResults } from '@/components/AnalysisResults';
 import { ClientConfirmation } from '@/components/ClientConfirmation';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { processMultiplePdfs, type ProcessedPDF } from '@/lib/pdf-processor';
-import { extractBiomarkersFromPdfs, type PatientInfo, consolidatePatientInfo } from '@/lib/claude-service';
+import { extractBiomarkersFromPdfs, type PatientInfo, consolidatePatientInfo, type ClaudeResponseBatch } from '@/lib/claude-service';
 import { matchBiomarkersWithRanges } from '@/lib/analyzer';
 import { createAnalysis } from '@/lib/analysis-service';
 import { matchOrCreateClient, autoCreateClient, type ClientMatchResult } from '@/lib/client-matcher';
@@ -95,7 +95,7 @@ export function HomePage() {
       
       setProcessingMessage(`Analyzing ${validPdfs.length} document(s) with Claude AI...`);
       setProcessingProgress(30);
-      const claudeResponses = await extractBiomarkersFromPdfs(
+      const claudeResponses: ClaudeResponseBatch = await extractBiomarkersFromPdfs(
         currentApiKey, 
         validPdfs,
         (current, total, batchInfo) => {
@@ -117,7 +117,15 @@ export function HomePage() {
       console.log('⚠️ Discrepancies:', discrepancies);
       console.log('📊 Confidence:', confidence);
       
-      setPatientInfoDiscrepancies(discrepancies);
+      // Check for failed files and add to discrepancies
+      const failedFiles = claudeResponses._failedFiles;
+      let allDiscrepancies = [...discrepancies];
+      if (failedFiles && failedFiles.length > 0) {
+        const failureWarning = `⚠️ ${failedFiles.length} file(s) failed: ${failedFiles.map(f => f.fileName).join(', ')}`;
+        allDiscrepancies.push(failureWarning);
+      }
+      
+      setPatientInfoDiscrepancies(allDiscrepancies);
       
       if (confidence === 'low') {
         console.warn('Low confidence in patient info consolidation:', discrepancies);

@@ -18,6 +18,10 @@ export interface ClaudeResponse {
   raw?: string;
 }
 
+export interface ClaudeResponseBatch extends Array<ClaudeResponse> {
+  _failedFiles?: Array<{ fileName: string; error: string }>;
+}
+
 /**
  * Create the specialized prompt for biomarker extraction
  */
@@ -356,7 +360,7 @@ export async function extractBiomarkersFromPdfs(
   apiKey: string,
   processedPdfs: ProcessedPDF[],
   onProgress?: (current: number, total: number, batchInfo?: string) => void
-): Promise<ClaudeResponse[]> {
+): Promise<ClaudeResponseBatch> {
   if (!apiKey) {
     throw new Error('API key is required');
   }
@@ -370,6 +374,7 @@ export async function extractBiomarkersFromPdfs(
   const DELAY_BETWEEN_BATCHES = 2000; // 2 second delay between batches
   
   const results: ClaudeResponse[] = [];
+  const failedFiles: Array<{ fileName: string; error: string }> = [];
   const totalBatches = Math.ceil(processedPdfs.length / BATCH_SIZE);
   let currentBatch = 0;
   
@@ -384,11 +389,22 @@ export async function extractBiomarkersFromPdfs(
       onProgress(i, processedPdfs.length, batchInfo);
     }
     
-    // Process batch in parallel
+    // Process batch in parallel with Promise.allSettled to handle partial failures
     const batchPromises = batch.map(pdf => extractBiomarkersFromPdf(apiKey, pdf));
-    const batchResults = await Promise.all(batchPromises);
+    const batchResults = await Promise.allSettled(batchPromises);
     
-    results.push(...batchResults);
+    // Separate successful results from failures
+    batchResults.forEach((result, idx) => {
+      const pdf = batch[idx];
+      if (result.status === 'fulfilled') {
+        results.push(result.value);
+        console.log(`✅ Successfully extracted biomarkers from ${pdf.fileName}`);
+      } else {
+        const errorMessage = result.reason instanceof Error ? result.reason.message : String(result.reason);
+        failedFiles.push({ fileName: pdf.fileName, error: errorMessage });
+        console.error(`❌ Failed to extract biomarkers from ${pdf.fileName}: ${errorMessage}`);
+      }
+    });
     
     // Add delay between batches (except for the last batch)
     if (i + BATCH_SIZE < processedPdfs.length) {
@@ -400,7 +416,20 @@ export async function extractBiomarkersFromPdfs(
     onProgress(processedPdfs.length, processedPdfs.length, '');
   }
 
-  return results;
+  // If ALL files failed, throw an error
+  if (results.length === 0 && failedFiles.length > 0) {
+    const errorDetails = failedFiles.map(f => `${f.fileName}: ${f.error}`).join('\n');
+    throw new Error(`All files failed to process:\n${errorDetails}`);
+  }
+
+  // If some files failed, attach failure info to results
+  const batchResults: ClaudeResponseBatch = results as ClaudeResponseBatch;
+  if (failedFiles.length > 0) {
+    batchResults._failedFiles = failedFiles;
+    console.warn(`⚠️ ${failedFiles.length} file(s) failed processing, continuing with ${results.length} successful file(s)`);
+  }
+
+  return batchResults;
 }
 
 /**
