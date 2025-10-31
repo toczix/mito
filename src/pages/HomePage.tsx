@@ -11,7 +11,7 @@ import { createAnalysis } from '@/lib/analysis-service';
 import { matchOrCreateClient, autoCreateClient, type ClientMatchResult } from '@/lib/client-matcher';
 import type { AnalysisResult, ExtractedBiomarker } from '@/lib/biomarkers';
 import { AlertCircle } from 'lucide-react';
-import { getClaudeApiKey, isSupabaseEnabled } from '@/lib/supabase';
+import { isSupabaseEnabled } from '@/lib/supabase';
 
 type AppState = 'upload' | 'processing' | 'confirmation' | 'analyzing' | 'results' | 'error';
 
@@ -52,13 +52,6 @@ export function HomePage() {
       return;
     }
 
-    const currentApiKey = await getClaudeApiKey();
-    if (!currentApiKey) {
-      setError('Please set your Claude API key in the Settings tab first.');
-      setState('error');
-      return;
-    }
-
     setState('processing');
     setError(null);
     setSavedAnalysesCount(0);
@@ -68,10 +61,10 @@ export function HomePage() {
       setProcessingMessage(`Extracting text from ${files.length} PDF(s)...`);
       setProcessingProgress(5);
       const processedPdfs = await processMultiplePdfs(files);
-      
+
       const qualityIssues: string[] = [];
       const validPdfs: ProcessedPDF[] = [];
-      
+
       processedPdfs.forEach(pdf => {
         if (pdf.qualityWarning && pdf.qualityScore && pdf.qualityScore < 0.5) {
           qualityIssues.push(`${pdf.fileName}: ${pdf.qualityWarning}`);
@@ -79,7 +72,7 @@ export function HomePage() {
           validPdfs.push(pdf);
         }
       });
-      
+
       if (qualityIssues.length > 0) {
         const errorMsg = `Some files have quality issues and were skipped:\n${qualityIssues.join('\n')}`;
         if (validPdfs.length === 0) {
@@ -90,13 +83,12 @@ export function HomePage() {
           console.warn(errorMsg);
         }
       }
-      
+
       setProcessingProgress(20);
-      
+
       setProcessingMessage(`Analyzing ${validPdfs.length} document(s) with Claude AI...`);
       setProcessingProgress(30);
       const claudeResponses: ClaudeResponseBatch = await extractBiomarkersFromPdfs(
-        currentApiKey, 
         validPdfs,
         (current, total, batchInfo) => {
           const progress = 30 + Math.round((current / total) * 40);

@@ -42,7 +42,14 @@ export async function createAnalysis(
   notes?: string
 ): Promise<Analysis | null> {
   if (!supabase) return null;
-  
+
+  // Get current user ID
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    console.error('No authenticated user');
+    return null;
+  }
+
   // Check for existing analysis with same lab_test_date
   if (labTestDate) {
     const existing = await findAnalysisByDate(clientId, labTestDate);
@@ -51,14 +58,14 @@ export async function createAnalysis(
       return updateAnalysis(existing.id, { results, notes });
     }
   }
-  
+
   // Generate summary stats
   const summary = {
     totalBiomarkers: results.length,
     measuredBiomarkers: results.filter(r => r.hisValue !== 'N/A').length,
     missingBiomarkers: results.filter(r => r.hisValue === 'N/A').length,
   };
-  
+
   const { data, error } = await supabase
     .from('analyses')
     .insert({
@@ -67,15 +74,16 @@ export async function createAnalysis(
       results: results,
       summary: summary,
       notes: notes || null,
+      user_id: user.id,
     })
     .select()
     .single();
-  
+
   if (error) {
     console.error('Error creating analysis:', error);
     return null;
   }
-  
+
   return data;
 }
 

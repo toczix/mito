@@ -69,18 +69,25 @@ export async function getClient(id: string): Promise<Client | null> {
 
 export async function createClient(client: Omit<Client, 'id' | 'created_at' | 'updated_at'>): Promise<Client | null> {
   if (!supabase) return null;
-  
+
+  // Get current user ID
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    console.error('No authenticated user');
+    return null;
+  }
+
   const { data, error } = await supabase
     .from('clients')
-    .insert(client)
+    .insert({ ...client, user_id: user.id })
     .select()
     .single();
-  
+
   if (error) {
     console.error('Error creating client:', error);
     return null;
   }
-  
+
   return data;
 }
 

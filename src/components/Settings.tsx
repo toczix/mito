@@ -4,222 +4,160 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Separator } from '@/components/ui/separator';
-import { Key, Save, Eye, EyeOff, CheckCircle2, ExternalLink, AlertCircle } from 'lucide-react';
-import { isSupabaseEnabled, getClaudeApiKey, saveClaudeApiKey } from '@/lib/supabase';
+import { User, Mail, CheckCircle2, AlertCircle } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
 
 export function Settings() {
-  const [apiKey, setApiKey] = useState('');
-  const [showApiKey, setShowApiKey] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
-  const [saveSuccess, setSaveSuccess] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const [currentEmail, setCurrentEmail] = useState<string>('');
+  const [newEmail, setNewEmail] = useState<string>('');
+  const [isChangingEmail, setIsChangingEmail] = useState(false);
+  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    loadApiKey();
+    loadUserData();
   }, []);
 
-  async function loadApiKey() {
-    if (!isSupabaseEnabled) {
-      setIsLoading(false);
+  async function loadUserData() {
+    if (!supabase) {
+      setLoading(false);
       return;
     }
 
-    const supabaseKey = await getClaudeApiKey();
-    if (supabaseKey) {
-      setApiKey(supabaseKey);
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user?.email) {
+      setCurrentEmail(user.email);
+      setNewEmail(user.email);
     }
-    setIsLoading(false);
+    setLoading(false);
   }
 
-  async function handleSave() {
-    if (!apiKey.trim()) {
-      alert('Please enter an API key');
+  async function handleUpdateEmail() {
+    if (!supabase) {
+      setMessage({ type: 'error', text: 'Authentication not configured' });
       return;
     }
 
-    if (!isSupabaseEnabled) {
-      alert('Supabase is not configured. Please check your environment variables.');
+    if (!newEmail.trim() || newEmail === currentEmail) {
+      setMessage({ type: 'error', text: 'Please enter a different email address' });
       return;
     }
 
-    setIsSaving(true);
-
-    const saved = await saveClaudeApiKey(apiKey);
-    if (saved) {
-      setSaveSuccess(true);
-      setTimeout(() => setSaveSuccess(false), 3000);
-    } else {
-      alert('Failed to save API key to Supabase. Please try again.');
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(newEmail)) {
+      setMessage({ type: 'error', text: 'Please enter a valid email address' });
+      return;
     }
 
-    setIsSaving(false);
-  }
+    setIsChangingEmail(true);
+    setMessage(null);
 
-  async function handleClear() {
-    if (confirm('Are you sure you want to clear your API key? You will need to re-enter it to use the analysis feature.')) {
-      setApiKey('');
+    try {
+      const { error } = await supabase.auth.updateUser({ email: newEmail });
 
-      if (isSupabaseEnabled) {
-        await saveClaudeApiKey('');
+      if (error) {
+        setMessage({ type: 'error', text: error.message });
+      } else {
+        setMessage({
+          type: 'success',
+          text: 'Email update initiated! Check both your old and new email for confirmation links.'
+        });
+        // Reset the form
+        setCurrentEmail(newEmail);
       }
-
-      setSaveSuccess(false);
+    } catch (err) {
+      setMessage({
+        type: 'error',
+        text: 'An unexpected error occurred. Please try again.'
+      });
+    } finally {
+      setIsChangingEmail(false);
     }
   }
 
-  return (
-    <div className="max-w-4xl mx-auto space-y-6">
-      {/* Supabase Warning */}
-      {!isSupabaseEnabled && (
+  if (loading) {
+    return (
+      <div className="max-w-2xl mx-auto py-8">
+        <div className="text-center text-muted-foreground">Loading...</div>
+      </div>
+    );
+  }
+
+  if (!supabase) {
+    return (
+      <div className="max-w-2xl mx-auto py-8">
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
-            <strong>Supabase not configured.</strong> Please set up your environment variables (VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY) to enable API key storage.
+            Authentication is not configured. Please contact your administrator.
           </AlertDescription>
         </Alert>
-      )}
+      </div>
+    );
+  }
 
-      {/* API Key Management */}
+  return (
+    <div className="max-w-2xl mx-auto space-y-6">
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Key className="h-5 w-5" />
-            Claude API Key
+            <User className="h-5 w-5" />
+            Account Settings
           </CardTitle>
           <CardDescription>
-            Your Anthropic Claude API key is stored securely in Supabase and syncs across all your devices.
+            Manage your account information
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          {isLoading ? (
-            <div className="text-center py-8 text-muted-foreground">Loading...</div>
-          ) : (
-            <>
-              {/* API Key Input */}
-              <div className="space-y-2">
-                <Label htmlFor="api-key">API Key</Label>
-                <div className="flex gap-2">
-                  <div className="relative flex-1">
-                    <Input
-                      id="api-key"
-                      type={showApiKey ? 'text' : 'password'}
-                      value={apiKey}
-                      onChange={(e) => setApiKey(e.target.value)}
-                      placeholder="sk-ant-..."
-                      className="font-mono"
-                      disabled={!isSupabaseEnabled}
-                    />
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    onClick={() => setShowApiKey(!showApiKey)}
-                    type="button"
-                  >
-                    {showApiKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </Button>
-                </div>
-                <p className="text-sm text-muted-foreground">
-                  🔒 Securely stored in Supabase database - accessible from any device
-                </p>
-              </div>
+          {/* Current Email Display */}
+          <div className="space-y-2">
+            <Label>Current Email</Label>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Mail className="h-4 w-4" />
+              <span>{currentEmail}</span>
+            </div>
+          </div>
 
-              {/* Action Buttons */}
-              <div className="flex gap-2">
-                <Button onClick={handleSave} disabled={isSaving || !isSupabaseEnabled} className="gap-2">
-                  {saveSuccess ? (
-                    <>
-                      <CheckCircle2 className="h-4 w-4" />
-                      Saved!
-                    </>
-                  ) : (
-                    <>
-                      <Save className="h-4 w-4" />
-                      {isSaving ? 'Saving...' : 'Save API Key'}
-                    </>
-                  )}
-                </Button>
-                <Button variant="outline" onClick={handleClear} disabled={!isSupabaseEnabled}>
-                  Clear Key
-                </Button>
-              </div>
+          {/* Change Email Section */}
+          <div className="space-y-4 pt-4 border-t">
+            <div className="space-y-2">
+              <Label htmlFor="new-email">Change Email Address</Label>
+              <Input
+                id="new-email"
+                type="email"
+                value={newEmail}
+                onChange={(e) => setNewEmail(e.target.value)}
+                placeholder="new.email@example.com"
+                disabled={isChangingEmail}
+              />
+              <p className="text-xs text-muted-foreground">
+                You'll need to confirm the change via email sent to both addresses
+              </p>
+            </div>
 
-              <Separator />
+            <Button
+              onClick={handleUpdateEmail}
+              disabled={isChangingEmail || newEmail === currentEmail}
+              className="gap-2"
+            >
+              {isChangingEmail ? 'Updating...' : 'Update Email'}
+            </Button>
+          </div>
 
-              {/* Get API Key Link */}
-              <div className="bg-muted p-4 rounded-lg space-y-2">
-                <h4 className="font-semibold text-sm">Don't have an API key?</h4>
-                <p className="text-sm text-muted-foreground">
-                  Get your Claude API key from the Anthropic Console.
-                </p>
-                <Button variant="outline" size="sm" asChild className="gap-2">
-                  <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener noreferrer">
-                    <ExternalLink className="h-4 w-4" />
-                    Get API Key
-                  </a>
-                </Button>
-              </div>
-            </>
+          {/* Message Display */}
+          {message && (
+            <Alert variant={message.type === 'error' ? 'destructive' : 'default'}>
+              {message.type === 'success' ? (
+                <CheckCircle2 className="h-4 w-4" />
+              ) : (
+                <AlertCircle className="h-4 w-4" />
+              )}
+              <AlertDescription>{message.text}</AlertDescription>
+            </Alert>
           )}
         </CardContent>
       </Card>
-
-      {/* Cost Information */}
-      <Card>
-        <CardHeader>
-          <CardTitle>API Usage & Costs</CardTitle>
-          <CardDescription>
-            Understanding Claude API costs
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="bg-blue-50 p-4 rounded-lg">
-              <p className="font-semibold text-blue-900">Model</p>
-              <p className="text-sm text-blue-700">Claude 3.5 Haiku</p>
-            </div>
-            <div className="bg-green-50 p-4 rounded-lg">
-              <p className="font-semibold text-green-900">Typical Cost</p>
-              <p className="text-sm text-green-700">~$0.01-0.02 per 8-PDF analysis</p>
-            </div>
-          </div>
-          <p className="text-sm text-muted-foreground">
-            We use text extraction (not image processing) to minimize costs. 
-            Check <a href="https://www.anthropic.com/pricing" target="_blank" rel="noopener noreferrer" className="text-primary underline">Anthropic's pricing</a> for current rates.
-          </p>
-        </CardContent>
-      </Card>
-
-      {/* Supabase Setup Guide */}
-      {!isSupabaseEnabled && (
-        <Card>
-          <CardHeader>
-            <CardTitle>Supabase Setup Required</CardTitle>
-            <CardDescription>
-              This app requires Supabase for secure API key storage
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Alert>
-              <AlertDescription>
-                <p className="mb-2">
-                  <strong>Supabase provides:</strong>
-                </p>
-                <ul className="list-disc list-inside space-y-1 text-sm ml-2">
-                  <li>Secure API key storage (synced across all devices)</li>
-                  <li>Client library (manage patient records)</li>
-                  <li>Analysis history tracking</li>
-                  <li>Custom benchmark sync</li>
-                </ul>
-                <p className="mt-4 text-sm">
-                  See <code className="bg-muted px-1 py-0.5 rounded">HOW_TO_SETUP_SUPABASE.md</code> for setup instructions.
-                </p>
-              </AlertDescription>
-            </Alert>
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 }

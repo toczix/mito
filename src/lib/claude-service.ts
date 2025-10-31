@@ -1,8 +1,6 @@
-import Anthropic from '@anthropic-ai/sdk';
+import { supabase } from './supabase';
 import type { ProcessedPDF } from './pdf-processor';
 import type { ExtractedBiomarker } from './biomarkers';
-
-const MODEL_NAME = 'claude-3-5-haiku-20241022';
 
 export interface PatientInfo {
   name: string | null;
@@ -23,8 +21,10 @@ export interface ClaudeResponseBatch extends Array<ClaudeResponse> {
 }
 
 /**
- * Create the specialized prompt for biomarker extraction
+ * NOTE: This function is now in the Edge Function (supabase/functions/analyze-biomarkers/index.ts)
+ * Kept here for reference only
  */
+/*
 function createExtractionPrompt(): string {
   return `You are an expert health data analyst specializing in clinical pathology and nutritional biochemistry.
 
@@ -225,130 +225,75 @@ Look for values in tables, lists, and anywhere else they might appear. BE THOROU
 
 Return your response now:`;
 }
+*/
 
 /**
- * Extract biomarkers from a SINGLE PDF document using Claude API
+ * Extract biomarkers from a SINGLE PDF document using Supabase Edge Function
+ * This keeps the Claude API key secure on the server-side
  */
 export async function extractBiomarkersFromPdf(
-  apiKey: string,
   processedPdf: ProcessedPDF
 ): Promise<ClaudeResponse> {
-  if (!apiKey) {
-    throw new Error('API key is required');
+  if (!supabase) {
+    throw new Error('Supabase is not configured');
   }
 
   try {
-    // Initialize Claude
-    const client = new Anthropic({
-      apiKey: apiKey,
-      dangerouslyAllowBrowser: true, // Required for client-side usage
-    });
-
-    // Prepare content - handle both PDFs, Word docs, and images
-    let content: Anthropic.MessageParam[];
-    
     console.log(`📄 Processing file: ${processedPdf.fileName}`);
     console.log(`   - Is Image: ${processedPdf.isImage}`);
     console.log(`   - Page Count: ${processedPdf.pageCount}`);
     console.log(`   - Extracted Text Length: ${processedPdf.extractedText?.length || 0} chars`);
-    
-    if (processedPdf.isImage && processedPdf.imageData && processedPdf.mimeType) {
-      // For images, use Claude's vision API
-      console.log('   - Using Vision API for image');
-      content = [
-        {
-          role: 'user',
-          content: [
-            {
-              type: 'text',
-              text: createExtractionPrompt(),
-            },
-            {
-              type: 'image',
-              source: {
-                type: 'base64',
-                media_type: processedPdf.mimeType as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp',
-                data: processedPdf.imageData,
-              },
-            },
-          ],
-        },
-      ];
-    } else {
-      // For PDFs and Word documents, use text extraction
-      console.log('   - Using text extraction');
-      
-      // Check if we have extracted text
-      if (!processedPdf.extractedText || processedPdf.extractedText.trim().length === 0) {
-        throw new Error(`No text content found in ${processedPdf.fileName}. The file may be empty, corrupted, or contain only images. Try uploading as an image file (PNG/JPG) instead.`);
-      }
-      
-      const pdfText = `\n=== ${processedPdf.fileName} (${processedPdf.pageCount} pages) ===\n${processedPdf.extractedText}`;
-      console.log(`   - Sending ${pdfText.length} characters to Claude (including prompt)`);
-      console.log(`   - First 200 chars of text: "${processedPdf.extractedText.substring(0, 200)}"`);
-      
-      content = [
-        {
-          role: 'user',
-          content: createExtractionPrompt() + '\n\n' + pdfText,
-        },
-      ];
+
+    // Get the current session token for authentication
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      throw new Error('Not authenticated. Please log in.');
     }
 
-    // Create message
-    console.log('🚀 Sending request to Claude API...');
-    console.log('   - Model:', MODEL_NAME);
-    console.log('   - Messages array length:', content.length);
-    console.log('   - First message role:', content[0]?.role);
-    if (typeof content[0]?.content === 'string') {
-      console.log('   - Message content type: string');
-      console.log('   - Total content length:', content[0].content.length);
-    } else if (Array.isArray(content[0]?.content)) {
-      console.log('   - Message content type: array (multimodal)');
-      console.log('   - Content blocks:', content[0].content.length);
-    }
-    
-    const message = await client.messages.create({
-      model: MODEL_NAME,
-      max_tokens: 4096,
-      messages: content,
+    // Call the Supabase Edge Function (server-side Claude API)
+    console.log('🚀 Sending request to Supabase Edge Function...');
+
+    const { data, error } = await supabase.functions.invoke('analyze-biomarkers', {
+      body: { processedPdf },
     });
-    
-    console.log('✅ Received response from Claude');
-    console.log('   - Stop reason:', message.stop_reason);
-    console.log('   - Content blocks:', message.content.length);
 
-    // Extract text from response
-    const textContent = message.content.find((block) => block.type === 'text');
-    if (!textContent || textContent.type !== 'text') {
-      throw new Error('No text response from Claude');
+    if (error) {
+      console.error('Edge Function error:', error);
+      throw new Error(`Server error: ${error.message}`);
     }
 
-    const text = textContent.text;
+    if (!data) {
+      throw new Error('No response from server');
+    }
 
-    // Parse the JSON response
-    const { biomarkers, patientInfo, panelName } = parseClaudeResponse(text);
+    console.log('✅ Received response from Edge Function');
 
+    // The Edge Function already returns the parsed biomarkers
     return {
-      biomarkers,
-      patientInfo,
-      panelName,
-      raw: text,
+      biomarkers: data.biomarkers || [],
+      patientInfo: data.patientInfo || {
+        name: null,
+        dateOfBirth: null,
+        gender: null,
+        testDate: null,
+      },
+      panelName: data.panelName || 'Lab Results',
+      raw: JSON.stringify(data),
     };
   } catch (error) {
-    console.error('Claude API error:', error);
-    
+    console.error('Biomarker extraction error:', error);
+
     if (error instanceof Error) {
-      if (error.message.includes('invalid_api_key') || error.message.includes('authentication')) {
-        throw new Error('Invalid API key. Please check your Claude API key.');
+      if (error.message.includes('Not authenticated')) {
+        throw new Error('Session expired. Please log in again.');
       }
-      if (error.message.includes('rate_limit') || error.message.includes('overloaded') || error.message.includes('529')) {
+      if (error.message.includes('rate_limit') || error.message.includes('overloaded')) {
         throw new Error('API rate limit exceeded or service is overloaded. Please try again in a moment.');
       }
-      throw new Error(`Claude API error: ${error.message}`);
+      throw new Error(`Analysis error: ${error.message}`);
     }
-    
-    throw new Error('Failed to process PDF with Claude API');
+
+    throw new Error('Failed to analyze document');
   }
 }
 
@@ -357,14 +302,9 @@ export async function extractBiomarkersFromPdf(
  * Returns array of results, one per PDF
  */
 export async function extractBiomarkersFromPdfs(
-  apiKey: string,
   processedPdfs: ProcessedPDF[],
   onProgress?: (current: number, total: number, batchInfo?: string) => void
 ): Promise<ClaudeResponseBatch> {
-  if (!apiKey) {
-    throw new Error('API key is required');
-  }
-
   if (processedPdfs.length === 0) {
     throw new Error('No PDFs provided');
   }
@@ -372,25 +312,25 @@ export async function extractBiomarkersFromPdfs(
   // Process PDFs in batches to avoid rate limits
   const BATCH_SIZE = 3; // Process 3 PDFs at a time
   const DELAY_BETWEEN_BATCHES = 2000; // 2 second delay between batches
-  
+
   const results: ClaudeResponse[] = [];
   const failedFiles: Array<{ fileName: string; error: string }> = [];
   const totalBatches = Math.ceil(processedPdfs.length / BATCH_SIZE);
   let currentBatch = 0;
-  
+
   for (let i = 0; i < processedPdfs.length; i += BATCH_SIZE) {
     currentBatch++;
     const batch = processedPdfs.slice(i, i + BATCH_SIZE);
-    
+
     if (onProgress) {
-      const batchInfo = processedPdfs.length > BATCH_SIZE 
+      const batchInfo = processedPdfs.length > BATCH_SIZE
         ? ` (batch ${currentBatch}/${totalBatches})`
         : '';
       onProgress(i, processedPdfs.length, batchInfo);
     }
-    
+
     // Process batch in parallel with Promise.allSettled to handle partial failures
-    const batchPromises = batch.map(pdf => extractBiomarkersFromPdf(apiKey, pdf));
+    const batchPromises = batch.map(pdf => extractBiomarkersFromPdf(pdf));
     const batchResults = await Promise.allSettled(batchPromises);
     
     // Separate successful results from failures
@@ -435,6 +375,7 @@ export async function extractBiomarkersFromPdfs(
 /**
  * Generate a smart panel name based on biomarkers found
  */
+/* Unused - panel name now generated in Edge Function
 function generatePanelName(biomarkers: ExtractedBiomarker[]): string {
   const biomarkerNames = biomarkers.map(b => b.name.toLowerCase());
   const categories: string[] = [];
@@ -474,10 +415,16 @@ function generatePanelName(biomarkers: ExtractedBiomarker[]): string {
     return categories.join(' + ');
   }
 }
+*/
 
 /**
  * Parse the Claude response and extract biomarker data + patient info
  */
+/**
+ * NOTE: Parsing is now done in the Edge Function
+ * Kept here for reference only
+ */
+/*
 function parseClaudeResponse(text: string): { biomarkers: ExtractedBiomarker[]; patientInfo: PatientInfo; panelName: string } {
   try {
     // Try to extract JSON from markdown code blocks if present
@@ -651,6 +598,7 @@ function parseClaudeResponse(text: string): { biomarkers: ExtractedBiomarker[]; 
     throw new Error(`Failed to parse biomarker data from Claude's response. Check browser console (F12 → Console) for the full raw response. Error: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
+*/
 
 /**
  * Convert name to proper Title Case

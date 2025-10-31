@@ -59,40 +59,66 @@ export interface Analysis {
   updated_at: string;
 }
 
-// Settings ID (singleton)
-const SETTINGS_ID = '00000000-0000-0000-0000-000000000001';
-
-// API Key Management
+// API Key Management (per-user)
 export async function getClaudeApiKey(): Promise<string | null> {
   if (!supabase) return null;
-  
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+
   const { data, error } = await supabase
     .from('settings')
     .select('claude_api_key')
-    .eq('id', SETTINGS_ID)
-    .single();
-  
+    .eq('user_id', user.id)
+    .maybeSingle();
+
   if (error) {
     console.error('Error fetching API key:', error);
     return null;
   }
-  
+
   return data?.claude_api_key || null;
 }
 
 export async function saveClaudeApiKey(apiKey: string): Promise<boolean> {
   if (!supabase) return false;
-  
-  const { error } = await supabase
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return false;
+
+  // First, check if settings exist for this user
+  const { data: existing } = await supabase
     .from('settings')
-    .update({ claude_api_key: apiKey })
-    .eq('id', SETTINGS_ID);
-  
-  if (error) {
-    console.error('Error saving API key:', error);
-    return false;
+    .select('id')
+    .eq('user_id', user.id)
+    .maybeSingle();
+
+  if (existing) {
+    // Update existing settings
+    const { error } = await supabase
+      .from('settings')
+      .update({ claude_api_key: apiKey, updated_at: new Date().toISOString() })
+      .eq('user_id', user.id);
+
+    if (error) {
+      console.error('Error updating API key:', error);
+      return false;
+    }
+  } else {
+    // Create new settings for this user
+    const { error } = await supabase
+      .from('settings')
+      .insert({
+        user_id: user.id,
+        claude_api_key: apiKey,
+      });
+
+    if (error) {
+      console.error('Error creating settings:', error);
+      return false;
+    }
   }
-  
+
   return true;
 }
 
