@@ -984,3 +984,4 @@ The design emphasizes **simplicity and clarity** - no heavy charting libraries, 
 
 
 
+

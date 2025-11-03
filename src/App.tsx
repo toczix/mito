@@ -5,7 +5,7 @@ import { ClientsPage } from '@/pages/ClientsPage';
 import { BenchmarksPage } from '@/pages/BenchmarksPage';
 import { SettingsPage } from '@/pages/SettingsPage';
 import { LoginPage } from '@/pages/LoginPage';
-import { supabase } from '@/lib/supabase';
+import { supabase, isAuthDisabled } from '@/lib/supabase';
 import { Activity, FileText, Users, Settings as SettingsIcon, LogOut, Loader2 } from 'lucide-react';
 import type { Session } from '@supabase/supabase-js';
 
@@ -16,7 +16,7 @@ function App() {
 
   useEffect(() => {
     // Check if Supabase is enabled
-    if (!supabase) {
+    if (!supabase || isAuthDisabled) {
       setLoading(false);
       return;
     }
@@ -55,7 +55,9 @@ function App() {
   }
 
   // Show login page if not authenticated (and Supabase is enabled)
-  if (supabase && !session) {
+  const enforceAuth = supabase && !isAuthDisabled;
+
+  if (enforceAuth && !session) {
     return <LoginPage />;
   }
 
