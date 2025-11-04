@@ -1,0 +1,56 @@
+  'Fasting Insulin': {
+    name: 'Fasting Insulin',
+    description: 'Insulin is released in response to rising blood glucose, helping reduce blood glucose levels by enabling cells to take in glucose. When someone becomes less sensitive to the action of insulin this is referred to as insulin resistance.',
+    optimalValues: '13-40 pmol/L (2-6 mg/dL)',
+    lowReasons: ['Type 1 Diabetes', 'Pituitary insufficiency', 'GABA deficiency', 'Low GLP-1'],
+    highReasons: ['Insulin resistance', 'Fatty liver', 'Pancreatic growths', 'Obesity', 'Medications', 'Pregnancy', 'Dysbiosis / LPS'],
+    whatNext: ['If fasting insulin is high + fasting glucose is high, suspect insulin resistance', 'If fasting insulin is high + fasting glucose is high + triglycerides high + GGT high, suspect metabolic dysfunction / fatty liver']
+  },
+  'Free T3': {
+    name: 'Free T3',
+    description: 'FT3 is the most active form of thyroid hormone, with about 80% produced in peripheral cells. It measures the unbound levels of T3 in the blood.',
+    optimalValues: '3.0-4.5 pg/mL (4.6-6.9 pmol/L)',
+    lowReasons: ['Hypothyroidism (primary)', 'Hypothyroidism (secondary)', 'Hypothyroidism (tertiary)', 'Malnourishment / nutrient deficiencies', 'Chronic inflammation / infection', 'Associated with high cholesterol'],
+    highReasons: ['Hyperthyroidism', 'Thyroid medication', 'Pregnancy', 'Excess iodine intake'],
+    whatNext: ['Assess other thyroid markers (e.g. TSH and FT4)']
+  },
+  'Free T4': {
+    name: 'Free T4',
+    description: 'FT4 is a hormone produced by the thyroid gland, stimulated by the pituitary hormone TSH. It measures the unbound levels of T4 in the blood.',
+    optimalValues: '1.0-1.55 ng/dL (13.0-20.0 pmol/L)',
+    lowReasons: ['Hypothyroidism (primary)', 'Hypothyroidism (secondary)', 'Hypothyroidism (tertiary)', 'Malnourishment'],
+    highReasons: ['Hyperthyroidism', 'Thyroid medication', 'Pregnancy'],
+    whatNext: ['Assess other thyroid markers (e.g. TSH and FT3)']
+  },
+  'Hemoglobin': {
+    name: 'Hemoglobin',
+    description: 'Hemoglobin is a protein molecule that carries oxygen in your blood. Assessing hemoglobin is key for assessing anemia.',
+    optimalValues: 'Females: 135-145 g/L (13.5-14.5 g/dL), Males: 145-155 g/L (14.5-15.5 g/dL)',
+    lowReasons: ['Anemia (low iron, B vitamins, copper, magnesium, blood loss, heavy periods, low stomach acid)', 'Pregnancy (increased blood volume)'],
+    highReasons: ['Dehydration (low water intake, excess exercise, parasites)', 'Asthma / Emphysema (impaired oxygen levels)'],
+    whatNext: ['Assess other red blood cell markers, Ferritin, AST, ALT, Homocysteine', 'Assess Albumin, Urea, Electrolytes to identify dehydration']
+  },
+  'GGT': {
+    name: 'GGT',
+    description: 'GGT (Gamma Glutamyl Transferase) is a liver enzyme found predominantly in the liver / biliary tree. It is involved in breaking down and synthesising Glutathione (an antioxidant).',
+    optimalValues: '12-24 IU/L',
+    lowReasons: ['Low amino acid / glutathione precursors', 'Hypothyroidism', 'Negative gram bacteria overgrowth'],
+    highReasons: ['Excess glutathione breakdown', 'Toxin exposure (xenobiotics)', 'Biliary dysfunction', 'Oxidative stress', 'Excess alcohol consumption', 'Fatty liver', 'Magnesium deficiency'],
+    whatNext: ['If GGT elevated + ALT and AST slightly elevated + elevated triglycerides, consider fatty liver', 'If GGT elevated + ALP elevated + Bilirubin elevated, consider biliary dysfunction']
+  },
+  'Albumin': {
+    name: 'Albumin',
+    description: 'Albumin is a protein made in the liver and is involved in transportation and binding (e.g. of hormones). It helps regulate hydration / osmolarity. It is an acute phase negative reactant (decreases under inflammation).',
+    optimalValues: '40-50 g/L (4.0-5.0 g/dL)',
+    lowReasons: ['Liver dysfunction', 'Kidney dysfunction', 'Inflammation / infection', 'Pregnancy'],
+    highReasons: ['Dehydration'],
+    whatNext: ['High Albumin + high BUN + low CO2 + high RBC + high hemoglobin + high chloride + high sodium + high potassium may suggest dehydration']
+  },
+  'Globulin': {
+    name: 'Globulin',
+    description: 'Globulin is the total of all the different globulins in the blood (transporters or immune proteins; e.g. IgG, IgA, IgM, IgE, beta and alpha globulins). IgG is the most abundant type.',
+    optimalValues: '22-28 g/L (2.2-2.8 g/dL)',
+    lowReasons: ['Immune insufficiency', 'Chronic inflammation / intestinal permeability', 'Anemia'],
+    highReasons: ['Inflammation / infection / intestinal inflammation', 'Autoimmunity', 'Gallbladder dysfunction', 'Parasites', 'Elevated estrogen (e.g. oral contraceptive pill)', 'Low serotonin'],
+    whatNext: ['Low Globulin + low neutrophils + low lymphocytes + low monocytes + low eosinophils may suggest chronic inflammation / immune suppression', 'Assess for use of estrogens if Globulin is elevated']
+  },

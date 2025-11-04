@@ -64,6 +64,7 @@ export function AnalysisResults({
   const [selectedBiomarkerInfo, setSelectedBiomarkerInfo] = useState<{
     info: BiomarkerInfo;
     value: string;
+    unit: string;
     optimalRange: string;
     status: 'in-range' | 'out-of-range' | 'unknown';
   } | null>(null);
@@ -184,6 +185,7 @@ export function AnalysisResults({
       setSelectedBiomarkerInfo({
         info,
         value: result.hisValue,
+        unit: result.unit,
         optimalRange: result.optimalRange,
         status
       });
@@ -705,6 +707,7 @@ export function AnalysisResults({
         onOpenChange={setBiomarkerInfoDialogOpen}
         biomarkerInfo={selectedBiomarkerInfo?.info || null}
         currentValue={selectedBiomarkerInfo?.value}
+        unit={selectedBiomarkerInfo?.unit}
         optimalRange={selectedBiomarkerInfo?.optimalRange}
         status={selectedBiomarkerInfo?.status}
       />
