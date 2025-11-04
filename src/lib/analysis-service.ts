@@ -43,11 +43,11 @@ export async function createAnalysis(
 ): Promise<Analysis | null> {
   if (!supabase) return null;
 
-  // Get current user ID
+  // Get current user ID (if auth is enabled)
+  let userId: string | undefined;
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    console.error('No authenticated user');
-    return null;
+  if (user) {
+    userId = user.id;
   }
 
   // Check for existing analysis with same lab_test_date
@@ -66,16 +66,23 @@ export async function createAnalysis(
     missingBiomarkers: results.filter(r => r.hisValue === 'N/A').length,
   };
 
+  // Build insert data - only include user_id if we have it
+  const insertData: any = {
+    client_id: clientId,
+    lab_test_date: labTestDate || null,
+    results: results,
+    summary: summary,
+    notes: notes || null,
+  };
+  
+  // Only add user_id if auth is enabled and user exists
+  if (userId) {
+    insertData.user_id = userId;
+  }
+
   const { data, error } = await supabase
     .from('analyses')
-    .insert({
-      client_id: clientId,
-      lab_test_date: labTestDate || null,
-      results: results,
-      summary: summary,
-      notes: notes || null,
-      user_id: user.id,
-    })
+    .insert(insertData)
     .select()
     .single();
 

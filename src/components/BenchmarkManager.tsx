@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -33,6 +34,8 @@ export function BenchmarkManager() {
     femaleRange: '',
     units: '',
     category: '',
+    lowReasons: '',
+    highReasons: '',
   });
 
   const refreshBenchmarks = () => {
@@ -52,7 +55,7 @@ export function BenchmarkManager() {
 
   const handleAdd = () => {
     setEditingBenchmark(null);
-    setFormData({ name: '', maleRange: '', femaleRange: '', units: '', category: '' });
+    setFormData({ name: '', maleRange: '', femaleRange: '', units: '', category: '', lowReasons: '', highReasons: '' });
     setIsDialogOpen(true);
     setError(null);
   };
@@ -65,6 +68,8 @@ export function BenchmarkManager() {
       femaleRange: benchmark.femaleRange || '',
       units: benchmark.units.join(', '),
       category: benchmark.category || '',
+      lowReasons: benchmark.lowReasons || '',
+      highReasons: benchmark.highReasons || '',
     });
     setIsDialogOpen(true);
     setError(null);
@@ -95,6 +100,8 @@ export function BenchmarkManager() {
       optimalRange: formData.maleRange, // Keep for compatibility
       units: formData.units.split(',').map(u => u.trim()).filter(Boolean),
       category: formData.category,
+      lowReasons: formData.lowReasons || undefined,
+      highReasons: formData.highReasons || undefined,
     };
 
     try {
@@ -351,6 +358,30 @@ export function BenchmarkManager() {
                 value={formData.category}
                 onChange={(e) => setFormData({ ...formData, category: e.target.value })}
               />
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Low Reasons</label>
+              <Textarea
+                placeholder="List reasons for low values (one per line or comma-separated)"
+                value={formData.lowReasons}
+                onChange={(e) => setFormData({ ...formData, lowReasons: e.target.value })}
+                rows={3}
+                className="resize-none"
+              />
+              <p className="text-xs text-muted-foreground">These will appear in the info dialog when values are low</p>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">High Reasons</label>
+              <Textarea
+                placeholder="List reasons for high values (one per line or comma-separated)"
+                value={formData.highReasons}
+                onChange={(e) => setFormData({ ...formData, highReasons: e.target.value })}
+                rows={3}
+                className="resize-none"
+              />
+              <p className="text-xs text-muted-foreground">These will appear in the info dialog when values are high</p>
             </div>
           </div>
 

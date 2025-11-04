@@ -3,14 +3,14 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-export const isAuthDisabled = import.meta.env.VITE_DISABLE_AUTH === 'true';
+export const isAuthDisabled = true; // Login disabled
 
 // Debug: Log env vars (remove in production)
 console.log('Supabase URL:', supabaseUrl ? '✓ Set' : '✗ Not set');
 console.log('Supabase Key:', supabaseAnonKey ? '✓ Set' : '✗ Not set');
 
-// Supabase is optional for beta - app works without it
-export const supabase = !isAuthDisabled && supabaseUrl && supabaseAnonKey 
+// Supabase can be enabled even when auth is disabled (for database/edge functions)
+export const supabase = supabaseUrl && supabaseAnonKey 
   ? createClient(supabaseUrl, supabaseAnonKey)
   : null;
 

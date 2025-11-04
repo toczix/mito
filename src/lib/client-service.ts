@@ -70,16 +70,22 @@ export async function getClient(id: string): Promise<Client | null> {
 export async function createClient(client: Omit<Client, 'id' | 'created_at' | 'updated_at'>): Promise<Client | null> {
   if (!supabase) return null;
 
-  // Get current user ID
+  // Get current user ID (if auth is enabled)
+  let userId: string | undefined;
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) {
-    console.error('No authenticated user');
-    return null;
+  if (user) {
+    userId = user.id;
+  }
+
+  // Build insert data - only include user_id if we have it
+  const insertData: any = { ...client };
+  if (userId) {
+    insertData.user_id = userId;
   }
 
   const { data, error } = await supabase
     .from('clients')
-    .insert({ ...client, user_id: user.id })
+    .insert(insertData)
     .select()
     .single();
 

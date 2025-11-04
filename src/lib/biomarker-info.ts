@@ -3,6 +3,8 @@
  * Provides access to biomarker high/low reasons from markdown files
  */
 
+import type { Biomarker } from './biomarkers';
+
 export interface BiomarkerInfo {
   name: string;
   description?: string;
@@ -323,30 +325,65 @@ const BIOMARKER_INFO_DB: Record<string, BiomarkerInfo> = {
 };
 
 /**
- * Get biomarker information including high/low reasons
+ * Parse reasons string (comma-separated or newline-separated) into array
  */
-export function getBiomarkerInfo(biomarkerName: string): BiomarkerInfo | null {
-  // Try exact match first
-  if (BIOMARKER_INFO_DB[biomarkerName]) {
-    return BIOMARKER_INFO_DB[biomarkerName];
-  }
+function parseReasons(reasonsStr?: string): string[] {
+  if (!reasonsStr) return [];
 
-  // Try case-insensitive match
-  const normalizedName = biomarkerName.toLowerCase();
-  for (const [key, value] of Object.entries(BIOMARKER_INFO_DB)) {
-    if (key.toLowerCase() === normalizedName) {
-      return value;
+  // Split by newlines first, then by commas
+  const items = reasonsStr.split(/[\n,]/).map(s => s.trim()).filter(Boolean);
+  return items;
+}
+
+/**
+ * Get biomarker information including high/low reasons
+ * Merges default reasons from database with custom reasons from biomarker config
+ */
+export function getBiomarkerInfo(biomarkerName: string, customBiomarker?: Biomarker): BiomarkerInfo | null {
+  // Try exact match first
+  let info = BIOMARKER_INFO_DB[biomarkerName];
+
+  // Try case-insensitive match if no exact match
+  if (!info) {
+    const normalizedName = biomarkerName.toLowerCase();
+    for (const [key, value] of Object.entries(BIOMARKER_INFO_DB)) {
+      if (key.toLowerCase() === normalizedName) {
+        info = value;
+        break;
+      }
     }
   }
 
-  return null;
+  // If we have custom reasons from the biomarker config, merge them
+  if (customBiomarker && (customBiomarker.lowReasons || customBiomarker.highReasons)) {
+    const customLowReasons = parseReasons(customBiomarker.lowReasons);
+    const customHighReasons = parseReasons(customBiomarker.highReasons);
+
+    // Create info object if it doesn't exist
+    if (!info) {
+      return {
+        name: biomarkerName,
+        lowReasons: customLowReasons,
+        highReasons: customHighReasons,
+      };
+    }
+
+    // Merge custom reasons with default ones
+    return {
+      ...info,
+      lowReasons: [...(info.lowReasons || []), ...customLowReasons],
+      highReasons: [...(info.highReasons || []), ...customHighReasons],
+    };
+  }
+
+  return info;
 }
 
 /**
  * Check if biomarker has detailed information available
  */
-export function hasBiomarkerInfo(biomarkerName: string): boolean {
-  return getBiomarkerInfo(biomarkerName) !== null;
+export function hasBiomarkerInfo(biomarkerName: string, customBiomarker?: Biomarker): boolean {
+  return getBiomarkerInfo(biomarkerName, customBiomarker) !== null;
 }
 
 /**

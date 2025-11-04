@@ -5,6 +5,8 @@ export interface Biomarker {
   units: string[];
   category?: string;
   aliases?: string[]; // Alternative names for this biomarker
+  lowReasons?: string; // Reasons for low values (comma-separated or newline-separated)
+  highReasons?: string; // Reasons for high values (comma-separated or newline-separated)
 }
 
 export interface ExtractedBiomarker {

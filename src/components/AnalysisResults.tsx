@@ -20,6 +20,7 @@ import { createAnalysis } from '@/lib/analysis-service';
 import type { Client } from '@/lib/supabase';
 import { getBiomarkerInfo, hasBiomarkerInfo, type BiomarkerInfo } from '@/lib/biomarker-info';
 import { BiomarkerInfoDialog } from './BiomarkerInfoDialog';
+import { getAllBenchmarks } from '@/lib/benchmark-storage';
 
 interface AnalysisResultsProps {
   results: AnalysisResult[];
@@ -78,6 +79,9 @@ export function AnalysisResults({
   }, [editableResults, viewMode]);
 
   const summary = generateSummary(editableResults);
+
+  // Load benchmarks for custom reasons
+  const benchmarks = useMemo(() => getAllBenchmarks(), []);
 
   useEffect(() => {
     if (isSupabaseEnabled && !preSelectedClientId) {
@@ -172,7 +176,9 @@ export function AnalysisResults({
   };
 
   const handleBiomarkerClick = (result: AnalysisResult) => {
-    const info = getBiomarkerInfo(result.biomarkerName);
+    // Find the biomarker config to get custom reasons
+    const biomarkerConfig = benchmarks.find(b => b.name === result.biomarkerName);
+    const info = getBiomarkerInfo(result.biomarkerName, biomarkerConfig);
     if (info) {
       const status = getValueStatus(result.hisValue, result.optimalRange, result.unit);
       setSelectedBiomarkerInfo({
@@ -520,6 +526,8 @@ export function AnalysisResults({
                   const isOutOfRange = status === 'out-of-range';
                   const isEditingValue = editingCell?.index === index && editingCell?.field === 'value';
                   const isEditingUnit = editingCell?.index === index && editingCell?.field === 'unit';
+                  const biomarkerConfig = benchmarks.find(b => b.name === result.biomarkerName);
+                  const hasInfo = hasBiomarkerInfo(result.biomarkerName, biomarkerConfig);
 
                   return (
                     <TableRow 
@@ -542,7 +550,7 @@ export function AnalysisResults({
                               </span>
                             )}
                           </div>
-                          {hasBiomarkerInfo(result.biomarkerName) && (
+                          {hasInfo && isOutOfRange && (
                             <Tooltip>
                               <TooltipTrigger asChild>
                                 <button
