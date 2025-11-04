@@ -13,11 +13,13 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { generateSummary, getValueStatus } from '@/lib/analyzer';
 import type { AnalysisResult } from '@/lib/biomarkers';
 import { getBiomarkerFullName, getBiomarkerDisplayName } from '@/lib/biomarkers';
-import { Copy, Download, CheckCircle2, XCircle, AlertCircle, Save } from 'lucide-react';
+import { Copy, Download, CheckCircle2, XCircle, AlertCircle, Save, Info } from 'lucide-react';
 import { isSupabaseEnabled } from '@/lib/supabase';
 import { getActiveClients } from '@/lib/client-service';
 import { createAnalysis } from '@/lib/analysis-service';
 import type { Client } from '@/lib/supabase';
+import { getBiomarkerInfo, hasBiomarkerInfo, type BiomarkerInfo } from '@/lib/biomarker-info';
+import { BiomarkerInfoDialog } from './BiomarkerInfoDialog';
 
 interface AnalysisResultsProps {
   results: AnalysisResult[];
@@ -55,6 +57,15 @@ export function AnalysisResults({
   const [editableResults, setEditableResults] = useState<AnalysisResult[]>(results);
   const [editingCell, setEditingCell] = useState<{index: number, field: 'value' | 'unit'} | null>(null);
   const [editValue, setEditValue] = useState('');
+
+  // Biomarker info dialog state
+  const [biomarkerInfoDialogOpen, setBiomarkerInfoDialogOpen] = useState(false);
+  const [selectedBiomarkerInfo, setSelectedBiomarkerInfo] = useState<{
+    info: BiomarkerInfo;
+    value: string;
+    optimalRange: string;
+    status: 'in-range' | 'out-of-range' | 'unknown';
+  } | null>(null);
 
   // Filter results based on view mode
   const filteredResults = useMemo(() => {
@@ -158,6 +169,20 @@ export function AnalysisResults({
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+  };
+
+  const handleBiomarkerClick = (result: AnalysisResult) => {
+    const info = getBiomarkerInfo(result.biomarkerName);
+    if (info) {
+      const status = getValueStatus(result.hisValue, result.optimalRange, result.unit);
+      setSelectedBiomarkerInfo({
+        info,
+        value: result.hisValue,
+        optimalRange: result.optimalRange,
+        status
+      });
+      setBiomarkerInfoDialogOpen(true);
+    }
   };
 
   const getStatusBadge = (status: string) => {
@@ -508,12 +533,30 @@ export function AnalysisResults({
                         {index + 1}
                       </TableCell>
                       <TableCell className={`font-medium py-4 ${isOutOfRange ? 'text-gray-900' : ''}`}>
-                        <div className="flex flex-col">
-                          <span className="font-semibold">{result.biomarkerName}</span>
-                          {getBiomarkerFullName(result.biomarkerName) && (
-                            <span className="text-xs text-muted-foreground mt-0.5">
-                              {getBiomarkerFullName(result.biomarkerName)}
-                            </span>
+                        <div className="flex items-start gap-2">
+                          <div className="flex flex-col flex-1">
+                            <span className="font-semibold">{result.biomarkerName}</span>
+                            {getBiomarkerFullName(result.biomarkerName) && (
+                              <span className="text-xs text-muted-foreground mt-0.5">
+                                {getBiomarkerFullName(result.biomarkerName)}
+                              </span>
+                            )}
+                          </div>
+                          {hasBiomarkerInfo(result.biomarkerName) && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <button
+                                  onClick={() => handleBiomarkerClick(result)}
+                                  className="flex-shrink-0 p-1 rounded-full hover:bg-blue-100 text-blue-600 transition-colors"
+                                  aria-label={`View information about ${result.biomarkerName}`}
+                                >
+                                  <Info className="h-4 w-4" />
+                                </button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p className="text-xs">Click for detailed information</p>
+                              </TooltipContent>
+                            </Tooltip>
                           )}
                         </div>
                       </TableCell>
@@ -617,6 +660,16 @@ export function AnalysisResults({
           </div>
         </details>
       )}
+
+      {/* Biomarker Information Dialog */}
+      <BiomarkerInfoDialog
+        open={biomarkerInfoDialogOpen}
+        onOpenChange={setBiomarkerInfoDialogOpen}
+        biomarkerInfo={selectedBiomarkerInfo?.info || null}
+        currentValue={selectedBiomarkerInfo?.value}
+        optimalRange={selectedBiomarkerInfo?.optimalRange}
+        status={selectedBiomarkerInfo?.status}
+      />
     </div>
     </TooltipProvider>
   );
