@@ -321,6 +321,66 @@ const BIOMARKER_INFO_DB: Record<string, BiomarkerInfo> = {
       'Pregnancy (can increase GFR)',
       'High protein diet'
     ]
+  },
+  'Calcium': {
+    name: 'Calcium',
+    description: 'Around 99% of calcium is found within bones. Calcium levels are mostly regulated by parathyroid hormone (PTH) and by Vitamin D. Serum calcium levels are primarily a reflection of calcium metabolism rather than dietary calcium intake.',
+    optimalValues: '2.3-2.45 mmol/L (9.22-9.8 mg/dL)',
+    lowReasons: [
+      'Low intake or absorption',
+      'Intestinal damage (e.g. IBD)',
+      'Parathyroid hypofunction',
+      'Vitamin D deficiency',
+      'Low magnesium'
+    ],
+    highReasons: [
+      'Parathyroid hyperfunction',
+      'Excess vitamin D',
+      'Adrenal hypofunction'
+    ],
+    whatNext: [
+      'If calcium is high or low, assess factors that could influence absorption (e.g. Vitamin D levels, medical conditions like Crohn\'s disease, thyroid dysfunction)',
+      'If consistently or significantly out of range, consider testing Parathyroid Hormone levels (PTH)'
+    ]
+  },
+  'MCV': {
+    name: 'MCV',
+    description: 'Mean Corpuscular Volume measures the average volume of red blood cells and can indicate whether red blood cells are small, normal, or large. It is a helpful anemia marker.',
+    optimalValues: '82-89 fL',
+    lowReasons: [
+      'Anemia (caused by low iron, B6, blood loss, heavy metal toxicity, parasites, or genetic disorder - Thalassemia)'
+    ],
+    highReasons: [
+      'Anemia (caused by low B12 or B9)',
+      'Low stomach acid',
+      'Heavy metals',
+      'Bacterial overgrowth',
+      'Hypothyroidism'
+    ],
+    whatNext: [
+      'Low MCV + low ALT, low AST, high Homocysteine could suggest B6 deficiency',
+      'Low MCV + low RBC, low Hemoglobin, low Iron, low Ferritin, low Transferrin Saturation, high RDW could suggest iron deficiency',
+      'High MCV + high MCH, high MCHC, high LDH, high RDW, low Serum B12, low Serum Folate could suggest B12/B9 deficiency'
+    ]
+  },
+  'Bicarbonate': {
+    name: 'Bicarbonate',
+    description: 'Bicarbonate is a negatively charged ion which neutralises acids and helps maintain the acid-base balance in the body. It is a good indicator of serum pH unless a respiratory dysfunction exists.',
+    optimalValues: '25-30 mmol/L',
+    lowReasons: [
+      'Metabolic acidosis',
+      'Respiratory alkalosis (e.g. hyperventilating / shallow breathing)'
+    ],
+    highReasons: [
+      'Vomiting',
+      'Metabolic alkalosis',
+      'Respiratory acidosis (e.g. inability to properly breathe out CO2)',
+      'Hypochlorhydria (low stomach acid)'
+    ],
+    whatNext: [
+      'Low bicarbonate + high chloride may suggest metabolic acidosis',
+      'High bicarbonate + low chloride + low calcium + low potassium may suggest metabolic alkalosis'
+    ]
   }
 };
 

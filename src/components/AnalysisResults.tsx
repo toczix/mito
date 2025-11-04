@@ -529,6 +529,27 @@ export function AnalysisResults({
                   const biomarkerConfig = benchmarks.find(b => b.name === result.biomarkerName);
                   const hasInfo = hasBiomarkerInfo(result.biomarkerName, biomarkerConfig);
 
+                  // Determine if value is high or low
+                  let valueDirection: 'high' | 'low' | null = null;
+                  if (isOutOfRange && result.hisValue !== 'N/A') {
+                    const numValue = parseFloat(result.hisValue);
+                    const rangeMatch = result.optimalRange.match(/(\d+\.?\d*)\s*-\s*(\d+\.?\d*)/);
+                    const lessThanMatch = result.optimalRange.match(/[<≤]\s*(\d+\.?\d*)/);
+                    const greaterThanMatch = result.optimalRange.match(/[>≥]\s*(\d+\.?\d*)/);
+
+                    if (rangeMatch && !isNaN(numValue)) {
+                      const minRange = parseFloat(rangeMatch[1]);
+                      const maxRange = parseFloat(rangeMatch[2]);
+                      valueDirection = numValue > maxRange ? 'high' : numValue < minRange ? 'low' : null;
+                    } else if (lessThanMatch && !isNaN(numValue)) {
+                      const threshold = parseFloat(lessThanMatch[1]);
+                      valueDirection = numValue > threshold ? 'high' : null;
+                    } else if (greaterThanMatch && !isNaN(numValue)) {
+                      const threshold = parseFloat(greaterThanMatch[1]);
+                      valueDirection = numValue < threshold ? 'low' : null;
+                    }
+                  }
+
                   return (
                     <TableRow 
                       key={index} 
@@ -550,21 +571,30 @@ export function AnalysisResults({
                               </span>
                             )}
                           </div>
-                          {hasInfo && isOutOfRange && (
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <button
-                                  onClick={() => handleBiomarkerClick(result)}
-                                  className="flex-shrink-0 p-1 rounded-full hover:bg-blue-100 text-blue-600 transition-colors"
-                                  aria-label={`View information about ${result.biomarkerName}`}
-                                >
-                                  <Info className="h-4 w-4" />
-                                </button>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p className="text-xs">Click for detailed information</p>
-                              </TooltipContent>
-                            </Tooltip>
+                          {hasInfo && isOutOfRange && valueDirection && (
+                            <div className="flex items-center gap-1.5">
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <button
+                                    onClick={() => handleBiomarkerClick(result)}
+                                    className="flex-shrink-0 p-1 rounded-full hover:bg-blue-100 text-blue-600 transition-colors"
+                                    aria-label={`View information about ${result.biomarkerName}`}
+                                  >
+                                    <Info className="h-4 w-4" />
+                                  </button>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                  <p className="text-xs">Click for detailed information</p>
+                                </TooltipContent>
+                              </Tooltip>
+                              <span className={`text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded ${
+                                valueDirection === 'high'
+                                  ? 'bg-orange-100 text-orange-700'
+                                  : 'bg-blue-100 text-blue-700'
+                              }`}>
+                                {valueDirection}
+                              </span>
+                            </div>
                           )}
                         </div>
                       </TableCell>
