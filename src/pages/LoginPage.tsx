@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { supabase } from '@/lib/supabase';
+import { logAuditFailure } from '@/lib/audit-logger';
 import { Activity, Mail, Loader2 } from 'lucide-react';
 
 export function LoginPage() {
@@ -28,6 +29,9 @@ export function LoginPage() {
 
       if (error) {
         setMessage({ type: 'error', text: error.message });
+        await logAuditFailure('login_failed', error.message, 'auth', undefined, {
+          email: email.trim()
+        });
       } else {
         setMessage({
           type: 'success',
@@ -36,9 +40,13 @@ export function LoginPage() {
         setEmail('');
       }
     } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred';
       setMessage({
         type: 'error',
         text: 'An unexpected error occurred. Please try again.'
+      });
+      await logAuditFailure('login_failed', errorMessage, 'auth', undefined, {
+        email: email.trim()
       });
     } finally {
       setLoading(false);

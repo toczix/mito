@@ -6,6 +6,9 @@ import { BenchmarksPage } from '@/pages/BenchmarksPage';
 import { SettingsPage } from '@/pages/SettingsPage';
 import { LoginPage } from '@/pages/LoginPage';
 import { supabase, isAuthDisabled } from '@/lib/supabase';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { handleAuthError } from '@/lib/error-handler';
+import { logAuditSuccess, logAuditError } from '@/lib/audit-logger';
 import { Activity, FileText, Users, Settings as SettingsIcon, LogOut, Loader2 } from 'lucide-react';
 import type { Session } from '@supabase/supabase-js';
 
@@ -22,16 +25,28 @@ function App() {
     }
 
     // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setLoading(false);
-    });
+    supabase.auth.getSession()
+      .then(({ data: { session } }) => {
+        setSession(session);
+        setLoading(false);
+      })
+      .catch((error) => {
+        handleAuthError(error, 'get_session');
+        setLoading(false);
+      });
 
     // Listen for auth changes (login, logout, token refresh)
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
       setSession(session);
+
+      // Log authentication events
+      if (event === 'SIGNED_IN' && session) {
+        await logAuditSuccess('login', 'auth');
+      } else if (event === 'SIGNED_OUT') {
+        await logAuditSuccess('logout', 'auth');
+      }
     });
 
     return () => subscription.unsubscribe();
@@ -39,7 +54,12 @@ function App() {
 
   const handleLogout = async () => {
     if (!supabase) return;
-    await supabase.auth.signOut();
+    try {
+      await supabase.auth.signOut();
+    } catch (error) {
+      handleAuthError(error, 'sign_out');
+      await logAuditError('logout', error, 'auth');
+    }
   };
 
   // Show loading spinner while checking auth
@@ -69,9 +89,10 @@ function App() {
   ];
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="border-b bg-card sticky top-0 z-50">
+    <ErrorBoundary>
+      <div className="min-h-screen bg-background">
+        {/* Header */}
+        <header className="border-b bg-card sticky top-0 z-50">
         <div className="container mx-auto px-4 py-6">
           <div className="flex items-center justify-between gap-8">
             {/* Logo and Title */}
@@ -153,7 +174,8 @@ function App() {
           </p>
         </div>
       </footer>
-    </div>
+      </div>
+    </ErrorBoundary>
   );
 }
 

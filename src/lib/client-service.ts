@@ -1,4 +1,5 @@
 import { supabase, type Client } from './supabase';
+import { handleDatabaseError } from './error-handler';
 
 export async function getAllClients(): Promise<Client[]> {
   if (!supabase) return [];
@@ -9,7 +10,7 @@ export async function getAllClients(): Promise<Client[]> {
     .order('created_at', { ascending: false });
   
   if (error) {
-    console.error('Error fetching clients:', error);
+    handleDatabaseError(error, 'clients', 'select_all');
     return [];
   }
   
@@ -26,7 +27,7 @@ export async function getActiveClients(): Promise<Client[]> {
     .order('full_name');
   
   if (error) {
-    console.error('Error fetching active clients:', error);
+    handleDatabaseError(error, 'clients', 'select_active');
     return [];
   }
   
@@ -43,7 +44,7 @@ export async function getPastClients(): Promise<Client[]> {
     .order('full_name');
   
   if (error) {
-    console.error('Error fetching past clients:', error);
+    handleDatabaseError(error, 'clients', 'select_past');
     return [];
   }
   
@@ -60,7 +61,7 @@ export async function getClient(id: string): Promise<Client | null> {
     .single();
   
   if (error) {
-    console.error('Error fetching client:', error);
+    handleDatabaseError(error, 'clients', 'select_one');
     return null;
   }
   
@@ -90,7 +91,7 @@ export async function createClient(client: Omit<Client, 'id' | 'created_at' | 'u
     .single();
 
   if (error) {
-    console.error('Error creating client:', error);
+    handleDatabaseError(error, 'clients', 'insert');
     return null;
   }
 
@@ -108,7 +109,7 @@ export async function updateClient(id: string, updates: Partial<Client>): Promis
     .single();
   
   if (error) {
-    console.error('Error updating client:', error);
+    handleDatabaseError(error, 'clients', 'update');
     return null;
   }
   
@@ -124,7 +125,7 @@ export async function deleteClient(id: string): Promise<boolean> {
     .eq('id', id);
   
   if (error) {
-    console.error('Error deleting client:', error);
+    handleDatabaseError(error, 'clients', 'delete');
     return false;
   }
   

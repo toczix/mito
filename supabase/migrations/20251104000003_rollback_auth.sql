@@ -1,0 +1,283 @@
+-- Emergency Rollback Migration for Authentication
+-- This migration safely rolls back authentication changes while preserving data
+-- Run this ONLY if you need to revert to pre-authentication state
+
+BEGIN;
+
+-- ============================================================================
+-- PRE-ROLLBACK VERIFICATION
+-- ============================================================================
+
+DO $$
+DECLARE
+  clients_count INTEGER;
+  analyses_count INTEGER;
+  benchmarks_count INTEGER;
+BEGIN
+  -- Verify data exists before rollback
+  SELECT COUNT(*) INTO clients_count FROM clients;
+  SELECT COUNT(*) INTO analyses_count FROM analyses;
+  SELECT COUNT(*) INTO benchmarks_count FROM custom_benchmarks;
+
+  RAISE NOTICE '========================================';
+  RAISE NOTICE 'ROLLBACK PRE-FLIGHT CHECK';
+  RAISE NOTICE '========================================';
+  RAISE NOTICE 'Current data counts:';
+  RAISE NOTICE '  Clients: %', clients_count;
+  RAISE NOTICE '  Analyses: %', analyses_count;
+  RAISE NOTICE '  Benchmarks: %', benchmarks_count;
+  RAISE NOTICE '';
+END $$;
+
+-- ============================================================================
+-- BACKUP CURRENT STATE
+-- ============================================================================
+
+-- Create backup tables with current RLS state and user assignments
+CREATE TEMP TABLE rollback_backup_clients AS
+SELECT * FROM clients;
+
+CREATE TEMP TABLE rollback_backup_analyses AS
+SELECT * FROM analyses;
+
+CREATE TEMP TABLE rollback_backup_benchmarks AS
+SELECT * FROM custom_benchmarks;
+
+CREATE TEMP TABLE rollback_backup_settings AS
+SELECT * FROM settings;
+
+RAISE NOTICE 'Data backed up to temporary tables';
+
+-- ============================================================================
+-- DISABLE ROW LEVEL SECURITY
+-- ============================================================================
+
+DO $$
+BEGIN
+  -- Disable RLS on all tables
+  ALTER TABLE IF EXISTS clients DISABLE ROW LEVEL SECURITY;
+  ALTER TABLE IF EXISTS analyses DISABLE ROW LEVEL SECURITY;
+  ALTER TABLE IF EXISTS custom_benchmarks DISABLE ROW LEVEL SECURITY;
+  ALTER TABLE IF EXISTS settings DISABLE ROW LEVEL SECURITY;
+
+  RAISE NOTICE 'Row Level Security disabled on all tables';
+END $$;
+
+-- ============================================================================
+-- DROP RLS POLICIES (but keep the columns and data)
+-- ============================================================================
+
+-- Drop clients policies
+DROP POLICY IF EXISTS "Users can view own clients" ON clients;
+DROP POLICY IF EXISTS "Users can insert own clients" ON clients;
+DROP POLICY IF EXISTS "Users can update own clients" ON clients;
+DROP POLICY IF EXISTS "Users can delete own clients" ON clients;
+
+-- Drop analyses policies
+DROP POLICY IF EXISTS "Users can view own analyses" ON analyses;
+DROP POLICY IF EXISTS "Users can insert own analyses" ON analyses;
+DROP POLICY IF EXISTS "Users can update own analyses" ON analyses;
+DROP POLICY IF EXISTS "Users can delete own analyses" ON analyses;
+
+-- Drop benchmarks policies
+DROP POLICY IF EXISTS "Users can view own benchmarks" ON custom_benchmarks;
+DROP POLICY IF EXISTS "Users can insert own benchmarks" ON custom_benchmarks;
+DROP POLICY IF EXISTS "Users can update own benchmarks" ON custom_benchmarks;
+DROP POLICY IF EXISTS "Users can delete own benchmarks" ON custom_benchmarks;
+
+-- Drop settings policies
+DROP POLICY IF EXISTS "Users can view own settings" ON settings;
+DROP POLICY IF EXISTS "Users can insert own settings" ON settings;
+DROP POLICY IF EXISTS "Users can update own settings" ON settings;
+DROP POLICY IF EXISTS "Users can delete own settings" ON settings;
+
+RAISE NOTICE 'All RLS policies dropped';
+
+-- ============================================================================
+-- DROP HELPER FUNCTIONS
+-- ============================================================================
+
+DROP FUNCTION IF EXISTS safely_enable_rls();
+DROP FUNCTION IF EXISTS assign_data_to_practitioner(TEXT, BOOLEAN);
+DROP FUNCTION IF EXISTS verify_auth_migration();
+DROP FUNCTION IF EXISTS create_pre_auth_snapshot();
+
+RAISE NOTICE 'Helper functions removed';
+
+-- ============================================================================
+-- DROP TRIGGER AND FUNCTION FOR AUTO USER SETTINGS
+-- ============================================================================
+
+DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
+DROP FUNCTION IF EXISTS handle_new_user();
+
+RAISE NOTICE 'Auto user creation trigger removed';
+
+-- ============================================================================
+-- RESTORE OLD SETTINGS TABLE STRUCTURE (OPTIONAL)
+-- ============================================================================
+
+-- Note: We keep the new settings structure but with RLS disabled
+-- If you need the old hardcoded UUID structure, uncomment below:
+
+/*
+DROP TABLE IF EXISTS settings CASCADE;
+
+CREATE TABLE settings (
+  user_id UUID PRIMARY KEY DEFAULT '00000000-0000-0000-0000-000000000000'::uuid,
+  theme TEXT DEFAULT 'light',
+  language TEXT DEFAULT 'en',
+  claude_api_key TEXT,
+  notifications_enabled BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Restore settings data if any
+INSERT INTO settings (user_id, theme, language, claude_api_key, notifications_enabled, created_at, updated_at)
+SELECT * FROM rollback_backup_settings
+ON CONFLICT (user_id) DO UPDATE SET
+  theme = EXCLUDED.theme,
+  language = EXCLUDED.language,
+  claude_api_key = EXCLUDED.claude_api_key,
+  notifications_enabled = EXCLUDED.notifications_enabled;
+*/
+
+-- ============================================================================
+-- VERIFY DATA INTEGRITY AFTER ROLLBACK
+-- ============================================================================
+
+DO $$
+DECLARE
+  clients_after INTEGER;
+  analyses_after INTEGER;
+  benchmarks_after INTEGER;
+  clients_before INTEGER;
+  analyses_before INTEGER;
+  benchmarks_before INTEGER;
+BEGIN
+  -- Count current data
+  SELECT COUNT(*) INTO clients_after FROM clients;
+  SELECT COUNT(*) INTO analyses_after FROM analyses;
+  SELECT COUNT(*) INTO benchmarks_after FROM custom_benchmarks;
+
+  -- Count backup data
+  SELECT COUNT(*) INTO clients_before FROM rollback_backup_clients;
+  SELECT COUNT(*) INTO analyses_before FROM rollback_backup_analyses;
+  SELECT COUNT(*) INTO benchmarks_before FROM rollback_backup_benchmarks;
+
+  -- Verify no data loss
+  IF clients_after != clients_before THEN
+    RAISE EXCEPTION 'DATA INTEGRITY ERROR: Clients count mismatch (before: %, after: %)', clients_before, clients_after;
+  END IF;
+
+  IF analyses_after != analyses_before THEN
+    RAISE EXCEPTION 'DATA INTEGRITY ERROR: Analyses count mismatch (before: %, after: %)', analyses_before, analyses_after;
+  END IF;
+
+  IF benchmarks_after != benchmarks_before THEN
+    RAISE EXCEPTION 'DATA INTEGRITY ERROR: Benchmarks count mismatch (before: %, after: %)', benchmarks_before, benchmarks_after;
+  END IF;
+
+  RAISE NOTICE 'Data integrity verified - no data loss';
+END $$;
+
+-- ============================================================================
+-- CREATE VERIFICATION FUNCTION FOR ROLLBACK STATE
+-- ============================================================================
+
+CREATE OR REPLACE FUNCTION verify_rollback_state()
+RETURNS TABLE (
+  check_name TEXT,
+  status TEXT,
+  details TEXT
+) AS $$
+BEGIN
+  -- Check 1: RLS disabled
+  RETURN QUERY
+  SELECT
+    'RLS Disabled'::TEXT,
+    CASE
+      WHEN COUNT(*) FILTER (WHERE rowsecurity = false) = 4 THEN 'PASS'
+      ELSE 'FAIL'
+    END::TEXT,
+    format('%s/4 tables have RLS disabled', COUNT(*) FILTER (WHERE rowsecurity = false))::TEXT
+  FROM pg_tables
+  WHERE tablename IN ('clients', 'analyses', 'custom_benchmarks', 'settings');
+
+  -- Check 2: RLS policies removed
+  RETURN QUERY
+  SELECT
+    'RLS Policies Removed'::TEXT,
+    CASE
+      WHEN COUNT(*) = 0 THEN 'PASS'
+      ELSE 'WARN'
+    END::TEXT,
+    format('%s policies still exist', COUNT(*))::TEXT
+  FROM pg_policies
+  WHERE tablename IN ('clients', 'analyses', 'custom_benchmarks', 'settings');
+
+  -- Check 3: Data preserved
+  RETURN QUERY
+  SELECT
+    'Data Preserved'::TEXT,
+    CASE
+      WHEN COUNT(*) > 0 THEN 'PASS'
+      ELSE 'WARN'
+    END::TEXT,
+    format('%s total records across all tables', COUNT(*))::TEXT
+  FROM (
+    SELECT 1 FROM clients
+    UNION ALL
+    SELECT 1 FROM analyses
+    UNION ALL
+    SELECT 1 FROM custom_benchmarks
+  ) AS all_data;
+
+  -- Check 4: user_id columns still exist (data preserved)
+  RETURN QUERY
+  SELECT
+    'user_id Columns Exist'::TEXT,
+    CASE
+      WHEN COUNT(*) >= 3 THEN 'PASS'
+      ELSE 'FAIL'
+    END::TEXT,
+    format('%s/3 tables have user_id column', COUNT(*))::TEXT
+  FROM information_schema.columns
+  WHERE table_name IN ('clients', 'analyses', 'custom_benchmarks')
+    AND column_name = 'user_id';
+
+END;
+$$ LANGUAGE plpgsql;
+
+COMMIT;
+
+-- ============================================================================
+-- POST-ROLLBACK SUMMARY
+-- ============================================================================
+
+DO $$
+BEGIN
+  RAISE NOTICE '========================================';
+  RAISE NOTICE 'AUTHENTICATION ROLLBACK COMPLETED';
+  RAISE NOTICE '========================================';
+  RAISE NOTICE '';
+  RAISE NOTICE 'What was rolled back:';
+  RAISE NOTICE '  - Row Level Security disabled';
+  RAISE NOTICE '  - RLS policies removed';
+  RAISE NOTICE '  - Helper functions removed';
+  RAISE NOTICE '  - Auto user creation trigger removed';
+  RAISE NOTICE '';
+  RAISE NOTICE 'What was preserved:';
+  RAISE NOTICE '  - All client data';
+  RAISE NOTICE '  - All analysis data';
+  RAISE NOTICE '  - All benchmark data';
+  RAISE NOTICE '  - All user_id assignments (columns kept)';
+  RAISE NOTICE '';
+  RAISE NOTICE 'To verify rollback state:';
+  RAISE NOTICE '  SELECT * FROM verify_rollback_state();';
+  RAISE NOTICE '';
+  RAISE NOTICE 'IMPORTANT: Update src/lib/supabase.ts:';
+  RAISE NOTICE '  Set: export const isAuthDisabled = true;';
+  RAISE NOTICE '========================================';
+END $$;
