@@ -679,3 +679,77 @@ export const BIOMARKERS: Biomarker[] = [
 
 // Get unique list of primary biomarkers (just the names)
 export const PRIMARY_BIOMARKERS = BIOMARKERS.map(b => b.name);
+
+/**
+ * Full name mapping for biomarkers with abbreviations
+ * Maps abbreviated biomarker names to their full descriptive names
+ */
+export const BIOMARKER_FULL_NAMES: Record<string, string> = {
+  // Liver Function
+  'ALP': 'Alkaline Phosphatase',
+  'ALT': 'Alanine Aminotransferase',
+  'AST': 'Aspartate Aminotransferase',
+  'GGT': 'Gamma-Glutamyl Transferase',
+
+  // Kidney Function
+  'BUN': 'Blood Urea Nitrogen',
+  'eGFR': 'Estimated Glomerular Filtration Rate',
+
+  // White Blood Cells - Differentials (Absolute Counts)
+  'WBC': 'White Blood Cell Count',
+  'Neutrophils': 'Absolute Neutrophil Count',
+  'Lymphocytes': 'Absolute Lymphocyte Count',
+  'Monocytes': 'Absolute Monocyte Count',
+  'Eosinophils': 'Absolute Eosinophil Count',
+  'Basophils': 'Absolute Basophil Count',
+
+  // Red Blood Cells
+  'RBC': 'Red Blood Cell Count',
+  'HCT': 'Hematocrit',
+  'MCH': 'Mean Corpuscular Hemoglobin',
+  'MCHC': 'Mean Corpuscular Hemoglobin Concentration',
+  'MCV': 'Mean Corpuscular Volume',
+  'RDW': 'Red Cell Distribution Width',
+
+  // Lipids
+  'HDL Cholesterol': 'High-Density Lipoprotein Cholesterol',
+  'LDL Cholesterol': 'Low-Density Lipoprotein Cholesterol',
+
+  // Metabolic
+  'HbA1C': 'Glycated Hemoglobin',
+
+  // Thyroid
+  'TSH': 'Thyroid Stimulating Hormone',
+  'TPO Antibodies': 'Thyroid Peroxidase Antibodies',
+
+  // Hormones
+  'SHBG': 'Sex Hormone Binding Globulin',
+
+  // Iron Studies
+  'TIBC': 'Total Iron Binding Capacity',
+
+  // Enzymes
+  'LDH': 'Lactate Dehydrogenase',
+};
+
+/**
+ * Get the full descriptive name for a biomarker abbreviation
+ * Returns null if no full name exists (biomarker is already fully named)
+ */
+export function getBiomarkerFullName(name: string): string | null {
+  return BIOMARKER_FULL_NAMES[name] || null;
+}
+
+/**
+ * Get the display name for a biomarker (combines abbreviation and full name if available)
+ * Examples:
+ *   "TSH" -> "TSH (Thyroid Stimulating Hormone)"
+ *   "Calcium" -> "Calcium" (no change, already full name)
+ */
+export function getBiomarkerDisplayName(name: string): string {
+  const fullName = getBiomarkerFullName(name);
+  if (fullName && fullName !== name) {
+    return `${name} (${fullName})`;
+  }
+  return name;
+}

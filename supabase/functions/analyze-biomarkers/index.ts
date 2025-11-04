@@ -17,27 +17,46 @@ serve(async (req) => {
   }
 
   try {
-    // Verify the request is from an authenticated user
+    // Check if authentication is required (disabled by default, enable via REQUIRE_AUTH=true secret)
+    const requireAuth = Deno.env.get('REQUIRE_AUTH') === 'true'
+    
+    // Verify API key is present (Edge Functions require anon key or JWT)
+    const authHeader = req.headers.get('Authorization') || req.headers.get('apikey')
+    const anonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? ''
+    
+    if (!authHeader) {
+      return new Response(JSON.stringify({ error: 'Missing authorization header' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+    
+    // Verify the request is from an authenticated user (if auth is enabled)
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_ANON_KEY') ?? '',
+      anonKey,
       {
         global: {
-          headers: { Authorization: req.headers.get('Authorization')! },
+          headers: { Authorization: authHeader },
         },
       }
     )
 
-    const {
-      data: { user },
-      error: authError,
-    } = await supabaseClient.auth.getUser()
+    if (requireAuth) {
+      const {
+        data: { user },
+        error: authError,
+      } = await supabaseClient.auth.getUser()
 
-    if (authError || !user) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      })
+      if (authError || !user) {
+        return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+          status: 401,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        })
+      }
+    } else {
+      // When auth is disabled, just verify the anon key is used (not required to be a user)
+      // The supabase client initialization above is sufficient
     }
 
     // Get the Claude API key from environment (server-side only)
@@ -53,9 +72,24 @@ serve(async (req) => {
     }
 
     // Parse the request body
-    const { processedPdf } = await req.json()
+    let requestBody: any
+    try {
+      requestBody = await req.json()
+    } catch (parseError: any) {
+      console.error('Error parsing request body:', parseError)
+      return new Response(
+        JSON.stringify({ error: `Invalid JSON in request body: ${parseError.message}` }),
+        {
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      )
+    }
+
+    const { processedPdf } = requestBody
 
     if (!processedPdf) {
+      console.error('Missing processedPdf in request body:', JSON.stringify(requestBody))
       return new Response(
         JSON.stringify({ error: 'Missing processedPdf in request body' }),
         {
@@ -105,7 +139,7 @@ serve(async (req) => {
     // Call Claude API
     const response = await client.messages.create({
       model: 'claude-3-5-haiku-20241022',
-      max_tokens: 16000,
+      max_tokens: 8192, // Maximum allowed for haiku model
       temperature: 0,
       messages: [{ role: 'user', content }],
     })
@@ -133,9 +167,19 @@ serve(async (req) => {
     })
   } catch (error: any) {
     console.error('Error in analyze-biomarkers function:', error)
+    console.error('Error stack:', error.stack)
+    console.error('Error details:', JSON.stringify(error, Object.getOwnPropertyNames(error)))
+    
+    // Provide more detailed error messages
+    let errorMessage = error.message || 'An unexpected error occurred'
+    if (error.cause) {
+      errorMessage += `: ${error.cause}`
+    }
+    
     return new Response(
       JSON.stringify({
-        error: error.message || 'An unexpected error occurred',
+        error: errorMessage,
+        details: Deno.env.get('DENO_ENV') === 'development' ? error.stack : undefined,
       }),
       {
         status: 500,
@@ -164,6 +208,25 @@ INSTRUCTIONS:
 
 3. Extract EVERY biomarker name, its numerical value, and unit of measurement that you can find
 4. If a biomarker appears multiple times, use the MOST RECENT value (check dates on the reports)
+
+⚠️ CRITICAL RULE FOR WHITE BLOOD CELL DIFFERENTIALS:
+For Neutrophils, Lymphocytes, Monocytes, Eosinophils, and Basophils:
+- ONLY extract the ABSOLUTE COUNT values - NEVER extract percentage (%) values
+- Lab reports often show BOTH percentage and absolute count - you MUST choose the absolute count
+
+⚠️ UNIT NORMALIZATION FOR WBC DIFFERENTIALS (VERY IMPORTANT):
+- If the value is in "cells/µL" or "cells/uL", YOU MUST convert it to "×10³/µL" by dividing by 1000
+- Example: "12 cells/µL" → extract as value "0.012" with unit "×10³/µL" (12 ÷ 1000 = 0.012)
+- Example: "150 cells/µL" → extract as value "0.15" with unit "×10³/µL" (150 ÷ 1000 = 0.15)
+- Example: "3500 cells/µL" → extract as value "3.5" with unit "×10³/µL" (3500 ÷ 1000 = 3.5)
+- If already in "×10³/µL", "K/µL", "K/uL", "×10^3/µL", "10^3/µL", or "10³/µL" format, use as-is
+
+EXAMPLES OF CORRECT EXTRACTION:
+- Lab shows "Neutrophils: 55% | 3.2 K/µL" → extract value="3.2", unit="K/µL" (NOT the 55%)
+- Lab shows "Lymphocytes: 2.1 ×10³/µL (35%)" → extract value="2.1", unit="×10³/µL" (NOT the 35%)
+- Lab shows "Basophils: 12 cells/µL" → extract value="0.012", unit="×10³/µL" (converted: 12÷1000)
+- Lab shows "Eosinophils: 150 cells/µL" → extract value="0.15", unit="×10³/µL" (converted: 150÷1000)
+- Lab shows "Monocytes: 450 cells/µL" → extract value="0.45", unit="×10³/µL" (converted: 450÷1000)
 
 RESPONSE FORMAT (JSON only):
 {

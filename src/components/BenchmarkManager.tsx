@@ -16,6 +16,7 @@ import {
   importBenchmarks,
   type CustomBiomarker
 } from '@/lib/benchmark-storage';
+import { getBiomarkerFullName } from '@/lib/biomarkers';
 import { Plus, Pencil, Trash2, Download, Upload, RotateCcw, Search, AlertCircle } from 'lucide-react';
 
 export function BenchmarkManager() {
@@ -41,10 +42,12 @@ export function BenchmarkManager() {
   const filteredBenchmarks = useMemo(() => {
     if (!searchTerm) return benchmarks;
     const term = searchTerm.toLowerCase();
-    return benchmarks.filter(
-      b => b.name.toLowerCase().includes(term) ||
-           b.category?.toLowerCase().includes(term)
-    );
+    return benchmarks.filter(b => {
+      const fullName = getBiomarkerFullName(b.name);
+      return b.name.toLowerCase().includes(term) ||
+             b.category?.toLowerCase().includes(term) ||
+             (fullName && fullName.toLowerCase().includes(term));
+    });
   }, [benchmarks, searchTerm]);
 
   const handleAdd = () => {
@@ -229,7 +232,16 @@ export function BenchmarkManager() {
                   filteredBenchmarks.map((benchmark, index) => (
                     <TableRow key={benchmark.id}>
                       <TableCell className="text-muted-foreground">{index + 1}</TableCell>
-                      <TableCell className="font-medium">{benchmark.name}</TableCell>
+                      <TableCell className="font-medium">
+                        <div className="flex flex-col">
+                          <span className="font-semibold">{benchmark.name}</span>
+                          {getBiomarkerFullName(benchmark.name) && (
+                            <span className="text-xs text-muted-foreground mt-0.5">
+                              {getBiomarkerFullName(benchmark.name)}
+                            </span>
+                          )}
+                        </div>
+                      </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
                         {benchmark.category || '-'}
                       </TableCell>

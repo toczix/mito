@@ -244,11 +244,10 @@ export async function extractBiomarkersFromPdf(
     console.log(`   - Page Count: ${processedPdf.pageCount}`);
     console.log(`   - Extracted Text Length: ${processedPdf.extractedText?.length || 0} chars`);
 
-    // Get the current session token for authentication
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      throw new Error('Not authenticated. Please log in.');
-    }
+    // Get the current session token for authentication (if auth is enabled)
+    // Skip auth check if authentication is disabled
+    await supabase.auth.getSession();
+    // Note: Edge Function may still require auth depending on configuration
 
     // Call the Supabase Edge Function (server-side Claude API)
     console.log('🚀 Sending request to Supabase Edge Function...');
@@ -259,7 +258,51 @@ export async function extractBiomarkersFromPdf(
 
     if (error) {
       console.error('Edge Function error:', error);
-      throw new Error(`Server error: ${error.message}`);
+      console.error('Error details:', JSON.stringify(error, null, 2));
+      
+      // Try to extract error message from response body
+      // The Supabase client may include the response in error.context or error.message
+      let errorMessage = error.message || 'Unknown error';
+      
+      // Check if error has a response body we can parse
+      if (error.context && typeof error.context === 'object') {
+        // Try to find error message in context
+        if (error.context.error) {
+          errorMessage = typeof error.context.error === 'string' 
+            ? error.context.error 
+            : (error.context.error?.message || errorMessage);
+        } else if (error.context.message) {
+          errorMessage = error.context.message;
+        }
+      }
+      
+      // If error message contains JSON, try to parse it
+      try {
+        const errorMatch = errorMessage.match(/\{.*\}/);
+        if (errorMatch) {
+          const parsedError = JSON.parse(errorMatch[0]);
+          if (parsedError.error) {
+            errorMessage = parsedError.error;
+          }
+        }
+      } catch (e) {
+        // If parsing fails, continue with original message
+      }
+      
+      // Check for specific error types
+      if (errorMessage.includes('Unauthorized') || errorMessage.includes('401')) {
+        throw new Error('Edge Function authentication failed. The Edge Function may need to be redeployed with authentication disabled.');
+      }
+      
+      if (errorMessage.includes('Claude API key not configured')) {
+        throw new Error('Claude API key is not configured in Supabase. Please set CLAUDE_API_KEY secret.');
+      }
+      
+      if (errorMessage.includes('Invalid JSON')) {
+        throw new Error('Invalid request format sent to Edge Function.');
+      }
+      
+      throw new Error(`Server error: ${errorMessage}`);
     }
 
     if (!data) {

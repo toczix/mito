@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -12,6 +12,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { generateSummary, getValueStatus } from '@/lib/analyzer';
 import type { AnalysisResult } from '@/lib/biomarkers';
+import { getBiomarkerFullName, getBiomarkerDisplayName } from '@/lib/biomarkers';
 import { Copy, Download, CheckCircle2, XCircle, AlertCircle, Save } from 'lucide-react';
 import { isSupabaseEnabled } from '@/lib/supabase';
 import { getActiveClients } from '@/lib/client-service';
@@ -29,11 +30,11 @@ interface AnalysisResultsProps {
   patientInfoDiscrepancies?: string[];
 }
 
-export function AnalysisResults({ 
-  results, 
-  onReset, 
-  selectedClientId: preSelectedClientId, 
-  selectedClientName: preSelectedClientName, 
+export function AnalysisResults({
+  results,
+  onReset,
+  selectedClientId: preSelectedClientId,
+  selectedClientName: preSelectedClientName,
   gender = 'male',
   documentCount = 0,
   savedAnalysesCount = 0,
@@ -46,12 +47,25 @@ export function AnalysisResults({
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [saveDialogOpen, setSaveDialogOpen] = useState(false);
-  
+
+  // View mode filter state
+  const [viewMode, setViewMode] = useState<'all' | 'out-of-range'>('all');
+
   // Inline editing state
   const [editableResults, setEditableResults] = useState<AnalysisResult[]>(results);
   const [editingCell, setEditingCell] = useState<{index: number, field: 'value' | 'unit'} | null>(null);
   const [editValue, setEditValue] = useState('');
-  
+
+  // Filter results based on view mode
+  const filteredResults = useMemo(() => {
+    if (viewMode === 'all') return editableResults;
+    return editableResults.filter(result => {
+      if (result.hisValue === 'N/A') return false; // Don't show N/A values in out-of-range filter
+      const status = getValueStatus(result.hisValue, result.optimalRange, result.unit);
+      return status === 'out-of-range';
+    });
+  }, [editableResults, viewMode]);
+
   const summary = generateSummary(editableResults);
 
   useEffect(() => {
@@ -126,20 +140,20 @@ export function AnalysisResults({
   }
 
   const copyToClipboard = () => {
-    // Generate markdown table with edited results
-    const markdown = generateMarkdownTable(editableResults, preSelectedClientName, gender);
+    // Generate markdown table with filtered results
+    const markdown = generateMarkdownTable(filteredResults, preSelectedClientName, gender, viewMode);
     navigator.clipboard.writeText(markdown);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
 
   const downloadAsMarkdown = () => {
-    const markdown = generateMarkdownTable(editableResults, preSelectedClientName, gender);
+    const markdown = generateMarkdownTable(filteredResults, preSelectedClientName, gender, viewMode);
     const blob = new Blob([markdown], { type: 'text/markdown' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url;
-    a.download = `biomarker-analysis-${new Date().toISOString().split('T')[0]}.md`;
+    const suffix = viewMode === 'out-of-range' ? '-out-of-range' : '';
+    a.download = `biomarker-analysis${suffix}-${new Date().toISOString().split('T')[0]}.md`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -320,6 +334,26 @@ export function AnalysisResults({
             </Alert>
           )}
 
+          {/* View Mode Filter */}
+          <div className="flex gap-1 p-1 bg-muted rounded-lg">
+            <Button
+              variant={viewMode === 'all' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setViewMode('all')}
+              className="text-xs"
+            >
+              All ({editableResults.length})
+            </Button>
+            <Button
+              variant={viewMode === 'out-of-range' ? 'default' : 'ghost'}
+              size="sm"
+              onClick={() => setViewMode('out-of-range')}
+              className="text-xs"
+            >
+              Out of Range ({summary.outOfRangeCount})
+            </Button>
+          </div>
+
           {/* Action Buttons */}
           <div className="flex flex-wrap gap-2">
             {isSupabaseEnabled && !preSelectedClientId && (
@@ -406,11 +440,11 @@ export function AnalysisResults({
             )}
             <Button onClick={copyToClipboard} variant="outline" className="gap-2">
               {copied ? <CheckCircle2 className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-              {copied ? 'Copied!' : 'Copy Markdown Table'}
+              {copied ? 'Copied!' : viewMode === 'out-of-range' ? 'Copy Out of Range' : 'Copy Markdown Table'}
             </Button>
             <Button onClick={downloadAsMarkdown} variant="outline" className="gap-2">
               <Download className="h-4 w-4" />
-              Download as Markdown
+              {viewMode === 'out-of-range' ? 'Download Out of Range' : 'Download as Markdown'}
             </Button>
             {onReset && (
               <Button onClick={onReset} variant="outline">
@@ -426,7 +460,10 @@ export function AnalysisResults({
         <CardHeader>
           <CardTitle>Comprehensive Biomarker Analysis</CardTitle>
           <CardDescription>
-            All 57 biomarkers with values compared against optimal ranges for {gender === 'female' ? 'females' : 'males'}
+            {viewMode === 'out-of-range'
+              ? `Showing ${filteredResults.length} out-of-range biomarkers for ${gender === 'female' ? 'females' : 'males'}`
+              : `All ${editableResults.length} biomarkers with values compared against optimal ranges for ${gender === 'female' ? 'females' : 'males'}`
+            }
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -443,7 +480,16 @@ export function AnalysisResults({
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {editableResults.map((result, index) => {
+                {filteredResults.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                      {viewMode === 'out-of-range'
+                        ? 'No out-of-range values found. All measured biomarkers are within optimal ranges!'
+                        : 'No biomarkers to display'}
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filteredResults.map((result, index) => {
                   const status = getValueStatus(result.hisValue, result.optimalRange, result.unit);
                   const isNA = result.hisValue === 'N/A';
                   const isOutOfRange = status === 'out-of-range';
@@ -462,7 +508,14 @@ export function AnalysisResults({
                         {index + 1}
                       </TableCell>
                       <TableCell className={`font-medium py-4 ${isOutOfRange ? 'text-gray-900' : ''}`}>
-                        {result.biomarkerName}
+                        <div className="flex flex-col">
+                          <span className="font-semibold">{result.biomarkerName}</span>
+                          {getBiomarkerFullName(result.biomarkerName) && (
+                            <span className="text-xs text-muted-foreground mt-0.5">
+                              {getBiomarkerFullName(result.biomarkerName)}
+                            </span>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell className={`
                         font-mono text-right py-4
@@ -533,7 +586,7 @@ export function AnalysisResults({
                       </TableCell>
                     </TableRow>
                   );
-                })}
+                }))}
               </TableBody>
             </Table>
           </div>
@@ -572,20 +625,30 @@ export function AnalysisResults({
 /**
  * Generate markdown table from results
  */
-function generateMarkdownTable(results: AnalysisResult[], clientName?: string, gender: 'male' | 'female' = 'male'): string {
+function generateMarkdownTable(
+  results: AnalysisResult[],
+  clientName?: string,
+  gender: 'male' | 'female' = 'male',
+  viewMode: 'all' | 'out-of-range' = 'all'
+): string {
   let markdown = '# Biomarker Analysis Results\n\n';
   if (clientName) {
     markdown += `**Patient:** ${clientName}\n`;
   }
-  markdown += `**Date:** ${new Date().toLocaleDateString()}\n\n`;
-  
+  markdown += `**Date:** ${new Date().toLocaleDateString()}\n`;
+  if (viewMode === 'out-of-range') {
+    markdown += `**Filter:** Out of Range Values Only\n`;
+  }
+  markdown += '\n';
+
   markdown += '## Comprehensive Biomarker Analysis\n\n';
   const genderLabel = gender === 'female' ? 'Female' : 'Male';
   markdown += `| Biomarker Name | Value | Unit | Optimal Range (${genderLabel}) |\n`;
   markdown += '|:---------------|:------|:-----|:-------------------------------|\n';
 
   for (const result of results) {
-    markdown += `| ${result.biomarkerName} | ${result.hisValue} | ${result.unit} | ${result.optimalRange} |\n`;
+    const displayName = getBiomarkerDisplayName(result.biomarkerName);
+    markdown += `| ${displayName} | ${result.hisValue} | ${result.unit} | ${result.optimalRange} |\n`;
   }
 
   markdown += '\n---\n';
