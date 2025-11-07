@@ -43,11 +43,11 @@ export async function createAnalysis(
 ): Promise<Analysis | null> {
   if (!supabase) return null;
 
-  // Get current user ID (if auth is enabled)
+  // Get current user ID from cached session (no network request - prevents timeout)
   let userId: string | undefined;
-  const { data: { user } } = await supabase.auth.getUser();
-  if (user) {
-    userId = user.id;
+  const { data: { session } } = await supabase.auth.getSession();
+  if (session?.user) {
+    userId = session.user.id;
   }
 
   // Check for existing analysis with same lab_test_date

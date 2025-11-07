@@ -4,7 +4,7 @@ import { LoadingState } from '@/components/LoadingState';
 import { AnalysisResults } from '@/components/AnalysisResults';
 import { ClientConfirmation } from '@/components/ClientConfirmation';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { processMultiplePdfs, type ProcessedPDF } from '@/lib/pdf-processor';
+import { processMultiplePdfs } from '@/lib/pdf-processor';
 import { extractBiomarkersFromPdfs, type PatientInfo, consolidatePatientInfo, type ClaudeResponseBatch } from '@/lib/claude-service';
 import { matchBiomarkersWithRanges } from '@/lib/analyzer';
 import { createAnalysis } from '@/lib/analysis-service';
@@ -62,27 +62,19 @@ export function HomePage() {
       setProcessingProgress(5);
       const processedPdfs = await processMultiplePdfs(files);
 
-      const qualityIssues: string[] = [];
-      const validPdfs: ProcessedPDF[] = [];
-
+      // Process all files regardless of quality, but log warnings
+      const qualityWarnings: string[] = [];
       processedPdfs.forEach(pdf => {
         if (pdf.qualityWarning && pdf.qualityScore && pdf.qualityScore < 0.5) {
-          qualityIssues.push(`${pdf.fileName}: ${pdf.qualityWarning}`);
-        } else {
-          validPdfs.push(pdf);
+          qualityWarnings.push(`${pdf.fileName}: ${pdf.qualityWarning}`);
         }
       });
 
-      if (qualityIssues.length > 0) {
-        const errorMsg = `Some files have quality issues and were skipped:\n${qualityIssues.join('\n')}`;
-        if (validPdfs.length === 0) {
-          setError(errorMsg);
-          setState('error');
-          return;
-        } else {
-          console.warn(errorMsg);
-        }
+      if (qualityWarnings.length > 0) {
+        console.warn(`⚠️ Quality warnings (attempting to extract anyway):\n${qualityWarnings.join('\n')}`);
       }
+
+      const validPdfs = processedPdfs;
 
       setProcessingProgress(20);
 
@@ -90,10 +82,26 @@ export function HomePage() {
       setProcessingProgress(30);
       const claudeResponses: ClaudeResponseBatch = await extractBiomarkersFromPdfs(
         validPdfs,
-        (current, total, batchInfo) => {
+        (current, total, batchInfo, status) => {
           const progress = 30 + Math.round((current / total) * 40);
           setProcessingProgress(progress);
-          setProcessingMessage(`Analyzing document ${current + 1} of ${total}${batchInfo}...`);
+
+          // Enhanced status message with file-level progress
+          let message = `Analyzing document ${current + 1} of ${total}${batchInfo}`;
+          if (status) {
+            if (status.startsWith('processing')) {
+              const fileName = status.replace('processing ', '');
+              message = `Processing ${fileName}...`;
+            } else if (status.startsWith('completed')) {
+              const fileName = status.replace('completed ', '');
+              message = `Completed ${fileName}`;
+            } else if (status.startsWith('failed')) {
+              const fileName = status.replace('failed ', '');
+              message = `Failed ${fileName}`;
+            }
+          }
+
+          setProcessingMessage(message);
         }
       );
       setProcessingProgress(70);

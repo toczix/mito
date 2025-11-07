@@ -65,13 +65,15 @@ class AuditLogger {
     }
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { session } } = await supabase.auth.getSession();
 
-      if (!user) {
+      if (!session?.user) {
         // Store in pending queue if user not authenticated yet
         this.pendingLogs.push(entry);
         return;
       }
+
+      const user = session.user;
 
       const logData = {
         user_id: user.id,
@@ -199,8 +201,10 @@ class AuditLogger {
     if (!supabase) return [];
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return [];
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) return [];
+
+      const user = session.user;
 
       const { data, error } = await supabase
         .from('audit_logs')
@@ -228,8 +232,10 @@ class AuditLogger {
     if (!supabase) return [];
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return [];
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) return [];
+
+      const user = session.user;
 
       const { data, error } = await supabase
         .from('audit_logs')

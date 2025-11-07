@@ -3,17 +3,59 @@ import { handleDatabaseError } from './error-handler';
 
 export async function getAllClients(): Promise<Client[]> {
   if (!supabase) return [];
-  
+
   const { data, error } = await supabase
     .from('clients')
     .select('*')
     .order('created_at', { ascending: false });
-  
+
   if (error) {
     handleDatabaseError(error, 'clients', 'select_all');
     return [];
   }
-  
+
+  return data || [];
+}
+
+/**
+ * Search clients by name (fast, server-side filtering)
+ * Returns clients whose name contains the search term (case-insensitive)
+ */
+export async function searchClientsByName(searchTerm: string, limit: number = 50): Promise<Client[]> {
+  if (!supabase || !searchTerm) return [];
+
+  // Normalize search term: remove special chars, extra spaces
+  const normalized = searchTerm
+    .toLowerCase()
+    .replace(/[^a-z\s]/g, '')
+    .trim();
+
+  if (!normalized) return [];
+
+  // Split into words for flexible matching (e.g., "John Smith" or "Smith John")
+  const words = normalized.split(/\s+/);
+
+  // Build query: Use ilike for case-insensitive pattern matching
+  // Search for each word in the name
+  let query = supabase
+    .from('clients')
+    .select('*');
+
+  // Apply filters for each word (all must match)
+  words.forEach(word => {
+    query = query.ilike('full_name', `%${word}%`);
+  });
+
+  // Limit results and order by name
+  const { data, error } = await query
+    .limit(limit)
+    .order('full_name');
+
+  if (error) {
+    handleDatabaseError(error, 'clients', 'search_by_name');
+    return [];
+  }
+
   return data || [];
 }
 
@@ -71,11 +113,11 @@ export async function getClient(id: string): Promise<Client | null> {
 export async function createClient(client: Omit<Client, 'id' | 'created_at' | 'updated_at'>): Promise<Client | null> {
   if (!supabase) return null;
 
-  // Get current user ID (if auth is enabled)
+  // Get current user ID from cached session (no network request - prevents timeout)
   let userId: string | undefined;
-  const { data: { user } } = await supabase.auth.getUser();
-  if (user) {
-    userId = user.id;
+  const { data: { session } } = await supabase.auth.getSession();
+  if (session?.user) {
+    userId = session.user.id;
   }
 
   // Build insert data - only include user_id if we have it

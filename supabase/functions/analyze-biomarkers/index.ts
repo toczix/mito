@@ -17,20 +17,25 @@ serve(async (req) => {
   }
 
   try {
+    console.log('🔹 Edge Function started')
+
     // Check if authentication is required (disabled by default, enable via REQUIRE_AUTH=true secret)
     const requireAuth = Deno.env.get('REQUIRE_AUTH') === 'true'
-    
+    console.log('🔹 Auth required:', requireAuth)
+
     // Verify API key is present (Edge Functions require anon key or JWT)
     const authHeader = req.headers.get('Authorization') || req.headers.get('apikey')
     const anonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? ''
-    
+
     if (!authHeader) {
+      console.error('❌ Missing authorization header')
       return new Response(JSON.stringify({ error: 'Missing authorization header' }), {
         status: 401,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       })
     }
-    
+
+    console.log('🔹 Creating Supabase client')
     // Verify the request is from an authenticated user (if auth is enabled)
     const supabaseClient = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
@@ -43,25 +48,31 @@ serve(async (req) => {
     )
 
     if (requireAuth) {
+      console.log('🔹 Verifying user authentication...')
       const {
         data: { user },
         error: authError,
       } = await supabaseClient.auth.getUser()
 
       if (authError || !user) {
+        console.error('❌ Unauthorized:', authError)
         return new Response(JSON.stringify({ error: 'Unauthorized' }), {
           status: 401,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         })
       }
+      console.log('✅ User authenticated')
     } else {
       // When auth is disabled, just verify the anon key is used (not required to be a user)
       // The supabase client initialization above is sufficient
+      console.log('✅ Auth check skipped (disabled)')
     }
 
     // Get the Claude API key from environment (server-side only)
+    console.log('🔹 Checking Claude API key')
     const claudeApiKey = Deno.env.get('CLAUDE_API_KEY')
     if (!claudeApiKey) {
+      console.error('❌ Claude API key not configured')
       return new Response(
         JSON.stringify({ error: 'Claude API key not configured' }),
         {
@@ -70,13 +81,21 @@ serve(async (req) => {
         }
       )
     }
+    console.log('✅ Claude API key found')
 
-    // Parse the request body
+    // Parse the request body with timeout protection
+    console.log('🔹 Parsing request body...')
     let requestBody: any
     try {
-      requestBody = await req.json()
+      // Add timeout to request body parsing (30 seconds max)
+      const parsePromise = req.json()
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Request body parsing timeout after 30s')), 30000)
+      )
+      requestBody = await Promise.race([parsePromise, timeoutPromise])
+      console.log('✅ Request body parsed (size:', JSON.stringify(requestBody).length, 'bytes)')
     } catch (parseError: any) {
-      console.error('Error parsing request body:', parseError)
+      console.error('❌ Error parsing request body:', parseError)
       return new Response(
         JSON.stringify({ error: `Invalid JSON in request body: ${parseError.message}` }),
         {
@@ -89,11 +108,36 @@ serve(async (req) => {
     const { processedPdf } = requestBody
 
     if (!processedPdf) {
-      console.error('Missing processedPdf in request body:', JSON.stringify(requestBody))
+      console.error('❌ Missing processedPdf in request body')
       return new Response(
         JSON.stringify({ error: 'Missing processedPdf in request body' }),
         {
           status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      )
+    }
+    console.log('✅ ProcessedPdf found:', processedPdf.fileName)
+
+    // Validate file size to prevent timeouts on oversized files
+    const textLength = processedPdf.extractedText?.length || 0
+    const singleImageSize = processedPdf.imageData?.length || 0
+    const multiImageSize = processedPdf.imagePages?.reduce((sum, img) => sum + img.length, 0) || 0
+    const totalSize = textLength + singleImageSize + multiImageSize
+
+    // 20MB limit for request payload (to handle multi-page PDFs with all pages)
+    // Claude API supports up to 100MB, but we limit to 20MB for reasonable processing times
+    const MAX_PAYLOAD_SIZE = 20 * 1024 * 1024
+
+    if (totalSize > MAX_PAYLOAD_SIZE) {
+      console.error(`File too large: ${(totalSize / 1024 / 1024).toFixed(2)}MB`)
+      return new Response(
+        JSON.stringify({
+          error: `File too large for processing. Size: ${(totalSize / 1024 / 1024).toFixed(2)}MB. Maximum: 20MB.`,
+          suggestion: 'Try splitting the document into smaller files or reducing image quality.'
+        }),
+        {
+          status: 413,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         }
       )
@@ -110,22 +154,39 @@ serve(async (req) => {
     // Prepare content based on file type
     let content: any[]
 
-    if (processedPdf.isImage && processedPdf.imageData && processedPdf.mimeType) {
-      // For images, use Claude's vision API
+    if (processedPdf.isImage && processedPdf.mimeType) {
+      // For images (single or multi-page), use Claude's vision API
       content = [
         {
           type: 'text',
           text: extractionPrompt,
         },
-        {
+      ]
+
+      // Handle multi-page PDFs converted to images
+      if (processedPdf.imagePages && processedPdf.imagePages.length > 0) {
+        for (const imageData of processedPdf.imagePages) {
+          content.push({
+            type: 'image',
+            source: {
+              type: 'base64',
+              media_type: processedPdf.mimeType,
+              data: imageData,
+            },
+          })
+        }
+      }
+      // Handle single image
+      else if (processedPdf.imageData) {
+        content.push({
           type: 'image',
           source: {
             type: 'base64',
             media_type: processedPdf.mimeType,
             data: processedPdf.imageData,
           },
-        },
-      ]
+        })
+      }
     } else {
       // For PDFs and Word documents, use text extraction
       content = [
@@ -136,13 +197,23 @@ serve(async (req) => {
       ]
     }
 
-    // Call Claude API
-    const response = await client.messages.create({
-      model: 'claude-3-5-haiku-20241022',
-      max_tokens: 8192, // Maximum allowed for haiku model
-      temperature: 0,
-      messages: [{ role: 'user', content }],
-    })
+    // Call Claude API with timeout protection
+    // Vision API with ALL pages can take 2-5 minutes for large multi-page PDFs
+    const CLAUDE_API_TIMEOUT = 300000; // 300 seconds (5 minutes) - increased for multi-page processing
+
+    console.log(`📤 Sending ${content.length} content blocks to Claude...`)
+    const response = await Promise.race([
+      client.messages.create({
+        model: 'claude-3-5-haiku-20241022', // Claude 3.5 Haiku - proven working version
+        max_tokens: 8192,
+        temperature: 0,
+        messages: [{ role: 'user', content }],
+      }),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Claude API timeout after 300 seconds')), CLAUDE_API_TIMEOUT)
+      )
+    ]) as any
+    console.log(`✅ Received response from Claude`)
 
     // Extract the response text
     const textContent = response.content.find((block: any) => block.type === 'text')
@@ -159,8 +230,71 @@ serve(async (req) => {
       responseText = responseText.replace(/^```\n/, '').replace(/\n```$/, '')
     }
 
+    // IMPORTANT: Claude sometimes adds explanatory text after the JSON
+    // Extract only the JSON object (from first { to matching })
+    const jsonStartIndex = responseText.indexOf('{')
+    if (jsonStartIndex !== -1) {
+      // Find the matching closing brace
+      let braceCount = 0
+      let jsonEndIndex = -1
+      for (let i = jsonStartIndex; i < responseText.length; i++) {
+        if (responseText[i] === '{') braceCount++
+        if (responseText[i] === '}') {
+          braceCount--
+          if (braceCount === 0) {
+            jsonEndIndex = i + 1
+            break
+          }
+        }
+      }
+
+      if (jsonEndIndex !== -1) {
+        const originalLength = responseText.length
+        responseText = responseText.substring(jsonStartIndex, jsonEndIndex)
+
+        // Log if we removed extra text
+        if (jsonEndIndex < originalLength) {
+          const originalResponseText = textContent.text.trim()
+          const removedText = originalResponseText.substring(jsonEndIndex).trim()
+          if (removedText) {
+            console.warn('Removed extra text after JSON:', removedText.substring(0, 100))
+          }
+        }
+      }
+    }
+
     // Parse the JSON response
-    const parsedResponse = JSON.parse(responseText)
+    let parsedResponse
+    try {
+      parsedResponse = JSON.parse(responseText)
+    } catch (parseError: any) {
+      console.error('Failed to parse Claude response as JSON:', parseError)
+      console.error('Response text:', responseText.substring(0, 500))
+      throw new Error(`Claude returned invalid JSON: ${parseError.message}. Response preview: ${responseText.substring(0, 200)}`)
+    }
+
+    // Validate that we got biomarkers
+    if (!parsedResponse.biomarkers || !Array.isArray(parsedResponse.biomarkers)) {
+      console.error('Missing or invalid biomarkers array:', parsedResponse)
+      throw new Error('Claude response missing biomarkers array. This file may not contain lab results.')
+    }
+
+    // Check if Claude returned empty biomarkers (likely not a lab report)
+    if (parsedResponse.biomarkers.length === 0) {
+      console.warn('Claude returned 0 biomarkers - file may not contain lab results')
+      return new Response(
+        JSON.stringify({
+          error: 'No biomarkers found in this document. Please ensure the file contains laboratory test results.',
+          suggestion: 'This file may be a different type of document (e.g., medical notes, prescription, etc.) and not a lab report.',
+          biomarkers: [],
+          patientInfo: parsedResponse.patientInfo || null,
+        }),
+        {
+          status: 422,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        }
+      )
+    }
 
     return new Response(JSON.stringify(parsedResponse), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -169,20 +303,32 @@ serve(async (req) => {
     console.error('Error in analyze-biomarkers function:', error)
     console.error('Error stack:', error.stack)
     console.error('Error details:', JSON.stringify(error, Object.getOwnPropertyNames(error)))
-    
+
     // Provide more detailed error messages
     let errorMessage = error.message || 'An unexpected error occurred'
     if (error.cause) {
       errorMessage += `: ${error.cause}`
     }
-    
+
+    // Add more specific error information
+    let statusCode = 500
+    if (error.message?.includes('timeout')) {
+      statusCode = 504
+      errorMessage = `Processing timeout: ${errorMessage}`
+    } else if (error.message?.includes('Invalid JSON') || error.message?.includes('parse')) {
+      statusCode = 422
+      errorMessage = `Failed to parse Claude response: ${errorMessage}`
+    }
+
     return new Response(
       JSON.stringify({
         error: errorMessage,
-        details: Deno.env.get('DENO_ENV') === 'development' ? error.stack : undefined,
+        details: error.stack,
+        fileName: error.fileName || 'unknown',
+        errorType: error.name || 'UnknownError',
       }),
       {
-        status: 500,
+        status: statusCode,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       }
     )

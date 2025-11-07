@@ -21,6 +21,84 @@ export interface ClaudeResponseBatch extends Array<ClaudeResponse> {
 }
 
 /**
+ * Configuration constants for API calls
+ */
+const EDGE_FUNCTION_TIMEOUT = 120000; // 120 seconds (2 minutes) - abort if taking too long
+const MAX_RETRIES = 2; // Reduced from 3 - only retry transient errors
+const INITIAL_RETRY_DELAY = 3000; // 3 seconds
+const MAX_RETRY_DELAY = 10000; // 10 seconds
+
+/**
+ * Retry a function with exponential backoff
+ */
+async function retryWithBackoff<T>(
+  fn: () => Promise<T>,
+  maxRetries: number = MAX_RETRIES,
+  initialDelay: number = INITIAL_RETRY_DELAY,
+  maxDelay: number = MAX_RETRY_DELAY,
+  timeoutMs: number = EDGE_FUNCTION_TIMEOUT
+): Promise<T> {
+  let lastError: any;
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      // Wrap with timeout
+      return await Promise.race([
+        fn(),
+        new Promise<T>((_, reject) =>
+          setTimeout(() => reject(new Error(`Request timeout after ${timeoutMs}ms`)), timeoutMs)
+        )
+      ]);
+    } catch (error: any) {
+      lastError = error;
+
+      // Don't retry client errors (400-499) except rate limits (429)
+      const isClientError = error.status >= 400 && error.status < 500 && error.status !== 429;
+      if (isClientError) {
+        console.warn(`❌ Client error ${error.status} - not retrying:`, error.message);
+        throw error;
+      }
+
+      // Don't retry processing timeout errors (these are NOT transient)
+      // Processing timeouts mean the file takes too long, retrying won't help
+      const isProcessingTimeout =
+        error.message?.includes('Request timeout after') ||
+        error.message?.includes('Claude API timeout') ||
+        error.message?.includes('Processing timeout') ||
+        error.message?.includes('File too large') ||
+        error.status === 413 || // Payload too large
+        error.status === 504;   // Gateway timeout (usually processing time)
+
+      if (isProcessingTimeout) {
+        console.warn(`❌ Processing timeout - not retrying:`, error.message);
+        throw error;
+      }
+
+      // Only retry truly transient errors
+      const isRetryable =
+        error.message?.includes('overloaded') ||
+        error.message?.includes('rate_limit') ||
+        error.message?.includes('network') ||
+        error.message?.includes('fetch failed') ||
+        error.message?.includes('ECONNREFUSED') ||
+        error.status === 429 || // Rate limit
+        error.status === 503;   // Service unavailable
+
+      if (!isRetryable || attempt === maxRetries) {
+        throw error;
+      }
+
+      // Calculate delay with exponential backoff
+      const delay = Math.min(initialDelay * Math.pow(2, attempt), maxDelay);
+      console.warn(`⚠️ Attempt ${attempt + 1}/${maxRetries + 1} failed, retrying in ${delay}ms...`, error.message);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
+  }
+
+  throw lastError;
+}
+
+/**
  * NOTE: This function is now in the Edge Function (supabase/functions/analyze-biomarkers/index.ts)
  * Kept here for reference only
  */
@@ -230,6 +308,7 @@ Return your response now:`;
 /**
  * Extract biomarkers from a SINGLE PDF document using Supabase Edge Function
  * This keeps the Claude API key secure on the server-side
+ * Now includes automatic retry with exponential backoff and timeout
  */
 export async function extractBiomarkersFromPdf(
   processedPdf: ProcessedPDF
@@ -238,44 +317,154 @@ export async function extractBiomarkersFromPdf(
     throw new Error('Supabase is not configured');
   }
 
-  try {
+  // Check supabase is available
+  const supabaseClient = supabase;
+  if (!supabaseClient) {
+    throw new Error('Supabase is not configured');
+  }
+
+  return retryWithBackoff(async () => {
+    const textLength = processedPdf.extractedText?.length || 0;
+    const isLargeFile = textLength > 50000 || processedPdf.pageCount > 10;
+
     console.log(`📄 Processing file: ${processedPdf.fileName}`);
     console.log(`   - Is Image: ${processedPdf.isImage}`);
     console.log(`   - Page Count: ${processedPdf.pageCount}`);
-    console.log(`   - Extracted Text Length: ${processedPdf.extractedText?.length || 0} chars`);
+    console.log(`   - Extracted Text Length: ${textLength} chars`);
+
+    if (isLargeFile) {
+      console.warn(`⏱️ Large file detected (${textLength} chars, ${processedPdf.pageCount} pages) - may take 30-60 seconds`);
+    }
 
     // Get the current session token for authentication (if auth is enabled)
     // Skip auth check if authentication is disabled
-    await supabase.auth.getSession();
+    console.log('📍 Checkpoint 1: About to get session');
+    try {
+      const sessionPromise = supabaseClient.auth.getSession();
+      const timeoutPromise = new Promise((_, reject) =>
+        setTimeout(() => reject(new Error('Session timeout')), 5000)
+      );
+      await Promise.race([sessionPromise, timeoutPromise]);
+      console.log('📍 Checkpoint 2: Session retrieved successfully');
+    } catch (error) {
+      console.warn('⚠️ Session retrieval failed or timed out (continuing anyway):', error);
+      // Continue anyway - Edge Function may still work
+    }
     // Note: Edge Function may still require auth depending on configuration
 
-    // Call the Supabase Edge Function (server-side Claude API)
-    console.log('🚀 Sending request to Supabase Edge Function...');
-
-    const { data, error } = await supabase.functions.invoke('analyze-biomarkers', {
-      body: { processedPdf },
+    console.log('📍 Checkpoint 3: About to prepare Edge Function call');
+    console.log('📍 Supabase client exists:', !!supabaseClient);
+    console.log('📍 ProcessedPDF object:', {
+      fileName: processedPdf.fileName,
+      isImage: processedPdf.isImage,
+      pageCount: processedPdf.pageCount,
+      hasText: !!processedPdf.extractedText,
+      textLength: processedPdf.extractedText?.length,
+      hasImagePages: !!processedPdf.imagePages,
+      imagePagesCount: processedPdf.imagePages?.length
     });
 
-    if (error) {
-      console.error('Edge Function error:', error);
-      console.error('Error details:', JSON.stringify(error, null, 2));
-      
-      // Try to extract error message from response body
-      // The Supabase client may include the response in error.context or error.message
-      let errorMessage = error.message || 'Unknown error';
-      
-      // Check if error has a response body we can parse
-      if (error.context && typeof error.context === 'object') {
+    // Call the Supabase Edge Function (server-side Claude API)
+    const payloadSize = JSON.stringify({ processedPdf }).length;
+    console.log('🚀 Sending request to Supabase Edge Function...');
+    console.log(`📦 Payload size: ${(payloadSize / 1024).toFixed(2)} KB`);
+    const startTime = Date.now();
+
+    // For large files, add progress heartbeat
+    let heartbeatInterval: number | null = null;
+    if (isLargeFile) {
+      let secondsElapsed = 0;
+      heartbeatInterval = setInterval(() => {
+        secondsElapsed += 5;
+        console.log(`   ⏳ Still processing... ${secondsElapsed}s elapsed`);
+      }, 5000) as unknown as number; // Log every 5 seconds
+    }
+
+    try {
+      // Use AbortController to properly cancel request on timeout
+      const abortController = new AbortController();
+      const timeoutId = setTimeout(() => {
+        console.error(`❌ Edge Function timeout after ${EDGE_FUNCTION_TIMEOUT / 1000}s - aborting request`);
+        abortController.abort();
+      }, EDGE_FUNCTION_TIMEOUT);
+
+      let data, error;
+      try {
+        const result = await supabaseClient.functions.invoke('analyze-biomarkers', {
+          body: { processedPdf },
+          // @ts-ignore - signal is supported but not in types
+          signal: abortController.signal,
+        });
+        data = result.data;
+        error = result.error;
+      } catch (abortError: any) {
+        if (abortError.name === 'AbortError') {
+          throw new Error(`Edge Function timeout after ${EDGE_FUNCTION_TIMEOUT / 1000}s - request aborted`);
+        }
+        throw abortError;
+      } finally {
+        clearTimeout(timeoutId);
+      }
+
+      // Clear heartbeat if it was set
+      if (heartbeatInterval) {
+        clearInterval(heartbeatInterval);
+      }
+
+      if (error) {
+        console.error('Edge Function error:', error);
+        console.error('Error details:', JSON.stringify(error, null, 2));
+
+        // Try to extract error message from response body
+        // The Supabase client may include the response in error.context or error.message
+        let errorMessage = error.message || 'Unknown error';
+        let errorDetails = '';
+
+        // IMPORTANT: Try to read the actual response body from the fetch error
+        // The error.context might be a Response object we need to read
+        if (error.context && error.context instanceof Response) {
+          try {
+            const responseBody = await error.context.json();
+            console.error('Response body:', responseBody);
+            if (responseBody.error) {
+              errorMessage = responseBody.error;
+            }
+            if (responseBody.details) {
+              errorDetails = responseBody.details;
+            }
+            if (responseBody.errorType) {
+              console.error('Error type:', responseBody.errorType);
+            }
+          } catch (parseError) {
+            console.error('Failed to parse error response body:', parseError);
+            // Try to read as text instead
+            try {
+              const responseText = await error.context.text();
+              console.error('Response text:', responseText);
+              errorMessage = responseText || errorMessage;
+            } catch (textError) {
+              console.error('Failed to read response as text:', textError);
+            }
+          }
+        } else if (error.context && typeof error.context === 'object') {
+          console.error('Error context:', error.context);
+
         // Try to find error message in context
         if (error.context.error) {
-          errorMessage = typeof error.context.error === 'string' 
-            ? error.context.error 
+          errorMessage = typeof error.context.error === 'string'
+            ? error.context.error
             : (error.context.error?.message || errorMessage);
         } else if (error.context.message) {
           errorMessage = error.context.message;
         }
+
+        // Try to get details
+        if (error.context.details) {
+          errorDetails = error.context.details;
+          console.error('Error details from context:', errorDetails);
+        }
       }
-      
+
       // If error message contains JSON, try to parse it
       try {
         const errorMatch = errorMessage.match(/\{.*\}/);
@@ -284,119 +473,167 @@ export async function extractBiomarkersFromPdf(
           if (parsedError.error) {
             errorMessage = parsedError.error;
           }
+          if (parsedError.details) {
+            errorDetails = parsedError.details;
+          }
         }
       } catch (e) {
         // If parsing fails, continue with original message
       }
-      
+
+      // Log additional details if available
+      if (errorDetails) {
+        console.error('Additional error details:', errorDetails);
+      }
+
       // Check for specific error types
       if (errorMessage.includes('Unauthorized') || errorMessage.includes('401')) {
         throw new Error('Edge Function authentication failed. The Edge Function may need to be redeployed with authentication disabled.');
       }
-      
+
       if (errorMessage.includes('Claude API key not configured')) {
         throw new Error('Claude API key is not configured in Supabase. Please set CLAUDE_API_KEY secret.');
       }
-      
+
       if (errorMessage.includes('Invalid JSON')) {
         throw new Error('Invalid request format sent to Edge Function.');
       }
-      
-      throw new Error(`Server error: ${errorMessage}`);
+
+      // Check for non-retryable errors (422 = not a lab report)
+      if ((error as any).status === 422 || errorMessage.includes('No biomarkers found')) {
+        const nonRetryableError: any = new Error(
+          errorMessage.includes('No biomarkers found')
+            ? `"${processedPdf.fileName}" does not appear to contain lab results. Please ensure you upload laboratory test reports.`
+            : errorMessage
+        );
+        nonRetryableError.status = 422; // Mark as non-retryable
+        throw nonRetryableError;
+      }
+
+      // Add status code to error for retry logic
+      const wrappedError: any = new Error(`Server error: ${errorMessage}`);
+      wrappedError.status = (error as any).status;
+      throw wrappedError;
     }
 
     if (!data) {
       throw new Error('No response from server');
     }
 
-    console.log('✅ Received response from Edge Function');
+      const duration = Date.now() - startTime;
+      console.log('✅ Received response from Edge Function');
+      console.log(`📊 Processing metrics: ${processedPdf.fileName} took ${(duration / 1000).toFixed(1)}s`);
 
-    // The Edge Function already returns the parsed biomarkers
-    return {
-      biomarkers: data.biomarkers || [],
-      patientInfo: data.patientInfo || {
-        name: null,
-        dateOfBirth: null,
-        gender: null,
-        testDate: null,
-      },
-      panelName: data.panelName || 'Lab Results',
-      raw: JSON.stringify(data),
-    };
-  } catch (error) {
+      // The Edge Function already returns the parsed biomarkers
+      return {
+        biomarkers: data.biomarkers || [],
+        patientInfo: data.patientInfo || {
+          name: null,
+          dateOfBirth: null,
+          gender: null,
+          testDate: null,
+        },
+        panelName: data.panelName || 'Lab Results',
+        raw: JSON.stringify(data),
+      };
+    } finally {
+      // Always clear heartbeat on exit
+      if (heartbeatInterval) {
+        clearInterval(heartbeatInterval);
+      }
+    }
+  }, MAX_RETRIES, INITIAL_RETRY_DELAY, MAX_RETRY_DELAY, EDGE_FUNCTION_TIMEOUT).catch(error => {
     console.error('Biomarker extraction error:', error);
 
     if (error instanceof Error) {
       if (error.message.includes('Not authenticated')) {
         throw new Error('Session expired. Please log in again.');
       }
+      if (error.message.includes('timeout')) {
+        throw new Error(`File processing timeout: "${processedPdf.fileName}" took too long to process (>90 seconds). The file may be too large or complex. Try splitting it into smaller documents.`);
+      }
       if (error.message.includes('rate_limit') || error.message.includes('overloaded')) {
         throw new Error('API rate limit exceeded or service is overloaded. Please try again in a moment.');
       }
-      throw new Error(`Analysis error: ${error.message}`);
+      throw error;
     }
 
     throw new Error('Failed to analyze document');
-  }
+  });
 }
 
 /**
  * Extract biomarkers from MULTIPLE PDFs (processes in batches to avoid rate limits)
  * Returns array of results, one per PDF
+ * Now includes enhanced progress feedback with per-file status updates
  */
 export async function extractBiomarkersFromPdfs(
   processedPdfs: ProcessedPDF[],
-  onProgress?: (current: number, total: number, batchInfo?: string) => void
+  onProgress?: (current: number, total: number, batchInfo?: string, status?: string) => void
 ): Promise<ClaudeResponseBatch> {
   if (processedPdfs.length === 0) {
     throw new Error('No PDFs provided');
   }
 
-  // Process PDFs in batches to avoid rate limits
-  const BATCH_SIZE = 3; // Process 3 PDFs at a time
-  const DELAY_BETWEEN_BATCHES = 2000; // 2 second delay between batches
+  // Process PDFs sequentially (one at a time) to avoid timeouts
+  // Sequential processing is more reliable and provides better progress feedback
+  console.log(`📦 Processing ${processedPdfs.length} file(s) sequentially (one at a time)`);
 
   const results: ClaudeResponse[] = [];
   const failedFiles: Array<{ fileName: string; error: string }> = [];
-  const totalBatches = Math.ceil(processedPdfs.length / BATCH_SIZE);
-  let currentBatch = 0;
 
-  for (let i = 0; i < processedPdfs.length; i += BATCH_SIZE) {
-    currentBatch++;
-    const batch = processedPdfs.slice(i, i + BATCH_SIZE);
+  for (let i = 0; i < processedPdfs.length; i++) {
+    const pdf = processedPdfs[i];
 
-    if (onProgress) {
-      const batchInfo = processedPdfs.length > BATCH_SIZE
-        ? ` (batch ${currentBatch}/${totalBatches})`
-        : '';
-      onProgress(i, processedPdfs.length, batchInfo);
+    try {
+      // Update progress: Processing individual file
+      if (onProgress) {
+        onProgress(
+          i,
+          processedPdfs.length,
+          '',
+          `processing "${pdf.fileName}"`
+        );
+      }
+
+      const result = await extractBiomarkersFromPdf(pdf);
+
+      // Update progress: File completed
+      if (onProgress) {
+        onProgress(
+          i + 1,
+          processedPdfs.length,
+          '',
+          `completed "${pdf.fileName}"`
+        );
+      }
+
+      results.push(result);
+      console.log(`✅ Successfully extracted biomarkers from ${pdf.fileName}`);
+    } catch (error: any) {
+      // Update progress: File failed
+      if (onProgress) {
+        onProgress(
+          i + 1,
+          processedPdfs.length,
+          '',
+          `failed "${pdf.fileName}"`
+        );
+      }
+
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      failedFiles.push({ fileName: pdf.fileName, error: errorMessage });
+      console.error(`❌ Failed to extract biomarkers from ${pdf.fileName}: ${errorMessage}`);
     }
 
-    // Process batch in parallel with Promise.allSettled to handle partial failures
-    const batchPromises = batch.map(pdf => extractBiomarkersFromPdf(pdf));
-    const batchResults = await Promise.allSettled(batchPromises);
-    
-    // Separate successful results from failures
-    batchResults.forEach((result, idx) => {
-      const pdf = batch[idx];
-      if (result.status === 'fulfilled') {
-        results.push(result.value);
-        console.log(`✅ Successfully extracted biomarkers from ${pdf.fileName}`);
-      } else {
-        const errorMessage = result.reason instanceof Error ? result.reason.message : String(result.reason);
-        failedFiles.push({ fileName: pdf.fileName, error: errorMessage });
-        console.error(`❌ Failed to extract biomarkers from ${pdf.fileName}: ${errorMessage}`);
-      }
-    });
-    
-    // Add delay between batches (except for the last batch)
-    if (i + BATCH_SIZE < processedPdfs.length) {
-      await new Promise(resolve => setTimeout(resolve, DELAY_BETWEEN_BATCHES));
+    // Small delay between files to avoid rate limits
+    if (i < processedPdfs.length - 1) {
+      await new Promise(resolve => setTimeout(resolve, 500));
     }
   }
 
   if (onProgress) {
-    onProgress(processedPdfs.length, processedPdfs.length, '');
+    onProgress(processedPdfs.length, processedPdfs.length, '', 'completed');
   }
 
   // If ALL files failed, throw an error

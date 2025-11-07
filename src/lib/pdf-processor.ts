@@ -12,7 +12,8 @@ export interface ProcessedPDF {
   extractedText: string;
   pageCount: number;
   isImage?: boolean;
-  imageData?: string; // base64 encoded image
+  imageData?: string; // base64 encoded image (single image)
+  imagePages?: string[]; // base64 encoded images (multi-page PDFs converted to images)
   mimeType?: string;
   qualityScore?: number; // 0-1, for images
   qualityWarning?: string;
@@ -123,43 +124,47 @@ export async function processPdfFile(file: File): Promise<ProcessedPDF> {
   if (extractedText.trim().length === 0 || extractedText.length < minExpectedChars) {
     console.warn(`⚠️ PDF text extraction failed (${extractedText.length} chars for ${pageCount} pages)`);
     console.log(`🔄 Falling back to Vision API - converting PDF pages to images...`);
-    
-    // Fallback: Convert PDF pages to images for Vision API
-    // We'll only convert the first 5 pages to avoid overwhelming the API
-    const pagesToConvert = Math.min(pageCount, 5);
-    console.log(`   Converting first ${pagesToConvert} of ${pageCount} pages to images`);
-    
-    // Render first page as image
-    const page = await pdf.getPage(1);
-    const viewport = page.getViewport({ scale: 2.0 }); // 2x scale for better quality
-    
+
+    // Fallback: Convert ALL PDF pages to images for Vision API
+    const pagesToConvert = pageCount; // Process ALL pages, no limit
+    console.log(`   Converting all ${pagesToConvert} pages to images`);
+
+    // Convert all pages (up to limit) to images
+    const imagePages: string[] = [];
     const canvas = document.createElement('canvas');
     const context = canvas.getContext('2d');
     if (!context) {
       throw new Error('Could not create canvas context for PDF rendering');
     }
-    
-    canvas.width = viewport.width;
-    canvas.height = viewport.height;
-    
-    await page.render({
-      canvasContext: context,
-      viewport: viewport,
-      canvas: canvas,
-    }).promise;
-    
-    // Convert canvas to base64 image
-    const imageData = canvas.toDataURL('image/png').split(',')[1];
-    
-    console.log(`✅ Converted page 1 to image (${imageData.length} bytes)`);
-    console.log(`📸 Using Vision API instead of text extraction`);
-    
+
+    for (let pageNum = 1; pageNum <= pagesToConvert; pageNum++) {
+      const page = await pdf.getPage(pageNum);
+      const viewport = page.getViewport({ scale: 2.0 }); // 2x scale for better quality
+
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+
+      await page.render({
+        canvasContext: context,
+        viewport: viewport,
+        canvas: canvas,
+      }).promise;
+
+      // Convert canvas to base64 image
+      const imageData = canvas.toDataURL('image/png').split(',')[1];
+      imagePages.push(imageData);
+
+      console.log(`✅ Converted page ${pageNum} to image (${imageData.length} bytes)`);
+    }
+
+    console.log(`📸 Using Vision API instead of text extraction (${imagePages.length} pages)`);
+
     return {
       fileName: file.name,
-      extractedText: '', // No text, will use image
-      pageCount: 1, // Only first page for now
+      extractedText: '', // No text, will use images
+      pageCount: imagePages.length,
       isImage: true,
-      imageData: imageData,
+      imagePages: imagePages, // Multiple page images
       mimeType: 'image/png',
     };
   }
