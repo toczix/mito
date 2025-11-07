@@ -563,7 +563,80 @@ export async function extractBiomarkersFromPdf(
 }
 
 /**
- * Extract biomarkers from MULTIPLE PDFs (processes in batches to avoid rate limits)
+ * Extract biomarkers from a BATCH of PDFs in a single Claude API call
+ * Combines multiple PDFs into one request for faster processing
+ */
+async function extractBiomarkersFromBatch(
+  processedPdfs: ProcessedPDF[]
+): Promise<ClaudeResponse[]> {
+  if (!supabase) {
+    throw new Error('Supabase is not configured');
+  }
+
+  const supabaseClient = supabase;
+  if (!supabaseClient) {
+    throw new Error('Supabase is not configured');
+  }
+
+  // Build combined text with clear file separators
+  let combinedText = '';
+  const fileNames: string[] = [];
+
+  for (let i = 0; i < processedPdfs.length; i++) {
+    const pdf = processedPdfs[i];
+    fileNames.push(pdf.fileName);
+    combinedText += `\n\n=== DOCUMENT ${i + 1}: ${pdf.fileName} ===\n\n`;
+    combinedText += pdf.extractedText || '';
+  }
+
+  console.log(`📦 Batch processing ${processedPdfs.length} files in single request (${(combinedText.length / 1024).toFixed(1)}KB total)`);
+
+  // Get session
+  try {
+    await supabaseClient.auth.getSession();
+  } catch (error) {
+    console.warn('⚠️ Session retrieval failed (continuing anyway):', error);
+  }
+
+  // Call Edge Function with combined text
+  const abortController = new AbortController();
+  const timeoutId = setTimeout(() => {
+    console.error(`❌ Batch timeout after 120s`);
+    abortController.abort();
+  }, 120000);
+
+  try {
+    const { data, error } = await supabaseClient.functions.invoke('analyze-biomarkers', {
+      body: {
+        processedPdfs,  // Send all PDFs
+        batchMode: true // Flag to tell Edge Function to process as batch
+      },
+      // @ts-ignore
+      signal: abortController.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    if (error) {
+      throw new Error(error.message || 'Batch processing failed');
+    }
+
+    if (!data || !Array.isArray(data)) {
+      throw new Error('Invalid batch response from Edge Function');
+    }
+
+    return data;
+  } catch (error: any) {
+    clearTimeout(timeoutId);
+    if (error.name === 'AbortError') {
+      throw new Error('Batch processing timeout after 120s');
+    }
+    throw error;
+  }
+}
+
+/**
+ * Extract biomarkers from MULTIPLE PDFs (processes in batches of 10)
  * Returns array of results, one per PDF
  * Now includes enhanced progress feedback with per-file status updates
  */
@@ -575,60 +648,76 @@ export async function extractBiomarkersFromPdfs(
     throw new Error('No PDFs provided');
   }
 
-  // Process PDFs sequentially (one at a time) to avoid timeouts
-  // Sequential processing is more reliable and provides better progress feedback
-  console.log(`📦 Processing ${processedPdfs.length} file(s) sequentially (one at a time)`);
+  const BATCH_SIZE = 10;
+  const batches: ProcessedPDF[][] = [];
+
+  // Split into batches of 10
+  for (let i = 0; i < processedPdfs.length; i += BATCH_SIZE) {
+    batches.push(processedPdfs.slice(i, i + BATCH_SIZE));
+  }
+
+  console.log(`📦 Processing ${processedPdfs.length} file(s) in ${batches.length} batch(es) of up to ${BATCH_SIZE}`);
 
   const results: ClaudeResponse[] = [];
   const failedFiles: Array<{ fileName: string; error: string }> = [];
+  let processedCount = 0;
 
-  for (let i = 0; i < processedPdfs.length; i++) {
-    const pdf = processedPdfs[i];
+  for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
+    const batch = batches[batchIndex];
+    const batchNumber = batchIndex + 1;
 
     try {
-      // Update progress: Processing individual file
+      // Update progress: Processing batch
       if (onProgress) {
         onProgress(
-          i,
+          processedCount,
           processedPdfs.length,
-          '',
-          `processing "${pdf.fileName}"`
+          ` (batch ${batchNumber}/${batches.length})`,
+          `processing batch of ${batch.length} files`
         );
       }
 
-      const result = await extractBiomarkersFromPdf(pdf);
+      console.log(`🚀 Processing batch ${batchNumber}/${batches.length} (${batch.length} files)`);
+      const batchResults = await extractBiomarkersFromBatch(batch);
 
-      // Update progress: File completed
+      results.push(...batchResults);
+      processedCount += batch.length;
+
+      console.log(`✅ Batch ${batchNumber}/${batches.length} completed (${batch.length} files)`);
+
+      // Update progress: Batch completed
       if (onProgress) {
         onProgress(
-          i + 1,
+          processedCount,
           processedPdfs.length,
-          '',
-          `completed "${pdf.fileName}"`
+          ` (batch ${batchNumber}/${batches.length})`,
+          `completed batch of ${batch.length} files`
         );
       }
-
-      results.push(result);
-      console.log(`✅ Successfully extracted biomarkers from ${pdf.fileName}`);
     } catch (error: any) {
-      // Update progress: File failed
-      if (onProgress) {
-        onProgress(
-          i + 1,
-          processedPdfs.length,
-          '',
-          `failed "${pdf.fileName}"`
-        );
+      // If batch fails, mark all files in batch as failed
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      console.error(`❌ Batch ${batchNumber}/${batches.length} failed: ${errorMessage}`);
+
+      for (const pdf of batch) {
+        failedFiles.push({ fileName: pdf.fileName, error: errorMessage });
+        processedCount++;
       }
 
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      failedFiles.push({ fileName: pdf.fileName, error: errorMessage });
-      console.error(`❌ Failed to extract biomarkers from ${pdf.fileName}: ${errorMessage}`);
+      if (onProgress) {
+        onProgress(
+          processedCount,
+          processedPdfs.length,
+          ` (batch ${batchNumber}/${batches.length})`,
+          `batch failed`
+        );
+      }
     }
 
-    // Small delay between files to avoid rate limits
-    if (i < processedPdfs.length - 1) {
-      await new Promise(resolve => setTimeout(resolve, 500));
+    // Small delay between batches to avoid rate limits
+    if (batchIndex < batches.length - 1) {
+      console.log('⏸️ Waiting 2 seconds before next batch...');
+      await new Promise(resolve => setTimeout(resolve, 2000));
     }
   }
 

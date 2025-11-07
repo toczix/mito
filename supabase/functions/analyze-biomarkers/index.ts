@@ -105,25 +105,39 @@ serve(async (req) => {
       )
     }
 
-    const { processedPdf } = requestBody
+    const { processedPdf, processedPdfs, batchMode } = requestBody
 
-    if (!processedPdf) {
-      console.error('❌ Missing processedPdf in request body')
+    // Handle both single file and batch mode
+    const pdfsToProcess = batchMode && processedPdfs ? processedPdfs : (processedPdf ? [processedPdf] : null)
+
+    // For single file mode, get the first PDF
+    const singlePdf = !batchMode && pdfsToProcess ? pdfsToProcess[0] : null
+
+    if (!pdfsToProcess || pdfsToProcess.length === 0) {
+      console.error('❌ Missing processedPdf/processedPdfs in request body')
       return new Response(
-        JSON.stringify({ error: 'Missing processedPdf in request body' }),
+        JSON.stringify({ error: 'Missing processedPdf or processedPdfs in request body' }),
         {
           status: 400,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         }
       )
     }
-    console.log('✅ ProcessedPdf found:', processedPdf.fileName)
+
+    if (batchMode) {
+      console.log(`✅ Batch mode: Processing ${pdfsToProcess.length} files`)
+    } else {
+      console.log('✅ Single file mode:', pdfsToProcess[0].fileName)
+    }
 
     // Validate file size to prevent timeouts on oversized files
-    const textLength = processedPdf.extractedText?.length || 0
-    const singleImageSize = processedPdf.imageData?.length || 0
-    const multiImageSize = processedPdf.imagePages?.reduce((sum, img) => sum + img.length, 0) || 0
-    const totalSize = textLength + singleImageSize + multiImageSize
+    let totalSize = 0
+    for (const pdf of pdfsToProcess) {
+      const textLength = pdf.extractedText?.length || 0
+      const singleImageSize = pdf.imageData?.length || 0
+      const multiImageSize = pdf.imagePages?.reduce((sum, img) => sum + img.length, 0) || 0
+      totalSize += textLength + singleImageSize + multiImageSize
+    }
 
     // 20MB limit for request payload (to handle multi-page PDFs with all pages)
     // Claude API supports up to 100MB, but we limit to 20MB for reasonable processing times
@@ -149,52 +163,73 @@ serve(async (req) => {
     })
 
     // Build the extraction prompt
-    const extractionPrompt = createExtractionPrompt()
+    const extractionPrompt = batchMode ? createBatchExtractionPrompt() : createExtractionPrompt()
 
-    // Prepare content based on file type
+    // Prepare content based on batch mode and file type
     let content: any[]
 
-    if (processedPdf.isImage && processedPdf.mimeType) {
-      // For images (single or multi-page), use Claude's vision API
+    if (batchMode) {
+      // Batch mode: Combine all PDFs into single text request
+      let combinedText = extractionPrompt + '\n\n'
+
+      for (let i = 0; i < pdfsToProcess.length; i++) {
+        const pdf = pdfsToProcess[i]
+        combinedText += `\n\n=== DOCUMENT ${i + 1}: ${pdf.fileName} ===\n\n`
+        combinedText += pdf.extractedText || ''
+      }
+
       content = [
         {
           type: 'text',
-          text: extractionPrompt,
+          text: combinedText,
         },
       ]
 
-      // Handle multi-page PDFs converted to images
-      if (processedPdf.imagePages && processedPdf.imagePages.length > 0) {
-        for (const imageData of processedPdf.imagePages) {
+      console.log(`📦 Batch: Combined ${pdfsToProcess.length} documents into single request (${combinedText.length} chars)`)
+    } else {
+      // Single file mode (existing logic)
+      if (singlePdf && singlePdf.isImage && singlePdf.mimeType) {
+        // For images (single or multi-page), use Claude's vision API
+        content = [
+          {
+            type: 'text',
+            text: extractionPrompt,
+          },
+        ]
+
+        // Handle multi-page PDFs converted to images
+        if (singlePdf.imagePages && singlePdf.imagePages.length > 0) {
+          for (const imageData of singlePdf.imagePages) {
+            content.push({
+              type: 'image',
+              source: {
+                type: 'base64',
+                media_type: singlePdf.mimeType,
+                data: imageData,
+              },
+            })
+          }
+        }
+        // Handle single image
+        else if (singlePdf.imageData) {
           content.push({
             type: 'image',
             source: {
               type: 'base64',
-              media_type: processedPdf.mimeType,
-              data: imageData,
+              media_type: singlePdf.mimeType,
+              data: singlePdf.imageData,
             },
           })
         }
-      }
-      // Handle single image
-      else if (processedPdf.imageData) {
-        content.push({
-          type: 'image',
-          source: {
-            type: 'base64',
-            media_type: processedPdf.mimeType,
-            data: processedPdf.imageData,
+      } else {
+        // For PDFs and Word documents, use text extraction
+        content = [
+          {
+            type: 'text',
+            text: `${extractionPrompt}\n\n=== EXTRACTED TEXT ===\n${singlePdf?.extractedText || ''}`,
           },
-        })
+        ]
       }
-    } else {
-      // For PDFs and Word documents, use text extraction
-      content = [
-        {
-          type: 'text',
-          text: `${extractionPrompt}\n\n=== EXTRACTED TEXT ===\n${processedPdf.extractedText}`,
-        },
-      ]
     }
 
     // Call Claude API with timeout protection
@@ -231,17 +266,21 @@ serve(async (req) => {
     }
 
     // IMPORTANT: Claude sometimes adds explanatory text after the JSON
-    // Extract only the JSON object (from first { to matching })
-    const jsonStartIndex = responseText.indexOf('{')
+    // Extract only the JSON (object or array)
+    const jsonStartChar = batchMode ? '[' : '{'
+    const jsonEndChar = batchMode ? ']' : '}'
+    const jsonStartIndex = responseText.indexOf(jsonStartChar)
+
     if (jsonStartIndex !== -1) {
-      // Find the matching closing brace
-      let braceCount = 0
+      // Find the matching closing bracket/brace
+      let bracketCount = 0
       let jsonEndIndex = -1
       for (let i = jsonStartIndex; i < responseText.length; i++) {
-        if (responseText[i] === '{') braceCount++
-        if (responseText[i] === '}') {
-          braceCount--
-          if (braceCount === 0) {
+        const char = responseText[i]
+        if (char === jsonStartChar) bracketCount++
+        if (char === jsonEndChar) {
+          bracketCount--
+          if (bracketCount === 0) {
             jsonEndIndex = i + 1
             break
           }
@@ -273,32 +312,56 @@ serve(async (req) => {
       throw new Error(`Claude returned invalid JSON: ${parseError.message}. Response preview: ${responseText.substring(0, 200)}`)
     }
 
-    // Validate that we got biomarkers
-    if (!parsedResponse.biomarkers || !Array.isArray(parsedResponse.biomarkers)) {
-      console.error('Missing or invalid biomarkers array:', parsedResponse)
-      throw new Error('Claude response missing biomarkers array. This file may not contain lab results.')
-    }
+    if (batchMode) {
+      // Batch mode: Validate array of results
+      if (!Array.isArray(parsedResponse)) {
+        console.error('Batch mode expected array but got:', typeof parsedResponse)
+        throw new Error('Batch mode expected an array of results from Claude')
+      }
 
-    // Check if Claude returned empty biomarkers (likely not a lab report)
-    if (parsedResponse.biomarkers.length === 0) {
-      console.warn('Claude returned 0 biomarkers - file may not contain lab results')
-      return new Response(
-        JSON.stringify({
-          error: 'No biomarkers found in this document. Please ensure the file contains laboratory test results.',
-          suggestion: 'This file may be a different type of document (e.g., medical notes, prescription, etc.) and not a lab report.',
-          biomarkers: [],
-          patientInfo: parsedResponse.patientInfo || null,
-        }),
-        {
-          status: 422,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      console.log(`✅ Batch: Received ${parsedResponse.length} results from Claude`)
+
+      // Validate each result
+      for (let i = 0; i < parsedResponse.length; i++) {
+        const result = parsedResponse[i]
+        if (!result.biomarkers || !Array.isArray(result.biomarkers)) {
+          console.error(`Missing biomarkers array in document ${i + 1}:`, result)
+          throw new Error(`Document ${i + 1} missing biomarkers array`)
         }
-      )
-    }
+      }
 
-    return new Response(JSON.stringify(parsedResponse), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    })
+      // Return array of results
+      return new Response(JSON.stringify(parsedResponse), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    } else {
+      // Single file mode: Validate single result
+      if (!parsedResponse.biomarkers || !Array.isArray(parsedResponse.biomarkers)) {
+        console.error('Missing or invalid biomarkers array:', parsedResponse)
+        throw new Error('Claude response missing biomarkers array. This file may not contain lab results.')
+      }
+
+      // Check if Claude returned empty biomarkers (likely not a lab report)
+      if (parsedResponse.biomarkers.length === 0) {
+        console.warn('Claude returned 0 biomarkers - file may not contain lab results')
+        return new Response(
+          JSON.stringify({
+            error: 'No biomarkers found in this document. Please ensure the file contains laboratory test results.',
+            suggestion: 'This file may be a different type of document (e.g., medical notes, prescription, etc.) and not a lab report.',
+            biomarkers: [],
+            patientInfo: parsedResponse.patientInfo || null,
+          }),
+          {
+            status: 422,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          }
+        )
+      }
+
+      return new Response(JSON.stringify(parsedResponse), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
   } catch (error: any) {
     console.error('Error in analyze-biomarkers function:', error)
     console.error('Error stack:', error.stack)
@@ -393,6 +456,80 @@ RESPONSE FORMAT (JSON only):
 You should aim to extract AT LEAST 30-40 biomarkers from a typical comprehensive lab report. If you're only extracting a few biomarkers, you're likely missing data - go back and look more carefully at ALL sections of the document.
 
 ⚠️ REMINDER: Return ONLY valid JSON - no text before or after. Start your response with { and end with }
+
+🌍 MULTILINGUAL EXTRACTION REMINDER:
+- Documents can be in ANY language or mix of languages
+- Patient names can use ANY script (Latin, Cyrillic, Arabic, CJK, etc.)
+- Biomarker names should be normalized to the PRIMARY English names in your JSON output
+- Units should be preserved exactly as shown in the document
+- Dates should always be converted to YYYY-MM-DD format
+- Gender should always be normalized to: "male", "female", or "other"
+
+Return your response now:`
+}
+
+function createBatchExtractionPrompt(): string {
+  return `You are an expert health data analyst specializing in clinical pathology and nutritional biochemistry.
+
+Your task is to extract PATIENT INFORMATION and ALL biomarker values from MULTIPLE laboratory result documents provided below.
+
+🌍 MULTILINGUAL SUPPORT: This system supports lab reports in ANY LANGUAGE. Lab reports may be in English, Spanish, Portuguese, French, German, Italian, Chinese, Japanese, Korean, Arabic, Russian, Dutch, Polish, Turkish, or any other language. You MUST accurately extract biomarkers regardless of the language used in the document.
+
+⚠️ CRITICAL: You MUST extract EVERY SINGLE biomarker from EACH DOCUMENT. Do NOT skip any values, even if they seem like duplicates or are in unusual formats.
+
+INSTRUCTIONS:
+1. THOROUGHLY scan EVERY document provided (marked with === DOCUMENT N: filename ===)
+2. For EACH document, extract:
+   - Patient's full name (as shown on the lab report, in any language/script)
+   - Patient's date of birth (convert to YYYY-MM-DD format, regardless of original date format)
+   - Patient's gender/sex (normalize to: male, female, or other)
+   - Test/collection date (the most recent date if multiple reports, in YYYY-MM-DD format)
+   - EVERY biomarker name, its numerical value, and unit of measurement
+
+3. ⚠️ CRITICAL RULE FOR WHITE BLOOD CELL DIFFERENTIALS:
+For Neutrophils, Lymphocytes, Monocytes, Eosinophils, and Basophils:
+- ONLY extract the ABSOLUTE COUNT values - NEVER extract percentage (%) values
+- Lab reports often show BOTH percentage and absolute count - you MUST choose the absolute count
+
+4. ⚠️ UNIT NORMALIZATION FOR WBC DIFFERENTIALS (VERY IMPORTANT):
+- If the value is in "cells/µL" or "cells/uL", YOU MUST convert it to "×10³/µL" by dividing by 1000
+- Example: "12 cells/µL" → extract as value "0.012" with unit "×10³/µL" (12 ÷ 1000 = 0.012)
+- Example: "150 cells/µL" → extract as value "0.15" with unit "×10³/µL" (150 ÷ 1000 = 0.15)
+- If already in "×10³/µL", "K/µL", "K/uL", "×10^3/µL", "10^3/µL", or "10³/µL" format, use as-is
+
+RESPONSE FORMAT (JSON array with one object per document):
+[
+  {
+    "biomarkers": [
+      { "name": "Glucose", "value": "95", "unit": "mg/dL" },
+      { "name": "Hemoglobin A1c", "value": "5.4", "unit": "%" }
+    ],
+    "patientInfo": {
+      "name": "Full Name",
+      "dateOfBirth": "1990-01-15",
+      "gender": "male",
+      "testDate": "2024-03-20"
+    },
+    "panelName": "Comprehensive Metabolic Panel"
+  },
+  {
+    "biomarkers": [
+      { "name": "Total Cholesterol", "value": "180", "unit": "mg/dL" }
+    ],
+    "patientInfo": {
+      "name": "Full Name",
+      "dateOfBirth": "1990-01-15",
+      "gender": "male",
+      "testDate": "2024-03-21"
+    },
+    "panelName": "Lipid Panel"
+  }
+]
+
+⚠️ EXTRACTION REQUIREMENT:
+You should aim to extract AT LEAST 30-40 biomarkers from a typical comprehensive lab report. If you're only extracting a few biomarkers, you're likely missing data - go back and look more carefully at ALL sections of each document.
+
+⚠️ REMINDER: Return ONLY valid JSON ARRAY - no text before or after. Start your response with [ and end with ]
 
 🌍 MULTILINGUAL EXTRACTION REMINDER:
 - Documents can be in ANY language or mix of languages
