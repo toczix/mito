@@ -54,6 +54,35 @@ CREATE POLICY "System can insert audit logs"
   WITH CHECK (auth.uid() IS NULL);
 
 -- ============================================================================
+-- FIX TRIGGER FUNCTION PERMISSIONS
+-- ============================================================================
+
+-- Recreate the trigger function with explicit permissions and error handling
+-- This ensures the function can execute properly and doesn't block signups if it fails
+CREATE OR REPLACE FUNCTION handle_new_user()
+RETURNS TRIGGER
+SECURITY DEFINER
+SET search_path = public, auth
+LANGUAGE plpgsql
+AS $$
+BEGIN
+  -- Insert default settings for new user
+  INSERT INTO public.settings (user_id, theme, language)
+  VALUES (NEW.id, 'light', 'en')
+  ON CONFLICT (user_id) DO NOTHING;
+
+  RETURN NEW;
+EXCEPTION WHEN OTHERS THEN
+  -- Log the error but don't block user creation
+  RAISE WARNING 'Failed to create settings for user %: %', NEW.id, SQLERRM;
+  RETURN NEW;
+END;
+$$;
+
+-- Grant execute permission to all necessary roles
+GRANT EXECUTE ON FUNCTION handle_new_user() TO postgres, anon, authenticated, service_role;
+
+-- ============================================================================
 -- VERIFICATION
 -- ============================================================================
 
