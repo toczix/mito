@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { PdfUploader } from '@/components/PdfUploader';
-import { LoadingState } from '@/components/LoadingState';
+import { LoadingState, type FileProgress } from '@/components/LoadingState';
 import { AnalysisResults } from '@/components/AnalysisResults';
 import { ClientConfirmation } from '@/components/ClientConfirmation';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -25,6 +25,7 @@ export function HomePage() {
   const [error, setError] = useState<string | null>(null);
   const [processingMessage, setProcessingMessage] = useState<string>('Processing...');
   const [processingProgress, setProcessingProgress] = useState<number>(0);
+  const [fileProgress, setFileProgress] = useState<FileProgress[]>([]);
   
   // Step 1: Confirmation state
   const [consolidatedPatientInfo, setConsolidatedPatientInfo] = useState<PatientInfo | null>(null);
@@ -56,11 +57,60 @@ export function HomePage() {
     setError(null);
     setSavedAnalysesCount(0);
     setProcessingProgress(0);
+    setFileProgress([]);
 
     try {
-      setProcessingMessage(`Extracting text from ${files.length} PDF(s)...`);
+      // Filter out oversized files (>10MB) before processing
+      const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
+      const validFiles = files.filter(f => f.size <= MAX_FILE_SIZE);
+      const oversizedFiles = files.filter(f => f.size > MAX_FILE_SIZE);
+
+      if (oversizedFiles.length > 0) {
+        const oversizedNames = oversizedFiles.map(f => f.name).join(', ');
+        console.warn(`⚠️ Skipping ${oversizedFiles.length} oversized file(s): ${oversizedNames}`);
+      }
+
+      if (validFiles.length === 0) {
+        setError('All selected files exceed the 10 MB limit. Please select smaller files.');
+        setState('upload');
+        return;
+      }
+
+      // OCR/Extraction phase: 0-20%
+      setProcessingMessage(`Extracting text from ${validFiles.length} PDF(s)...`);
       setProcessingProgress(5);
-      const processedPdfs = await processMultiplePdfs(files);
+
+      const processedPdfs = await processMultiplePdfs(
+        validFiles,
+        (fileName, ocrProgress) => {
+          // Map OCR progress (0-100) to UI progress range (5-20%)
+          // Each file gets equal portion of the 15% range
+          const progressPerFile = 15 / validFiles.length;
+          const fileIndex = validFiles.findIndex(f => f.name === fileName);
+          const baseProgress = 5 + (fileIndex * progressPerFile);
+          const currentProgress = baseProgress + (ocrProgress / 100) * progressPerFile;
+
+          // Check if this is a large file to show appropriate message
+          const file = validFiles.find(f => f.name === fileName);
+          const isLarge = file && file.size > 8 * 1024 * 1024; // Over 8MB
+
+          // Cap at 20% to prevent going over during OCR phase
+          setProcessingProgress(Math.min(20, Math.round(currentProgress)));
+          if (isLarge) {
+            setProcessingMessage(`Running OCR on ${fileName}... ${ocrProgress}% (large file - may take longer)`);
+          } else {
+            setProcessingMessage(`Running OCR on ${fileName}... ${ocrProgress}%`);
+          }
+        }
+      );
+      setProcessingProgress(20);
+
+      // Notify user if files were skipped
+      if (oversizedFiles.length > 0) {
+        setProcessingMessage(`⚠️ Skipped ${oversizedFiles.length} oversized file(s). Processing ${validFiles.length} valid file(s)...`);
+        // Brief pause to show the message
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      }
 
       // Process all files regardless of quality, but log warnings
       const qualityWarnings: string[] = [];
@@ -76,38 +126,67 @@ export function HomePage() {
 
       const validPdfs = processedPdfs;
 
+      // Initialize file progress tracking
+      const initialFileProgress: FileProgress[] = validPdfs.map(pdf => ({
+        fileName: pdf.fileName,
+        status: 'pending' as const
+      }));
+      setFileProgress(initialFileProgress);
+
       setProcessingProgress(20);
 
+      // AI Analysis phase: 20-90% (70% total range, divided by number of files)
       setProcessingMessage(`Analyzing ${validPdfs.length} document(s) with Claude AI...`);
-      setProcessingProgress(30);
+
+      let completedFiles = 0;
+      const totalFiles = validPdfs.length;
+
       const claudeResponses: ClaudeResponseBatch = await extractBiomarkersFromPdfs(
         validPdfs,
-        (current, total, batchInfo, status) => {
-          const progress = 30 + Math.round((current / total) * 40);
-          setProcessingProgress(progress);
-
-          // Enhanced status message with file-level progress
-          let message = `Analyzing document ${current + 1} of ${total}${batchInfo}`;
+        (_current, _total, _batchInfo, status) => {
+          // Update file progress based on status
           if (status) {
             if (status.startsWith('processing')) {
               const fileName = status.replace('processing ', '');
-              message = `Processing ${fileName}...`;
+              setProcessingMessage(`Processing ${fileName}...`);
+              setFileProgress(prev => prev.map(f =>
+                f.fileName === fileName ? { ...f, status: 'processing' as const } : f
+              ));
             } else if (status.startsWith('completed')) {
               const fileName = status.replace('completed ', '');
-              message = `Completed ${fileName}`;
+              completedFiles++;
+
+              // Calculate granular progress: 20% + (completed/total * 70%)
+              const analysisProgress = 20 + Math.round((completedFiles / totalFiles) * 70);
+              setProcessingProgress(analysisProgress);
+              setProcessingMessage(`Completed ${fileName} (${completedFiles}/${totalFiles})`);
+
+              setFileProgress(prev => prev.map(f =>
+                f.fileName === fileName ? { ...f, status: 'completed' as const } : f
+              ));
             } else if (status.startsWith('failed')) {
               const fileName = status.replace('failed ', '');
-              message = `Failed ${fileName}`;
+              completedFiles++;
+
+              // Count failed files toward progress too
+              const analysisProgress = 20 + Math.round((completedFiles / totalFiles) * 70);
+              setProcessingProgress(analysisProgress);
+              setProcessingMessage(`Failed ${fileName} (${completedFiles}/${totalFiles})`);
+
+              setFileProgress(prev => prev.map(f =>
+                f.fileName === fileName ? { ...f, status: 'error' as const, error: 'Processing failed' } : f
+              ));
+            } else if (status.startsWith('skipped')) {
+              const message = status.replace(/^skipped\s+/i, 'Skipped ');
+              setProcessingMessage(message);
             }
           }
-
-          setProcessingMessage(message);
         }
       );
-      setProcessingProgress(70);
-      
+      setProcessingProgress(90);
+
       setProcessingMessage('Consolidating patient information...');
-      setProcessingProgress(70);
+      setProcessingProgress(91);
       
       const allPatientInfos = claudeResponses.map(r => r.patientInfo);
       console.log('📊 All extracted patient infos:', allPatientInfos);
@@ -118,11 +197,36 @@ export function HomePage() {
       console.log('📊 Confidence:', confidence);
       
       // Check for failed files and add to discrepancies
-      const failedFiles = claudeResponses._failedFiles;
+      const failedFiles = claudeResponses._failedFiles || [];
       let allDiscrepancies = [...discrepancies];
-      if (failedFiles && failedFiles.length > 0) {
-        const failureWarning = `⚠️ ${failedFiles.length} file(s) failed: ${failedFiles.map(f => f.fileName).join(', ')}`;
-        allDiscrepancies.push(failureWarning);
+      if (failedFiles.length > 0) {
+        const oversized = failedFiles.filter(f => f.error.startsWith('Too large:'));
+        const skippedFailures = failedFiles.filter(f => f.error.startsWith('Skipped:'));
+        const otherFailures = failedFiles.filter(
+          f => !f.error.startsWith('Too large:') && !f.error.startsWith('Skipped:')
+        );
+
+        if (oversized.length > 0) {
+          allDiscrepancies.push(
+            `📦 ${oversized.length} file(s) were ignored because they exceed the 10 MB per-file maximum: ${oversized
+              .map(f => f.fileName)
+              .join(', ')}`
+          );
+        }
+
+        if (skippedFailures.length > 0) {
+          allDiscrepancies.push(
+            `⏭️ ${skippedFailures.length} file(s) were skipped: ${skippedFailures
+              .map(f => f.fileName)
+              .join(', ')}`
+          );
+        }
+
+        if (otherFailures.length > 0) {
+          allDiscrepancies.push(
+            `⚠️ ${otherFailures.length} file(s) failed: ${otherFailures.map(f => f.fileName).join(', ')}`
+          );
+        }
       }
       
       setPatientInfoDiscrepancies(allDiscrepancies);
@@ -135,11 +239,20 @@ export function HomePage() {
       console.group('📊 Biomarker Extraction Summary');
       claudeResponses.forEach((response, idx) => {
         console.group(`📄 PDF ${idx + 1}: ${validPdfs[idx].fileName}`);
-        console.log(`✅ Extracted ${response.biomarkers.length} biomarkers:`);
-        console.table(response.biomarkers.map(b => ({
+
+        // ✅ Use normalized biomarkers if available
+        const biomarkers = response.normalizedBiomarkers || response.biomarkers;
+        const isNormalized = !!response.normalizedBiomarkers;
+
+        console.log(`✅ Extracted ${biomarkers.length} biomarkers${isNormalized ? ' (normalized)' : ''}:`);
+        console.table(biomarkers.map(b => ({
           name: b.name,
           value: b.value,
-          unit: b.unit
+          unit: b.unit,
+          ...(isNormalized && 'originalName' in b ? {
+            original: b.originalName,
+            confidence: `${(b.confidence * 100).toFixed(0)}%`
+          } : {})
         })));
         console.groupEnd();
       });
@@ -147,38 +260,68 @@ export function HomePage() {
       
       const allAnalyses: typeof extractedAnalyses = [];
       const allBiomarkersWithMeta: Array<{ biomarker: ExtractedBiomarker; testDate: string | null; pdfIndex: number }> = [];
-      
+
       for (let i = 0; i < claudeResponses.length; i++) {
         const claudeResponse = claudeResponses[i];
         const processedPdf = validPdfs[i];
-        
-        const progressInStep = 75 + (i / claudeResponses.length) * 10;
+
+        // Progress: 92-96% (processing individual analyses)
+        const progressInStep = 92 + (i / claudeResponses.length) * 4;
         setProcessingProgress(Math.round(progressInStep));
-        setProcessingMessage(`Processing analysis ${i + 1} of ${claudeResponses.length}...`);
-        
-        claudeResponse.biomarkers.forEach(biomarker => {
+        setProcessingMessage(`Matching biomarkers ${i + 1} of ${claudeResponses.length}...`);
+
+        // ✅ Use normalized biomarkers if available, fall back to raw
+        const biomarkers = claudeResponse.normalizedBiomarkers || claudeResponse.biomarkers;
+        const isNormalized = !!claudeResponse.normalizedBiomarkers;
+
+        // Convert normalized biomarkers to ExtractedBiomarker format
+        const extractedBiomarkers: ExtractedBiomarker[] = biomarkers.map(b => {
+          if (isNormalized && 'originalName' in b) {
+            // NormalizedBiomarker -> ExtractedBiomarker (preserve metadata)
+            return {
+              name: b.name, // Use canonical name
+              value: b.value,
+              unit: b.unit,
+              testDate: claudeResponse.patientInfo.testDate || undefined,
+              // ✅ Preserve normalization metadata
+              _normalization: {
+                originalName: b.originalName,
+                originalValue: b.originalValue,
+                originalUnit: b.originalUnit,
+                confidence: b.confidence,
+                conversionApplied: b.conversionApplied,
+                isNumeric: b.isNumeric
+              }
+            };
+          } else {
+            // Already ExtractedBiomarker
+            return b as ExtractedBiomarker;
+          }
+        });
+
+        extractedBiomarkers.forEach(biomarker => {
           allBiomarkersWithMeta.push({
             biomarker,
             testDate: claudeResponse.patientInfo.testDate,
             pdfIndex: i
           });
         });
-        
+
         // Use gender from patient info, default to 'male' if not specified
         const gender = claudeResponse.patientInfo.gender === 'female' ? 'female' : 'male';
-        const analysisResults = matchBiomarkersWithRanges(claudeResponse.biomarkers, gender);
-        
+        const analysisResults = matchBiomarkersWithRanges(extractedBiomarkers, gender);
+
         allAnalyses.push({
           patientInfo: claudeResponse.patientInfo,
           results: analysisResults,
-          biomarkers: claudeResponse.biomarkers, // Store original extracted biomarkers
+          biomarkers: extractedBiomarkers, // Store normalized biomarkers
           fileName: processedPdf.fileName,
           panelName: claudeResponse.panelName,
         });
       }
       
       setProcessingMessage('Combining biomarkers from all documents...');
-      setProcessingProgress(85);
+      setProcessingProgress(97);
       
       const biomarkerMap = new Map<string, { biomarker: ExtractedBiomarker; testDate: string | null; pdfIndex: number }>();
       
@@ -220,15 +363,16 @@ export function HomePage() {
       console.groupEnd();
       
       // STEP 1: Save extracted data and show confirmation dialog
-      setProcessingProgress(90);
+      setProcessingProgress(98);
       setConsolidatedPatientInfo(consolidatedPatientInfo);
       setExtractedBiomarkers(deduplicatedBiomarkers);
       setExtractedAnalyses(allAnalyses);
-      
+
       // ALWAYS show confirmation dialog so user can review/edit patient info
       if (isSupabaseEnabled && consolidatedPatientInfo.name) {
         // With Supabase: Try to match existing client
         setProcessingMessage('Matching client...');
+        setProcessingProgress(99);
         const matchResult = await matchOrCreateClient(consolidatedPatientInfo);
         setMatchResult(matchResult);
       } else {
@@ -241,7 +385,7 @@ export function HomePage() {
           suggestedAction: 'create-new'
         });
       }
-      
+
       setProcessingProgress(100);
       setState('confirmation');
     } catch (err) {
@@ -521,7 +665,11 @@ export function HomePage() {
 
       {/* Processing (Extraction) */}
       {state === 'processing' && (
-        <LoadingState message={processingMessage} progress={processingProgress} />
+        <LoadingState
+          message={processingMessage}
+          progress={processingProgress}
+          fileProgress={fileProgress}
+        />
       )}
 
       {/* Patient Info Confirmation */}
@@ -536,7 +684,11 @@ export function HomePage() {
 
       {/* Analyzing (After confirmation) */}
       {state === 'analyzing' && (
-        <LoadingState message={processingMessage} progress={processingProgress} />
+        <LoadingState
+          message={processingMessage}
+          progress={processingProgress}
+          fileProgress={fileProgress}
+        />
       )}
 
       {/* Results */}

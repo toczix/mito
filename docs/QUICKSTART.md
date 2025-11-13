@@ -173,7 +173,7 @@ npm run dev
 ## 💰 Cost Information
 
 **Claude API Costs** (as of Oct 2024)
-- Model: **Claude 3.5 Haiku** (cheapest)
+- Model: **Claude Haiku 4.5** (cheapest)
 - Method: **Text extraction only** (no image processing)
 - Typical cost: **$0.01-0.02** per analysis (8 PDFs)
 - Much cheaper than image-based processing

@@ -150,7 +150,7 @@ The system includes robust JSON extraction that handles:
 - Multiple fallback parsing strategies
 
 ### Claude Model
-Uses **Claude 3.5 Haiku** which has native multilingual understanding across 100+ languages.
+Uses **Claude Haiku 4.5** which has native multilingual understanding across 100+ languages.
 
 ## Benefits
 

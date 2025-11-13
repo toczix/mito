@@ -39,8 +39,8 @@ Previously, scanned PDFs only had the first 5 pages converted to images. Now **A
 
 5. **Upgrade to Claude Haiku 4.5** - [analyze-biomarkers/index.ts:186](supabase/functions/analyze-biomarkers/index.ts#L186)
    ```typescript
-   // BEFORE: 'claude-3-5-haiku-20241022'
-   // AFTER:  'claude-haiku-4-5' // Latest Haiku (Oct 2025)
+   // BEFORE: 'claude-haiku-4-5-20251001'
+   // AFTER:  'claude-haiku-4-5-20251001' // Latest Haiku (Oct 2025)
    ```
 
 6. **Update User Messages** - [LoadingState.tsx:52](src/components/LoadingState.tsx#L52)
@@ -119,7 +119,7 @@ Previously, scanned PDFs only had the first 5 pages converted to images. Now **A
 ## Technical Details
 
 ### Vision API Processing
-- **Model**: Claude Haiku 4.5 (`claude-haiku-4-5`)
+- **Model**: Claude Haiku 4.5 (`claude-haiku-4-5-20251001`)
 - **Scale**: 2.0 (high quality, readable text)
 - **Format**: PNG (lossless, good for text/tables)
 - **Encoding**: Base64 (required by Claude API)

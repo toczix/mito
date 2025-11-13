@@ -146,7 +146,7 @@ const claudeResponses: ClaudeResponseBatch = await extractBiomarkersFromPdfs(
 2. **Send to Claude**
    ```typescript
    const message = await client.messages.create({
-     model: 'claude-3-5-haiku-20241022',
+     model: 'claude-haiku-4-5-20251001',
      max_tokens: 4096,
      messages: [
        {

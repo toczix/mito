@@ -46,7 +46,10 @@ SELECT * FROM custom_benchmarks;
 CREATE TEMP TABLE rollback_backup_settings AS
 SELECT * FROM settings;
 
-RAISE NOTICE 'Data backed up to temporary tables';
+DO $$
+BEGIN
+  RAISE NOTICE 'Data backed up to temporary tables';
+END $$;
 
 -- ============================================================================
 -- DISABLE ROW LEVEL SECURITY
@@ -91,7 +94,10 @@ DROP POLICY IF EXISTS "Users can insert own settings" ON settings;
 DROP POLICY IF EXISTS "Users can update own settings" ON settings;
 DROP POLICY IF EXISTS "Users can delete own settings" ON settings;
 
-RAISE NOTICE 'All RLS policies dropped';
+DO $$
+BEGIN
+  RAISE NOTICE 'All RLS policies dropped';
+END $$;
 
 -- ============================================================================
 -- DROP HELPER FUNCTIONS
@@ -102,7 +108,10 @@ DROP FUNCTION IF EXISTS assign_data_to_practitioner(TEXT, BOOLEAN);
 DROP FUNCTION IF EXISTS verify_auth_migration();
 DROP FUNCTION IF EXISTS create_pre_auth_snapshot();
 
-RAISE NOTICE 'Helper functions removed';
+DO $$
+BEGIN
+  RAISE NOTICE 'Helper functions removed';
+END $$;
 
 -- ============================================================================
 -- DROP TRIGGER AND FUNCTION FOR AUTO USER SETTINGS
@@ -111,7 +120,10 @@ RAISE NOTICE 'Helper functions removed';
 DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 DROP FUNCTION IF EXISTS handle_new_user();
 
-RAISE NOTICE 'Auto user creation trigger removed';
+DO $$
+BEGIN
+  RAISE NOTICE 'Auto user creation trigger removed';
+END $$;
 
 -- ============================================================================
 -- RESTORE OLD SETTINGS TABLE STRUCTURE (OPTIONAL)

@@ -67,8 +67,8 @@ LANGUAGE plpgsql
 AS $$
 BEGIN
   -- Insert default settings for new user
-  INSERT INTO public.settings (user_id, theme, language)
-  VALUES (NEW.id, 'light', 'en')
+  INSERT INTO public.settings (user_id, claude_api_key)
+  VALUES (NEW.id, NULL)
   ON CONFLICT (user_id) DO NOTHING;
 
   RETURN NEW;

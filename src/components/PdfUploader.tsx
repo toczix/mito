@@ -16,6 +16,14 @@ interface PdfUploaderProps {
 export function PdfUploader({ onFilesSelected, onAnalyze, isProcessing = false }: PdfUploaderProps) {
   const [files, setFiles] = useState<File[]>([]);
   const [errors, setErrors] = useState<string[]>([]);
+  const MAX_PROCESSING_BYTES = 10 * 1024 * 1024; // 10MB processing limit
+
+  const formatFileSize = (sizeInBytes: number): string => {
+    if (sizeInBytes >= 1024 * 1024) {
+      return `${(sizeInBytes / 1024 / 1024).toFixed(2)} MB`;
+    }
+    return `${(sizeInBytes / 1024).toFixed(1)} KB`;
+  };
 
   const onDrop = useCallback((acceptedFiles: File[]) => {
     setErrors([]);
@@ -91,7 +99,9 @@ export function PdfUploader({ onFilesSelected, onAnalyze, isProcessing = false }
                 <div className="space-y-2">
                   <p className="text-lg font-medium">Drag & drop files here</p>
                   <p className="text-sm text-muted-foreground">PDF, DOCX, PNG, or JPG files</p>
-                  <p className="text-xs text-muted-foreground">Maximum file size: 50MB per file</p>
+                  <p className="text-xs text-muted-foreground">
+                    Maximum file size: 10MB per file
+                  </p>
                 </div>
               )}
             </div>
@@ -125,35 +135,49 @@ export function PdfUploader({ onFilesSelected, onAnalyze, isProcessing = false }
                 
                 {/* Scrollable file list */}
                 <div className="flex-1 overflow-y-auto space-y-2 pr-1 mb-4">
-                  {files.map((file, index) => (
-                    <div
-                      key={index}
-                      className="flex items-center justify-between p-3 bg-muted rounded-lg"
-                    >
-                      <div className="flex items-center gap-3 flex-1 min-w-0">
-                        {file.type.startsWith('image/') ? (
-                          <Image className="h-5 w-5 text-muted-foreground flex-shrink-0" />
-                        ) : (
-                          <FileText className="h-5 w-5 text-muted-foreground flex-shrink-0" />
-                        )}
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">{file.name}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {(file.size / 1024).toFixed(1)} KB
-                          </p>
-                        </div>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => removeFile(index)}
-                        disabled={isProcessing}
-                        className="flex-shrink-0"
+                  {files.map((file, index) => {
+                    const isTooLarge = file.size > MAX_PROCESSING_BYTES;
+                    return (
+                      <div
+                        key={index}
+                        className={`flex items-center justify-between p-3 rounded-lg border ${
+                          isTooLarge
+                            ? 'bg-muted/50 opacity-60 border-destructive/30'
+                            : 'bg-muted border-border'
+                        }`}
                       >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ))}
+                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                          {file.type.startsWith('image/') ? (
+                            <Image className={`h-5 w-5 flex-shrink-0 ${isTooLarge ? 'text-muted-foreground/50' : 'text-muted-foreground'}`} />
+                          ) : (
+                            <FileText className={`h-5 w-5 flex-shrink-0 ${isTooLarge ? 'text-muted-foreground/50' : 'text-muted-foreground'}`} />
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <p className={`text-sm font-medium truncate ${isTooLarge ? 'text-muted-foreground' : ''}`}>
+                              {file.name}
+                            </p>
+                            <p className={`text-xs ${isTooLarge ? 'text-destructive font-medium' : 'text-muted-foreground'}`}>
+                              {formatFileSize(file.size)}
+                            </p>
+                            {isTooLarge && (
+                              <p className="text-xs text-destructive font-medium mt-0.5">
+                                File too large - please split or reduce file size
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => removeFile(index)}
+                          disabled={isProcessing}
+                          className="flex-shrink-0"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    );
+                  })}
                 </div>
 
                 {/* Analyze button - pinned to bottom */}

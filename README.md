@@ -36,7 +36,7 @@ A modern web application that uses Claude AI to automatically analyze clinical p
 - **Vite** - Lightning-fast build tool
 - **Tailwind CSS v3.4** - Utility-first styling
 - **shadcn/ui** - Beautiful, accessible UI components
-- **Claude 3.5 Haiku** (Anthropic) - Fast, cost-effective AI document analysis
+- **Claude Haiku 4.5** (Anthropic) - Fast, cost-effective AI document analysis
 - **Supabase** (Optional) - PostgreSQL database for client records and data sync
 - **PDF.js** - Client-side PDF text extraction
 - **Inter Font** - Clean, modern typography
@@ -188,7 +188,7 @@ This application uses the Claude API (Anthropic) to analyze PDF documents. You n
 3. Enter it in the application when prompted
 
 **Cost Optimization:**  
-This app uses **Claude 3.5 Haiku** (fastest, cheapest model) and **text extraction only** (no image processing) to minimize API costs:
+This app uses **Claude Haiku 4.5** (fastest, cheapest model) and **text extraction only** (no image processing) to minimize API costs:
 - ~$0.01-0.02 per analysis (8 PDFs)
 - Check [Anthropic's pricing](https://www.anthropic.com/pricing) for current rates
 - Much cheaper than vision-based processing

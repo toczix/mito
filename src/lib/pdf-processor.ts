@@ -21,24 +21,33 @@ export interface ProcessedPDF {
 
 /**
  * Extract text content from a PDF file, Word document, or process an image
+ * @param file - The file to process
+ * @param onOcrProgress - Optional callback for OCR progress (0-100)
  */
-export async function processPdfFile(file: File): Promise<ProcessedPDF> {
+export async function processPdfFile(
+  file: File,
+  _onOcrProgress?: (progress: number) => void
+): Promise<ProcessedPDF> {
   // Check if it's an image
   if (file.type.startsWith('image/')) {
     const arrayBuffer = await file.arrayBuffer();
     const base64 = btoa(
       new Uint8Array(arrayBuffer).reduce((data, byte) => data + String.fromCharCode(byte), '')
     );
-    
+
     // Check image quality
     const qualityCheck = await checkImageQuality(arrayBuffer, file.type);
-    
+
+    // For standalone images, send directly to Vision API (no OCR)
+    // Vision API is much more accurate for medical documents than Tesseract OCR
+    console.log(`📸 Preparing image for Vision API: ${file.name}`);
+
     return {
       fileName: file.name,
-      extractedText: '', // Images will be sent directly to Claude
+      extractedText: '', // No OCR text - Vision API will process the image
       pageCount: 1,
-      isImage: true,
-      imageData: base64,
+      isImage: true, // Mark as image so Edge Function uses Vision API
+      imageData: base64, // Send image to Vision API
       mimeType: file.type,
       qualityScore: qualityCheck.score,
       qualityWarning: qualityCheck.warning,
@@ -157,14 +166,15 @@ export async function processPdfFile(file: File): Promise<ProcessedPDF> {
       console.log(`✅ Converted page ${pageNum} to image (${imageData.length} bytes)`);
     }
 
-    console.log(`📸 Using Vision API instead of text extraction (${imagePages.length} pages)`);
+    // Send images to Vision API for accurate extraction
+    console.log(`📸 Sending ${imagePages.length} scanned PDF pages to Vision API...`);
 
     return {
       fileName: file.name,
-      extractedText: '', // No text, will use images
+      extractedText: '', // No text - Vision API will process images
       pageCount: imagePages.length,
-      isImage: true,
-      imagePages: imagePages, // Multiple page images
+      isImage: true, // Mark as image so Edge Function uses Vision API
+      imagePages: imagePages, // Send all page images to Vision API
       mimeType: 'image/png',
     };
   }
@@ -179,20 +189,28 @@ export async function processPdfFile(file: File): Promise<ProcessedPDF> {
 
 /**
  * Process multiple PDF files
+ * @param files - The files to process
+ * @param onOcrProgress - Optional callback for OCR progress per file (fileName, progress 0-100)
  */
-export async function processMultiplePdfs(files: File[]): Promise<ProcessedPDF[]> {
+export async function processMultiplePdfs(
+  files: File[],
+  onOcrProgress?: (fileName: string, progress: number) => void
+): Promise<ProcessedPDF[]> {
   const results: ProcessedPDF[] = [];
-  
+
   for (const file of files) {
     try {
-      const processed = await processPdfFile(file);
+      const processed = await processPdfFile(
+        file,
+        onOcrProgress ? (progress) => onOcrProgress(file.name, progress) : undefined
+      );
       results.push(processed);
     } catch (error) {
       console.error(`Error processing ${file.name}:`, error);
       throw new Error(`Failed to process ${file.name}: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
   }
-  
+
   return results;
 }
 
@@ -217,10 +235,10 @@ export function validatePdfFile(file: File): { valid: boolean; error?: string } 
     return { valid: false, error: 'File must be a PDF, DOCX, PNG, or JPG' };
   }
 
-  // Check file size (max 50MB)
-  const maxSize = 50 * 1024 * 1024;
+  // Check file size (max 10MB)
+  const maxSize = 10 * 1024 * 1024;
   if (file.size > maxSize) {
-    return { valid: false, error: 'File size must be less than 50MB' };
+    return { valid: false, error: 'File size must be less than 10MB' };
   }
 
   return { valid: true };
@@ -239,7 +257,11 @@ export function validatePdfFiles(files: File[]): { valid: boolean; errors: strin
   for (const file of files) {
     const validation = validatePdfFile(file);
     if (!validation.valid && validation.error) {
-      errors.push(`${file.name}: ${validation.error}`);
+      // Only block invalid file types, not oversized files
+      // Oversized files will be shown in UI but won't block upload
+      if (!validation.error.includes('File size')) {
+        errors.push(`${file.name}: ${validation.error}`);
+      }
     }
   }
 

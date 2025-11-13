@@ -9,6 +9,9 @@ ALTER TABLE analyses ADD COLUMN user_id UUID REFERENCES auth.users(id);
 ALTER TABLE custom_benchmarks ADD COLUMN user_id UUID REFERENCES auth.users(id);
 ALTER TABLE settings ADD COLUMN user_id UUID REFERENCES auth.users(id);
 
+-- Add unique constraint on settings.user_id (each user has one settings record)
+ALTER TABLE settings ADD CONSTRAINT settings_user_id_key UNIQUE (user_id);
+
 -- Step 2: Create indexes for performance
 CREATE INDEX idx_clients_user_id ON clients(user_id);
 CREATE INDEX idx_analyses_user_id ON analyses(user_id);

@@ -26,6 +26,17 @@ import { AnalysisResults } from '@/components/AnalysisResults';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import type { AnalysisResult } from '@/lib/biomarkers';
 
+/**
+ * Format date of birth without timezone conversion
+ * Prevents off-by-one day errors from UTC conversion
+ */
+function formatDateOfBirth(dateString: string): string {
+  // Parse YYYY-MM-DD string directly without timezone conversion
+  const [year, month, day] = dateString.split('-').map(Number);
+  const date = new Date(year, month - 1, day); // month is 0-indexed
+  return date.toLocaleDateString();
+}
+
 export function ClientLibrary() {
   const [clients, setClients] = useState<Client[]>([]);
   const [activeTab, setActiveTab] = useState<'active' | 'past'>('active');
@@ -59,14 +70,45 @@ export function ClientLibrary() {
   });
 
   useEffect(() => {
-    loadClients();
+    let mounted = true;
+
+    async function fetchClients() {
+      setLoading(true);
+      try {
+        const data = activeTab === 'active' ? await getActiveClients() : await getPastClients();
+        if (mounted) {
+          setClients(data);
+        }
+      } catch (error) {
+        console.error('Error loading clients:', error);
+        if (mounted) {
+          setClients([]);
+        }
+      } finally {
+        if (mounted) {
+          setLoading(false);
+        }
+      }
+    }
+
+    fetchClients();
+
+    return () => {
+      mounted = false;
+    };
   }, [activeTab]);
 
   async function loadClients() {
     setLoading(true);
-    const data = activeTab === 'active' ? await getActiveClients() : await getPastClients();
-    setClients(data);
-    setLoading(false);
+    try {
+      const data = activeTab === 'active' ? await getActiveClients() : await getPastClients();
+      setClients(data);
+    } catch (error) {
+      console.error('Error loading clients:', error);
+      setClients([]);
+    } finally {
+      setLoading(false);
+    }
   }
 
   function resetForm() {
@@ -477,7 +519,7 @@ export function ClientLibrary() {
                       
                       {client.date_of_birth && (
                         <p className="text-sm text-muted-foreground">
-                          DOB: {new Date(client.date_of_birth).toLocaleDateString()}
+                          DOB: {formatDateOfBirth(client.date_of_birth)}
                         </p>
                       )}
                       

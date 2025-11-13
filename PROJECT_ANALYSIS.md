@@ -51,7 +51,7 @@
 - Real-time subscriptions not used (simple CRUD operations)
 
 **API Integrations:**
-1. **Anthropic Claude API** (Claude 3.5 Haiku)
+1. **Anthropic Claude API** (Claude Haiku 4.5)
    - Document understanding and biomarker extraction
    - Direct browser-to-API calls (no proxy server)
    - Cost-optimized: Uses text extraction instead of vision API where possible
@@ -103,7 +103,7 @@ Results Display & Export
 - **Vision API Fallback** - When text extraction fails, converts PDF pages to images
 
 **AI Analysis:**
-- Uses Claude 3.5 Haiku (fastest, cheapest model)
+- Uses Claude Haiku 4.5 (fastest, cheapest model)
 - Extracts patient demographics (name, DOB, gender, test date)
 - Identifies and extracts all 54 biomarkers with values and units
 - Handles multilingual documents (Spanish, Portuguese, French, German, Italian, Chinese, Japanese, Korean, Arabic, Russian, etc.)
@@ -369,7 +369,7 @@ Each AnalysisResult references a Biomarker definition
 ### 4.2 Claude Service (`claude-service.ts`)
 
 **Responsibilities:**
-- AI model integration (Claude 3.5 Haiku)
+- AI model integration (Claude Haiku 4.5)
 - Prompt engineering for biomarker extraction
 - Patient demographic extraction
 - JSON parsing and validation
@@ -689,7 +689,7 @@ Save → Stored in localStorage
 - **Trade-off:** Scanned PDFs need fallback processing
 
 **2. Haiku Model**
-- **Decision:** Use Claude 3.5 Haiku (not Sonnet or Opus)
+- **Decision:** Use Claude Haiku 4.5 (not Sonnet or Opus)
 - **Rationale:** Fast enough, 90% cheaper than Sonnet
 - **Trade-off:** May have slightly lower accuracy
 

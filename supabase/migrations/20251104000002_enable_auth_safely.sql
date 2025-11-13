@@ -220,10 +220,10 @@ BEGIN
   GET DIAGNOSTICS benchmarks_updated = ROW_COUNT;
 
   -- Ensure settings record exists
-  INSERT INTO settings (user_id, theme, language)
-  VALUES (practitioner_user_id, 'light', 'en')
+  INSERT INTO settings (user_id, claude_api_key)
+  VALUES (practitioner_user_id, NULL)
   ON CONFLICT (user_id) DO NOTHING;
-  GET DIAGNOSTICS settings_created = FOUND;
+  GET DIAGNOSTICS settings_created = ROW_COUNT;
 
   -- Return results
   RETURN QUERY
@@ -233,7 +233,7 @@ BEGIN
   UNION ALL
   SELECT 'benchmarks_assigned'::TEXT, benchmarks_updated
   UNION ALL
-  SELECT 'settings_ensured'::TEXT, CASE WHEN settings_created THEN 1::BIGINT ELSE 0::BIGINT END;
+  SELECT 'settings_ensured'::TEXT, settings_created;
 
   RAISE NOTICE 'Data assignment completed for %', practitioner_email;
 END;

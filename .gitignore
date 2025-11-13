@@ -38,3 +38,8 @@ lerna-debug.log*
 # Vite
 .vite
 *.local
+
+# Supabase
+.branches
+.temp
+volumes

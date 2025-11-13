@@ -1,0 +1,340 @@
+================================================================================
+                   COMPLETE DATA FLOW ARCHITECTURE
+================================================================================
+
+USER INTERACTION
+================================================================================
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│ React Component: PdfUploader.tsx                                         │
+│ ┌──────────────────────────────────────────────────────────────────┐   │
+│ │ 1. Drag & Drop / File Selection                                  │   │
+│ │ 2. File Validation (type, size: max 50MB)                        │   │
+│ │ 3. Display Selected Files                                        │   │
+│ │ 4. "Analyze Reports" Button                                      │   │
+│ └──────────────────────────────────────────────────────────────────┘   │
+└────────────────────────┬──────────────────────────────────────────────────┘
+                         │ onAnalyze()
+                         ↓
+================================================================================
+PROCESSING PIPELINE
+================================================================================
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│ PDF/Document Processing: pdf-processor.ts                               │
+│ ┌──────────────────────────────────────────────────────────────────┐   │
+│ │ processPdfFile(file: File)                                       │   │
+│ │                                                                   │   │
+│ │ IF image (PNG/JPG):                                              │   │
+│ │   ├─ Convert to base64                                           │   │
+│ │   ├─ Check image quality (resolution, sharpness)                │   │
+│ │   └─ Return: imageData + qualityScore                           │   │
+│ │                                                                   │   │
+│ │ IF Word document (.docx):                                        │   │
+│ │   ├─ Extract text using mammoth library                         │   │
+│ │   ├─ Validate min 100 characters                                │   │
+│ │   └─ Return: extractedText                                       │   │
+│ │                                                                   │   │
+│ │ IF PDF:                                                          │   │
+│ │   ├─ Load PDF with pdfjs-dist                                   │   │
+│ │   ├─ Extract text from all pages                                │   │
+│ │   │                                                              │   │
+│ │   ├─ IF text < 50 chars/page average:  (FALLBACK TO VISION)     │   │
+│ │   │   ├─ Convert ALL pages to PNG images (2x scale)            │   │
+│ │   │   ├─ Encode as base64                                       │   │
+│ │   │   └─ Return: imagePages[]                                   │   │
+│ │   │                                                              │   │
+│ │   └─ ELSE:                                                       │   │
+│ │       └─ Return: extractedText                                   │   │
+│ │                                                                   │   │
+│ └──────────────────────────────────────────────────────────────────┘   │
+│ processMultiplePdfs(files[])                                            │
+│   └─ Loop through each file sequentially                               │
+│      └─ Return: ProcessedPDF[]                                         │
+└────────────────────────┬──────────────────────────────────────────────────┘
+                         │ ProcessedPDF[]
+                         ↓
+================================================================================
+BIOMARKER EXTRACTION (via Claude AI)
+================================================================================
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│ Claude Service: claude-service.ts                                       │
+│ ┌──────────────────────────────────────────────────────────────────┐   │
+│ │ extractBiomarkersFromPdfs(processedPdfs[], onProgress)          │   │
+│ │                                                                   │   │
+│ │ BATCH PROCESSING (groups of 10 max):                            │   │
+│ │                                                                   │   │
+│ │ for each batch:                                                 │   │
+│ │   ├─ Update progress callback                                   │   │
+│ │   ├─ Call extractBiomarkersFromBatch()                         │   │
+│ │   ├─ Await response from Edge Function                         │   │
+│ │   └─ Wait 2 seconds before next batch (rate limiting)          │   │
+│ │                                                                   │   │
+│ │ Return: ClaudeResponseBatch with _failedFiles[]               │   │
+│ │                                                                   │   │
+│ └──────────────────────────────────────────────────────────────────┘   │
+└────────────────────────┬──────────────────────────────────────────────────┘
+                         │ Extract biomarkers, patient info
+                         ↓
+┌─────────────────────────────────────────────────────────────────────────┐
+│ SUPABASE EDGE FUNCTION: analyze-biomarkers/index.ts                    │
+│ ┌──────────────────────────────────────────────────────────────────┐   │
+│ │ Server-side processing (Claude API key secure)                   │   │
+│ │                                                                   │   │
+│ │ 1. VALIDATION:                                                   │   │
+│ │    ├─ Check authorization header                                │   │
+│ │    ├─ Verify Claude API key in secrets                          │   │
+│ │    └─ Validate file size (max 20MB combined)                    │   │
+│ │                                                                   │   │
+│ │ 2. PREPARE CONTENT FOR CLAUDE:                                  │   │
+│ │    ├─ IF image/multi-page PDF:                                  │   │
+│ │    │   └─ Build vision API request (base64 images)             │   │
+│ │    └─ ELSE:                                                     │   │
+│ │        └─ Build text extraction request                         │   │
+│ │                                                                   │   │
+│ │ 3. CALL CLAUDE API:                                             │   │
+│ │    ├─ Model: claude-haiku-4-5-20251001                         │   │
+│ │    ├─ Temperature: 0 (deterministic)                            │   │
+│ │    ├─ Max tokens: 8192                                          │   │
+│ │    ├─ Timeout: 300 seconds (5 minutes for large files)         │   │
+│ │    └─ Extraction prompt includes:                               │   │
+│ │        ├─ Multilingual support (15+ languages)                  │   │
+│ │        ├─ 54 biomarker definitions                              │   │
+│ │        └─ WBC differential critical rules                       │   │
+│ │            (absolute counts only, unit conversion)              │   │
+│ │                                                                   │   │
+│ │ 4. PARSE RESPONSE:                                              │   │
+│ │    ├─ Extract JSON (handle markdown code blocks)               │   │
+│ │    ├─ Validate biomarkers array not empty (422 if empty)       │   │
+│ │    └─ Return structured response                                │   │
+│ │                                                                   │   │
+│ └──────────────────────────────────────────────────────────────────┘   │
+└────────────────────────┬──────────────────────────────────────────────────┘
+                         │ ClaudeResponse[]
+                         ↓
+┌─────────────────────────────────────────────────────────────────────────┐
+│ Patient Info Consolidation (multiple files)                             │
+│ ┌──────────────────────────────────────────────────────────────────┐   │
+│ │ consolidatePatientInfo(allPatientInfos[])                       │   │
+│ │                                                                   │   │
+│ │ Name:     Pick most common (or longest if variants)             │   │
+│ │ DOB:      Pick most common date                                 │   │
+│ │ Gender:   Pick most common gender                               │   │
+│ │ TestDate: Pick most recent date                                 │   │
+│ │                                                                   │   │
+│ │ Flag discrepancies (multiple names/dates found)                 │   │
+│ │ Calculate confidence level (high/medium/low)                    │   │
+│ │                                                                   │   │
+│ └──────────────────────────────────────────────────────────────────┘   │
+│                                                                          │
+│ Biomarker Deduplication:                                               │
+│ ├─ Group by biomarker name (normalized)                               │
+│ ├─ Keep most recent or non-N/A value                                  │
+│ └─ Result: deduplicatedBiomarkers[]                                   │
+└────────────────────────┬──────────────────────────────────────────────────┘
+                         │ Consolidated patient info + biomarkers
+                         ↓
+================================================================================
+USER CONFIRMATION DIALOG
+================================================================================
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│ Component: ClientConfirmation.tsx (State: "confirmation")               │
+│ ┌──────────────────────────────────────────────────────────────────┐   │
+│ │ Show to user:                                                     │   │
+│ │ ├─ Consolidated Patient Name (editable)                          │   │
+│ │ ├─ Consolidated DOB (editable)                                   │   │
+│ │ ├─ Consolidated Gender (editable)                                │   │
+│ │ ├─ Discrepancies found (warnings)                                │   │
+│ │ ├─ Match result (existing client found?)                         │   │
+│ │ │  ├─ Name + confidence level                                    │   │
+│ │ │  └─ Option to use existing or create new                       │   │
+│ │ └─ "Confirm & Analyze" button                                    │   │
+│ │                                                                   │   │
+│ └──────────────────────────────────────────────────────────────────┘   │
+└────────────────────────┬──────────────────────────────────────────────────┘
+                         │ Confirmed patient info
+                         │ useExistingClient: boolean
+                         ↓
+================================================================================
+CLIENT MATCHING & CREATION
+================================================================================
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│ Client Matcher: client-matcher.ts                                       │
+│ ┌──────────────────────────────────────────────────────────────────┐   │
+│ │ matchOrCreateClient(patientInfo)                                 │   │
+│ │                                                                   │   │
+│ │ IF name provided:                                                │   │
+│ │   ├─ Fast server-side search (max 10 second timeout)            │   │
+│ │   ├─ searchClientsByName() → Returns ≤50 candidates            │   │
+│ │   └─ findBestMatch(candidates, patientInfo)                     │   │
+│ │                                                                   │   │
+│ │ Match scoring:                                                  │   │
+│ │   ├─ Name similarity (Levenshtein): 0-3 points                  │   │
+│ │   ├─ DOB exact match: 3 points                                  │   │
+│ │   ├─ Gender match: 1 point                                      │   │
+│ │   └─ Confidence = points/max_points                             │   │
+│ │       ├─ ≥0.85 = "high" (no confirmation needed)               │   │
+│ │       ├─ ≥0.65 = "medium" (needs confirmation)                 │   │
+│ │       └─ <0.65 = "low"                                         │   │
+│ │                                                                   │   │
+│ └──────────────────────────────────────────────────────────────────┘   │
+└────────────────────────┬──────────────────────────────────────────────────┘
+                         │ ClientMatchResult
+                         ↓
+┌─────────────────────────────────────────────────────────────────────────┐
+│ Client Creation/Selection (State: "analyzing")                          │
+│ ┌──────────────────────────────────────────────────────────────────┐   │
+│ │ IF useExistingClient && match.client:                            │   │
+│ │   └─ Use existing client ID                                      │   │
+│ │                                                                   │   │
+│ │ ELSE IF no match or create-new suggested:                        │   │
+│ │   ├─ autoCreateClient(patientInfo)                              │   │
+│ │   ├─ Insert into clients table with:                            │   │
+│ │   │  ├─ full_name: Title-cased name                             │   │
+│ │   │  ├─ date_of_birth: DOB or null                              │   │
+│ │   │  ├─ gender: male/female/other or null                       │   │
+│ │   │  ├─ status: "active"                                        │   │
+│ │   │  ├─ user_id: current user (if authenticated)                │   │
+│ │   │  └─ notes: "Auto-created from lab report"                   │   │
+│ │   └─ Return: new Client with id                                 │   │
+│ │                                                                   │   │
+│ └──────────────────────────────────────────────────────────────────┘   │
+└────────────────────────┬──────────────────────────────────────────────────┘
+                         │ clientId
+                         ↓
+================================================================================
+ANALYSIS CREATION
+================================================================================
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│ Analysis Processing: analyzer.ts → analysis-service.ts                  │
+│ ┌──────────────────────────────────────────────────────────────────┐   │
+│ │ 1. GROUP BIOMARKERS BY TEST DATE:                                │   │
+│ │    ├─ Extract from extracted biomarkers (from Claude)           │   │
+│ │    ├─ Map: testDate -> biomarkers[]                             │   │
+│ │    └─ Deduplicate within each date group                        │   │
+│ │                                                                   │   │
+│ │ 2. MATCH WITH OPTIMAL RANGES:                                   │   │
+│ │    ├─ For each date's biomarkers:                               │   │
+│ │    │  ├─ matchBiomarkersWithRanges(biomarkers, gender)         │   │
+│ │    │  └─ Returns: AnalysisResult[] (name + value + range)      │   │
+│ │    └─ Handles gender-specific ranges (male vs female)           │   │
+│ │                                                                   │   │
+│ │ 3. CREATE ANALYSIS RECORD(S):                                   │   │
+│ │    ├─ IF multiple test dates:                                   │   │
+│ │    │  └─ Create separate Analysis for each date                 │   │
+│ │    └─ ELSE:                                                     │   │
+│ │        └─ Create single Analysis with combined biomarkers       │   │
+│ │                                                                   │   │
+│ └──────────────────────────────────────────────────────────────────┘   │
+└────────────────────────┬──────────────────────────────────────────────────┘
+                         │ AnalysisResult[]
+                         ↓
+================================================================================
+DATABASE PERSISTENCE
+================================================================================
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│ Database Operations: (Only if Supabase enabled)                        │
+│ ┌──────────────────────────────────────────────────────────────────┐   │
+│ │ createAnalysis(clientId, results, labTestDate)                  │   │
+│ │                                                                   │   │
+│ │ 1. Check if analysis exists for same (clientId, labTestDate)   │   │
+│ │    ├─ IF exists: Update instead of duplicate                    │   │
+│ │    └─ ELSE: Create new                                          │   │
+│ │                                                                   │   │
+│ │ 2. Generate summary:                                            │   │
+│ │    ├─ totalBiomarkers                                           │   │
+│ │    ├─ measuredBiomarkers (value ≠ "N/A")                       │   │
+│ │    └─ missingBiomarkers (value = "N/A")                        │   │
+│ │                                                                   │   │
+│ │ 3. Insert to analyses table:                                    │   │
+│ │    ├─ client_id                                                 │   │
+│ │    ├─ lab_test_date (from lab report, nullable)                │   │
+│ │    ├─ results (JSON: AnalysisResult[])                         │   │
+│ │    ├─ summary (JSON: stats)                                     │   │
+│ │    ├─ analysis_date (current timestamp, auto)                   │   │
+│ │    └─ user_id (if authenticated)                                │   │
+│ │                                                                   │   │
+│ └──────────────────────────────────────────────────────────────────┘   │
+│                                                                          │
+│ Tables:                                                                 │
+│ ┌──────────────────────┐       ┌──────────────────────┐                 │
+│ │ clients              │       │ analyses             │                 │
+│ ├──────────────────────┤       ├──────────────────────┤                 │
+│ │ id (UUID)            │───┐   │ id (UUID)            │                 │
+│ │ full_name            │   └──→│ client_id            │                 │
+│ │ date_of_birth        │       │ lab_test_date        │                 │
+│ │ gender               │       │ results (JSONB)      │                 │
+│ │ status               │       │ summary (JSONB)      │                 │
+│ │ user_id (nullable)   │       │ analysis_date        │                 │
+│ │ created_at           │       │ created_at           │                 │
+│ │ updated_at           │       │ updated_at           │                 │
+│ └──────────────────────┘       └──────────────────────┘                 │
+│                                                                          │
+└────────────────────────┬──────────────────────────────────────────────────┘
+                         │ Analysis saved
+                         ↓
+================================================================================
+RESULTS DISPLAY
+================================================================================
+
+┌─────────────────────────────────────────────────────────────────────────┐
+│ Component: AnalysisResults.tsx (State: "results")                      │
+│ ┌──────────────────────────────────────────────────────────────────┐   │
+│ │ Display to user:                                                 │   │
+│ │ ├─ Patient summary (name, gender, analyzed documents)           │   │
+│ │ ├─ For each biomarker:                                          │   │
+│ │ │  ├─ Name                                                      │   │
+│ │ │  ├─ Patient value                                             │   │
+│ │ │  ├─ Unit                                                      │   │
+│ │ │  ├─ Optimal range (gender-specific)                           │   │
+│ │ │  └─ Status indicator (✓ in-range / ✗ out-of-range / ? unknown)│   │
+│ │ ├─ Summary stats:                                               │   │
+│ │ │  ├─ Total biomarkers measured                                 │   │
+│ │ │  ├─ Missing biomarkers                                        │   │
+│ │ │  ├─ In-range count                                            │   │
+│ │ │  └─ Out-of-range count                                        │   │
+│ │ ├─ Saved analyses count (if multiple test dates)                │   │
+│ │ └─ "Start Over" button                                          │   │
+│ │                                                                   │   │
+│ └──────────────────────────────────────────────────────────────────┘   │
+└────────────────────────────────────────────────────────────────────────────┘
+
+================================================================================
+KEY DESIGN PATTERNS
+================================================================================
+
+BATCH PROCESSING:
+  ├─ 10 files per Claude API call
+  ├─ 2-second delay between batches (rate limiting)
+  └─ 10x performance improvement over individual file processing
+
+ERROR RESILIENCE:
+  ├─ Transient errors (429, 503, network): Retry with exponential backoff
+  ├─ Non-transient errors (400-499, timeouts): Fail immediately
+  ├─ Batch failures: Continue with successful files, track failed in metadata
+  └─ Quality warnings: Log and continue, don't block analysis
+
+DEDUPLICATION:
+  ├─ Biomarkers within batch: Keep most recent or non-N/A value
+  ├─ Analyses by date: Update existing if same (clientId, labTestDate)
+  └─ Clients: Fast server-side search + Levenshtein distance matching
+
+MULTILINGUAL:
+  ├─ Claude extracts in document language
+  ├─ Normalizes biomarker names to English
+  ├─ Preserves units exactly
+  └─ Converts dates to YYYY-MM-DD, gender to male/female/other
+
+PERFORMANCE OPTIMIZATIONS:
+  ├─ Text extraction first (faster than Vision API)
+  ├─ Falls back to Vision API only if text extraction fails
+  ├─ Batch processing reduces API calls
+  ├─ Cached session queries (no network on user lookup)
+  └─ Server-side filtering for fast client search (ilike with indexes)
+
+================================================================================

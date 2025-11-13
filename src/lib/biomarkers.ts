@@ -14,6 +14,16 @@ export interface ExtractedBiomarker {
   value: string;
   unit: string;
   testDate?: string; // YYYY-MM-DD format
+
+  // ✅ Optional normalization metadata (preserved through pipeline)
+  _normalization?: {
+    originalName?: string;
+    originalValue?: string;
+    originalUnit?: string;
+    confidence?: number;
+    conversionApplied?: boolean;
+    isNumeric?: boolean;
+  };
 }
 
 export interface AnalysisResult {
@@ -22,6 +32,29 @@ export interface AnalysisResult {
   unit: string;
   optimalRange: string;
   testDate?: string; // YYYY-MM-DD format
+
+  // ✅ Optional normalization metadata (backward compatible)
+  _normalization?: {
+    originalName?: string;      // Name as extracted by Claude
+    originalValue?: string;     // Value before normalization
+    originalUnit?: string;      // Unit before conversion
+    confidence?: number;        // 0.0-1.0 confidence in name normalization
+    conversionApplied?: boolean; // Whether unit conversion was applied
+    isNumeric?: boolean;        // Whether value is numeric (false for "N/A", "<0.1")
+  };
+}
+
+// ✅ NEW: Normalized biomarker type (used during processing)
+export interface NormalizedBiomarker {
+  name: string;              // Canonical name
+  value: string;             // Normalized value
+  unit: string;              // Normalized unit
+  originalName: string;      // Original from Claude
+  originalValue: string;     // Original value
+  originalUnit: string;      // Original unit
+  confidence: number;        // 0.0-1.0
+  conversionApplied: boolean;
+  isNumeric: boolean;
 }
 
 /**

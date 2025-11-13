@@ -468,7 +468,7 @@ const CLAUDE_API_TIMEOUT = 60000; // 60 seconds
 // Update Claude API call (line 140-145)
 const response = await Promise.race([
   client.messages.create({
-    model: 'claude-3-5-haiku-20241022',
+    model: 'claude-haiku-4-5-20251001',
     max_tokens: 8192,
     temperature: 0,
     messages: [{ role: 'user', content }],

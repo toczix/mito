@@ -206,7 +206,7 @@ const totalSize = textLength + singleImageSize + multiImageSize
 - **Encoding**: Base64 (required by Claude API)
 
 ### Claude Vision API
-- **Model**: `claude-3-5-haiku-20241022` (fast, efficient)
+- **Model**: `claude-haiku-4-5-20251001` (fast, efficient)
 - **Timeout**: 150 seconds (2.5 minutes)
 - **Input**: Text prompt + multiple image blocks
 - **Output**: JSON with biomarkers extracted from ALL pages

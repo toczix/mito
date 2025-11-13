@@ -86,6 +86,8 @@ export function matchBiomarkersWithRanges(
         unit: extractedData.unit,
         optimalRange: optimalRange,
         testDate: extractedData.testDate,
+        // ✅ Preserve normalization metadata if present
+        _normalization: extractedData._normalization
       });
     } else {
       // No data found, mark as N/A
@@ -98,6 +100,7 @@ export function matchBiomarkersWithRanges(
         unit: benchmark.units[0] || '',
         optimalRange: optimalRange,
         testDate: undefined,
+        // No normalization metadata for N/A values
       });
     }
   }
