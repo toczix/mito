@@ -113,11 +113,25 @@ export async function getClient(id: string): Promise<Client | null> {
 export async function createClient(client: Omit<Client, 'id' | 'created_at' | 'updated_at'>): Promise<Client | null> {
   if (!supabase) return null;
 
-  // Get current user ID from cached session (no network request - prevents timeout)
+  // Get current user ID from cached session with timeout to prevent infinite hang
   let userId: string | undefined;
-  const { data: { session } } = await supabase.auth.getSession();
-  if (session?.user) {
-    userId = session.user.id;
+  try {
+    const sessionPromise = supabase.auth.getSession();
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('getSession timeout after 5 seconds')), 5000)
+    );
+
+    const { data: { session } } = await Promise.race([sessionPromise, timeoutPromise]);
+    if (session?.user) {
+      userId = session.user.id;
+      console.log('✅ Got user ID from session:', userId);
+    } else {
+      console.warn('⚠️ No session found - will attempt insert without user_id');
+    }
+  } catch (error) {
+    console.error('❌ getSession failed or timed out:', error);
+    // Continue without userId - let RLS policy fail with clear error if needed
+    console.warn('⚠️ Continuing without user_id - RLS policy may reject insert');
   }
 
   // Build insert data - only include user_id if we have it
