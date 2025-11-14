@@ -333,6 +333,14 @@ serve(async (req) => {
       )
     }
 
+    // Normalize units for consistency (e.g., German "Tsd./µl" → "×10³/µL")
+    parsedResponse.biomarkers = parsedResponse.biomarkers.map((biomarker: any) => {
+      if (biomarker.unit) {
+        biomarker.unit = normalizeUnit(biomarker.unit)
+      }
+      return biomarker
+    })
+
     return new Response(JSON.stringify(parsedResponse), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
@@ -371,6 +379,30 @@ serve(async (req) => {
     )
   }
 })
+
+/**
+ * Normalize unit strings for consistency across different languages
+ * Examples:
+ *   "Tsd./µl" → "×10³/µL" (German: Tausend = Thousand)
+ *   "Tsd/µl" → "×10³/µL"
+ *   "K/µl" → "×10³/µL" (K = kilo = thousand)
+ *   "k/µl" → "×10³/µL"
+ */
+function normalizeUnit(unit: string): string {
+  if (!unit) return unit
+
+  // Normalize common variations
+  let normalized = unit
+    .replace(/Tsd\./gi, '×10³') // German: Tausend (thousand)
+    .replace(/Tsd/gi, '×10³')
+    .replace(/\bK\b/g, '×10³')  // K = kilo = thousand
+    .replace(/\bk\b/g, '×10³')  // k = kilo = thousand
+    .replace(/µl/g, 'µL')       // Standardize µL capitalization
+    .replace(/ul/g, 'µL')       // ul → µL
+    .replace(/uL/g, 'µL')       // uL → µL
+
+  return normalized
+}
 
 function createExtractionPrompt(): string {
   return `You are an expert health data analyst specializing in clinical pathology and nutritional biochemistry.
