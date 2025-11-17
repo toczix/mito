@@ -166,10 +166,10 @@ export function HomePage() {
               setFileProgress(prev => prev.map(f =>
                 f.fileName === fileName ? { ...f, status: 'completed' as const } : f
               ));
-            } else if (status.startsWith('page-progress')) {
+            } else if (status.includes('page-progress')) {
               // Handle page-level progress updates for parallel processing
-              // Format: "page-progress fileName pagesComplete/totalPages percentage"
-              const match = status.match(/page-progress (.+?) (\d+)\/(\d+) (\d+)%/);
+              // Format: "processing fileName page-progress pagesComplete/totalPages percentage%"
+              const match = status.match(/processing (.+?) page-progress (\d+)\/(\d+) (\d+)%/);
               if (match) {
                 const [, fileName, pagesComplete, totalPages, percentage] = match;
 

@@ -612,7 +612,8 @@ async function extractBiomarkersFromBatch(
             if (onFileProgress) {
               const percentage = Math.round((pagesComplete / totalPages) * 100);
               // Send page progress in a format that HomePage can parse
-              onFileProgress(`page-progress ${pdf.fileName} ${pagesComplete}/${totalPages} ${percentage}%`, 'processing');
+              // Format: fileName, status, progressMessage
+              onFileProgress(pdf.fileName, 'processing', `page-progress ${pagesComplete}/${totalPages} ${percentage}%`);
             }
           };
 
@@ -981,13 +982,18 @@ export async function extractBiomarkersFromPdfs(
       // Process batch with per-file progress tracking
       const batchResults = await extractBiomarkersFromBatch(
         batch.files,
-        (fileName, status, _error) => {
+        (fileName, status, error) => {
           if (onProgress) {
+            // If error contains page-progress info, include it in status
+            const statusMessage = error && error.startsWith('page-progress')
+              ? `${status} ${fileName} ${error}`
+              : `${status} ${fileName}`;
+
             onProgress(
               processedCount,
               processedPdfs.length,
               ` (batch ${batchNumber}/${adaptiveBatches.length})`,
-              `${status} ${fileName}`
+              statusMessage
             );
           }
         }
