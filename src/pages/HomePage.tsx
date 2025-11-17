@@ -147,13 +147,15 @@ export function HomePage() {
           // Update file progress based on status
           if (status) {
             if (status.startsWith('processing')) {
-              const fileName = status.replace('processing ', '');
+              const parts = status.split(' ');
+              const fileName = parts.slice(1).join(' ');
               setProcessingMessage(`Processing ${fileName}...`);
               setFileProgress(prev => prev.map(f =>
                 f.fileName === fileName ? { ...f, status: 'processing' as const } : f
               ));
             } else if (status.startsWith('completed')) {
-              const fileName = status.replace('completed ', '');
+              const parts = status.split(' ');
+              const fileName = parts.slice(1).join(' ');
               completedFiles++;
 
               // Calculate granular progress: 20% + (completed/total * 70%)
@@ -164,6 +166,32 @@ export function HomePage() {
               setFileProgress(prev => prev.map(f =>
                 f.fileName === fileName ? { ...f, status: 'completed' as const } : f
               ));
+            } else if (status.startsWith('page-progress')) {
+              // Handle page-level progress updates for parallel processing
+              // Format: "page-progress fileName pagesComplete/totalPages percentage"
+              const match = status.match(/page-progress (.+?) (\d+)\/(\d+) (\d+)%/);
+              if (match) {
+                const [, fileName, pagesComplete, totalPages, percentage] = match;
+
+                // Update overall progress based on page completion
+                // Map page progress to the 20-90% range (70% total)
+                const fileWeight = 70 / totalFiles; // Each file gets equal weight
+                const fileIndex = validPdfs.findIndex(p => p.fileName === fileName);
+                const baseProgress = 20 + (fileIndex * fileWeight);
+                const fileProgress = (parseInt(percentage) / 100) * fileWeight;
+                const overallProgress = Math.min(90, Math.round(baseProgress + fileProgress));
+
+                setProcessingProgress(overallProgress);
+                setProcessingMessage(`Processing ${fileName}: ${pagesComplete}/${totalPages} pages (${percentage}%)`);
+
+                setFileProgress(prev => prev.map(f =>
+                  f.fileName === fileName ? {
+                    ...f,
+                    status: 'processing' as const,
+                    error: `${pagesComplete}/${totalPages} pages (${percentage}%)`
+                  } : f
+                ));
+              }
             } else if (status.startsWith('failed')) {
               const fileName = status.replace('failed ', '');
               completedFiles++;

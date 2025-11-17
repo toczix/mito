@@ -611,7 +611,8 @@ async function extractBiomarkersFromBatch(
           const pageProgressCallback = (pagesComplete: number, totalPages: number) => {
             if (onFileProgress) {
               const percentage = Math.round((pagesComplete / totalPages) * 100);
-              onFileProgress(pdf.fileName, 'processing', `Processing pages: ${pagesComplete}/${totalPages} (${percentage}%)`);
+              // Send page progress in a format that HomePage can parse
+              onFileProgress(`page-progress ${pdf.fileName} ${pagesComplete}/${totalPages} ${percentage}%`, 'processing');
             }
           };
 
