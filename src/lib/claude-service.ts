@@ -690,7 +690,6 @@ export async function extractBiomarkersWithParallelPages(
   const MAX_PARALLEL = 30;
   const allBiomarkers: ExtractedBiomarker[] = [];
   let patientInfo: PatientInfo | null = null;
-  let testDate: string | null = null;
   let completedPages = 0;
 
   for (let batchStart = 0; batchStart < pageTexts.length; batchStart += MAX_PARALLEL) {
@@ -733,8 +732,7 @@ export async function extractBiomarkersWithParallelPages(
     for (const result of batchResults) {
       if (result && result.biomarkers) {
         allBiomarkers.push(...result.biomarkers);
-        if (!patientInfo && result.patient_info) patientInfo = result.patient_info;
-        if (!testDate && result.test_date) testDate = result.test_date;
+        if (!patientInfo && result.patientInfo) patientInfo = result.patientInfo;
       }
     }
   }
@@ -743,8 +741,8 @@ export async function extractBiomarkersWithParallelPages(
   const uniqueBiomarkers = Array.from(
     new Map(
       allBiomarkers
-        .filter(b => b && b.biomarker_name) // Filter out invalid biomarkers
-        .map(b => [b.biomarker_name.toLowerCase(), b])
+        .filter(b => b && b.name) // Filter out invalid biomarkers
+        .map(b => [b.name.toLowerCase(), b])
     ).values()
   );
 
@@ -753,8 +751,8 @@ export async function extractBiomarkersWithParallelPages(
 
   return {
     biomarkers: uniqueBiomarkers,
-    patient_info: patientInfo,
-    test_date: testDate,
+    patientInfo: patientInfo || { name: null, dateOfBirth: null, gender: null, testDate: null },
+    panelName: '', // Will be populated if found
   };
 }
 
