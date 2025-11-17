@@ -13,7 +13,8 @@ export const supabase = supabaseUrl && supabaseAnonKey
       auth: {
         autoRefreshToken: true,
         persistSession: true,
-        detectSessionInUrl: true
+        detectSessionInUrl: false, // Disable auto-detection to prevent hanging
+        flowType: 'pkce'
       }
     })
   : null;

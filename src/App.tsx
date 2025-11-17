@@ -29,6 +29,36 @@ function App() {
       return;
     }
 
+    // Manually handle auth callback from magic link
+    const handleAuthCallback = async () => {
+      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+      const accessToken = hashParams.get('access_token');
+      const refreshToken = hashParams.get('refresh_token');
+
+      if (accessToken && supabase) {
+        console.log('Detected auth callback, exchanging tokens...');
+        try {
+          const { error } = await supabase.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken || ''
+          });
+
+          if (error) {
+            console.error('Failed to set session:', error);
+          } else {
+            console.log('Session set successfully');
+            // Clear hash from URL
+            window.location.hash = '';
+          }
+        } catch (error) {
+          console.error('Error during auth callback:', error);
+        }
+      }
+    };
+
+    // Handle callback first if present
+    handleAuthCallback();
+
     // Get initial session with timeout
     const sessionTimeout = setTimeout(() => {
       console.warn('Session check timed out after 10 seconds');
