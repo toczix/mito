@@ -18,8 +18,13 @@ function App() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Check if Supabase is enabled
-    if (!supabase || isAuthDisabled) {
+    // Skip auth check if disabled
+    if (isAuthDisabled) {
+      setLoading(false);
+      return;
+    }
+
+    if (!supabase) {
       setLoading(false);
       return;
     }
@@ -31,6 +36,7 @@ function App() {
         setLoading(false);
       })
       .catch((error) => {
+        console.error('Session check failed:', error);
         handleAuthError(error, 'get_session');
         setLoading(false);
       });

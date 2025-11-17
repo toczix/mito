@@ -602,7 +602,23 @@ async function extractBiomarkersFromBatch(
           onFileProgress(pdf.fileName, 'processing');
         }
 
-        const result = await extractBiomarkersFromPdf(pdf);
+        // Use parallel page processing for multi-page text PDFs (>3 pages)
+        let result: ClaudeResponse;
+        if (pdf.pageTexts && pdf.pageTexts.length > 1 && pdf.pageCount > 3 && !pdf.isImage) {
+          console.log(`🚀 Using parallel page processing for ${pdf.fileName} (${pdf.pageCount} pages)`);
+
+          // Create progress callback for page-level progress
+          const pageProgressCallback = (pagesComplete: number, totalPages: number) => {
+            if (onFileProgress) {
+              const percentage = Math.round((pagesComplete / totalPages) * 100);
+              onFileProgress(pdf.fileName, 'processing', `Processing pages: ${pagesComplete}/${totalPages} (${percentage}%)`);
+            }
+          };
+
+          result = await extractBiomarkersWithParallelPages(pdf, pageProgressCallback);
+        } else {
+          result = await extractBiomarkersFromPdf(pdf);
+        }
 
         if (onFileProgress) {
           onFileProgress(pdf.fileName, 'completed');
@@ -650,6 +666,96 @@ async function extractBiomarkersFromBatch(
   }
 
   return results;
+}
+
+/**
+ * Extract biomarkers from a single PDF using parallel page processing
+ * Processes individual pages in parallel (up to 30 at a time) for faster results
+ * with large multi-page documents
+ */
+export async function extractBiomarkersWithParallelPages(
+  processedPdf: ProcessedPDF,
+  onProgress?: (pagesComplete: number, totalPages: number) => void
+): Promise<ClaudeResponse> {
+  const startTime = Date.now();
+  const { fileName, pageTexts, pageCount } = processedPdf;
+
+  if (!pageTexts || pageTexts.length === 0) {
+    throw new Error('No page texts available for parallel processing');
+  }
+
+  console.log(`🚀 PARALLEL PROCESSING: ${fileName} (${pageCount} pages)`);
+  console.log(`   - Processing up to 30 pages in parallel (respecting rate limits)`);
+
+  const MAX_PARALLEL = 30;
+  const allBiomarkers: ExtractedBiomarker[] = [];
+  let patientInfo: PatientInfo | null = null;
+  let testDate: string | null = null;
+  let completedPages = 0;
+
+  for (let batchStart = 0; batchStart < pageTexts.length; batchStart += MAX_PARALLEL) {
+    const batchEnd = Math.min(batchStart + MAX_PARALLEL, pageTexts.length);
+    const batchPages = pageTexts.slice(batchStart, batchEnd);
+
+    console.log(`   📦 Processing batch: pages ${batchStart + 1}-${batchEnd}`);
+
+    // Process all pages in this batch in parallel
+    const batchPromises = batchPages.map(async (pageText, idx) => {
+      const pageNum = batchStart + idx + 1;
+      const pagePdf: ProcessedPDF = {
+        fileName: `${fileName} (Page ${pageNum})`,
+        extractedText: pageText,
+        pageCount: 1,
+        isImage: false,
+      };
+
+      try {
+        const result = await extractBiomarkersFromPdf(pagePdf);
+        completedPages++;
+        if (onProgress) {
+          onProgress(completedPages, pageCount);
+        }
+        console.log(`   ✅ Page ${pageNum} complete (${result.biomarkers?.length || 0} biomarkers) - ${completedPages}/${pageCount} pages done`);
+        return result;
+      } catch (error) {
+        completedPages++;
+        if (onProgress) {
+          onProgress(completedPages, pageCount);
+        }
+        console.error(`   ❌ Page ${pageNum} failed:`, error);
+        return null;
+      }
+    });
+
+    const batchResults = await Promise.all(batchPromises);
+
+    // Combine and deduplicate results
+    for (const result of batchResults) {
+      if (result && result.biomarkers) {
+        allBiomarkers.push(...result.biomarkers);
+        if (!patientInfo && result.patient_info) patientInfo = result.patient_info;
+        if (!testDate && result.test_date) testDate = result.test_date;
+      }
+    }
+  }
+
+  // Deduplicate biomarkers by name (case-insensitive)
+  const uniqueBiomarkers = Array.from(
+    new Map(
+      allBiomarkers
+        .filter(b => b && b.biomarker_name) // Filter out invalid biomarkers
+        .map(b => [b.biomarker_name.toLowerCase(), b])
+    ).values()
+  );
+
+  const duration = Date.now() - startTime;
+  console.log(`✅ Parallel processing complete: ${uniqueBiomarkers.length} unique biomarkers in ${(duration / 1000).toFixed(1)}s`);
+
+  return {
+    biomarkers: uniqueBiomarkers,
+    patient_info: patientInfo,
+    test_date: testDate,
+  };
 }
 
 /**

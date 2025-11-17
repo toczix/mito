@@ -5,26 +5,20 @@ import './index.css'
 import App from './App.tsx'
 import { biomarkerNormalizer } from './lib/biomarker-normalizer'
 
-// ✅ Initialize biomarker normalizer on app startup
-async function initializeApp() {
-  console.log('🚀 Initializing Mito app...')
+// ✅ Initialize biomarker normalizer on app startup (non-blocking)
+console.log('🚀 Initializing Mito app...')
 
-  try {
-    await biomarkerNormalizer.initialize()
-    console.log('✅ Biomarker normalizer initialized')
-  } catch (error) {
-    console.warn('⚠️ Biomarker normalizer initialization failed (will use passthrough):', error)
-    // Non-fatal - app works without normalization
-  }
-}
-
-// Bootstrap app
-initializeApp().then(() => {
-  createRoot(document.getElementById('root')!).render(
-    <StrictMode>
-      <BrowserRouter>
-        <App />
-      </BrowserRouter>
-    </StrictMode>,
-  )
+biomarkerNormalizer.initialize().then(() => {
+  console.log('✅ Biomarker normalizer initialized')
+}).catch((error) => {
+  console.warn('⚠️ Biomarker normalizer initialization failed (will use passthrough):', error)
 })
+
+// Bootstrap app immediately
+createRoot(document.getElementById('root')!).render(
+  <StrictMode>
+    <BrowserRouter>
+      <App />
+    </BrowserRouter>
+  </StrictMode>,
+)

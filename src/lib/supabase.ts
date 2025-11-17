@@ -7,17 +7,18 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 // Set VITE_AUTH_DISABLED=true in .env to disable auth (default: enabled)
 export const isAuthDisabled = import.meta.env.VITE_AUTH_DISABLED === 'true';
 
-// Debug: Log env vars (remove in production)
-console.log('Supabase URL:', supabaseUrl ? '✓ Set' : '✗ Not set');
-console.log('Supabase Key:', supabaseAnonKey ? '✓ Set' : '✗ Not set');
-
 // Supabase can be enabled even when auth is disabled (for database/edge functions)
-export const supabase = supabaseUrl && supabaseAnonKey 
-  ? createClient(supabaseUrl, supabaseAnonKey)
+export const supabase = supabaseUrl && supabaseAnonKey
+  ? createClient(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        autoRefreshToken: true,
+        persistSession: true,
+        detectSessionInUrl: true
+      }
+    })
   : null;
 
 export const isSupabaseEnabled = !!supabase;
-console.log('Supabase Enabled:', isSupabaseEnabled);
 
 // Database Types (Simplified - No Auth)
 export interface Settings {

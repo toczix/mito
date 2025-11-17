@@ -17,6 +17,8 @@ export interface ProcessedPDF {
   mimeType?: string;
   qualityScore?: number; // 0-1, for images
   qualityWarning?: string;
+  pageTexts?: string[]; // Array of text per page for parallel processing
+  originalFile?: File; // Store original file for fallback OCR
 }
 
 /**
@@ -101,26 +103,28 @@ export async function processPdfFile(
   const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
   const pageCount = pdf.numPages;
   console.log(`   - PDF has ${pageCount} pages`);
-  
+
   let extractedText = '';
+  const pageTexts: string[] = []; // Store individual page texts for parallel processing
 
   // Extract text from each page
   for (let pageNum = 1; pageNum <= pageCount; pageNum++) {
     const page = await pdf.getPage(pageNum);
     const textContent = await page.getTextContent();
-    
+
     console.log(`   - Page ${pageNum}: Found ${textContent.items.length} text items`);
-    
+
     // Combine text items
     const pageText = textContent.items
       .map((item: any) => item.str)
       .join(' ');
-    
+
     console.log(`   - Page ${pageNum} text length: ${pageText.length} chars`);
     if (pageNum === 1) {
       console.log(`   - Page 1 preview (first 300 chars): "${pageText.substring(0, 300)}"`);
     }
-    
+
+    pageTexts.push(pageText); // Store individual page text
     extractedText += `\n--- Page ${pageNum} ---\n${pageText}\n`;
   }
 
@@ -184,6 +188,8 @@ export async function processPdfFile(
     extractedText: extractedText.trim(),
     pageCount,
     isImage: false,
+    pageTexts, // Store individual page texts for parallel processing
+    originalFile: file, // Store original file for fallback OCR
   };
 }
 
