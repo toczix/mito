@@ -669,9 +669,42 @@ async function extractBiomarkersFromBatch(
 }
 
 /**
+ * Helper function to process items with concurrency limit
+ */
+async function processConcurrently<T, R>(
+  items: T[],
+  processor: (item: T, index: number) => Promise<R>,
+  concurrencyLimit: number
+): Promise<R[]> {
+  const results: R[] = [];
+  const executing: Promise<void>[] = [];
+
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+
+    const promise = processor(item, i).then(result => {
+      results[i] = result;
+    });
+
+    const executingPromise = promise.then(() => {
+      executing.splice(executing.indexOf(executingPromise), 1);
+    });
+
+    executing.push(executingPromise);
+
+    if (executing.length >= concurrencyLimit) {
+      await Promise.race(executing);
+    }
+  }
+
+  await Promise.all(executing);
+  return results;
+}
+
+/**
  * Extract biomarkers from a single PDF using parallel page processing
- * Processes individual pages in parallel (up to 30 at a time) for faster results
- * with large multi-page documents
+ * Processes individual pages with controlled concurrency (5 at a time)
+ * to respect Claude API Tier 1 concurrent request limits
  */
 export async function extractBiomarkersWithParallelPages(
   processedPdf: ProcessedPDF,
@@ -685,22 +718,18 @@ export async function extractBiomarkersWithParallelPages(
   }
 
   console.log(`🚀 PARALLEL PROCESSING: ${fileName} (${pageCount} pages)`);
-  console.log(`   - Processing up to 30 pages in parallel (respecting rate limits)`);
+  console.log(`   - Processing with concurrency limit of 5 (Claude API Tier 1 limit)`);
 
-  const MAX_PARALLEL = 30;
+  const CONCURRENCY_LIMIT = 5; // Claude API Tier 1 allows 5 concurrent requests
   const allBiomarkers: ExtractedBiomarker[] = [];
   let patientInfo: PatientInfo | null = null;
   let completedPages = 0;
 
-  for (let batchStart = 0; batchStart < pageTexts.length; batchStart += MAX_PARALLEL) {
-    const batchEnd = Math.min(batchStart + MAX_PARALLEL, pageTexts.length);
-    const batchPages = pageTexts.slice(batchStart, batchEnd);
-
-    console.log(`   📦 Processing batch: pages ${batchStart + 1}-${batchEnd}`);
-
-    // Process all pages in this batch in parallel
-    const batchPromises = batchPages.map(async (pageText, idx) => {
-      const pageNum = batchStart + idx + 1;
+  // Process all pages with concurrency control
+  const batchResults = await processConcurrently(
+    pageTexts,
+    async (pageText, idx) => {
+      const pageNum = idx + 1;
       const pagePdf: ProcessedPDF = {
         fileName: `${fileName} (Page ${pageNum})`,
         extractedText: pageText,
@@ -724,16 +753,15 @@ export async function extractBiomarkersWithParallelPages(
         console.error(`   ❌ Page ${pageNum} failed:`, error);
         return null;
       }
-    });
+    },
+    CONCURRENCY_LIMIT
+  );
 
-    const batchResults = await Promise.all(batchPromises);
-
-    // Combine and deduplicate results
-    for (const result of batchResults) {
-      if (result && result.biomarkers) {
-        allBiomarkers.push(...result.biomarkers);
-        if (!patientInfo && result.patientInfo) patientInfo = result.patientInfo;
-      }
+  // Combine and deduplicate results
+  for (const result of batchResults) {
+    if (result && result.biomarkers) {
+      allBiomarkers.push(...result.biomarkers);
+      if (!patientInfo && result.patientInfo) patientInfo = result.patientInfo;
     }
   }
 
