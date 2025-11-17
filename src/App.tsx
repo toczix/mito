@@ -29,13 +29,20 @@ function App() {
       return;
     }
 
-    // Get initial session
+    // Get initial session with timeout
+    const sessionTimeout = setTimeout(() => {
+      console.warn('Session check timed out after 10 seconds');
+      setLoading(false);
+    }, 10000);
+
     supabase.auth.getSession()
       .then(({ data: { session } }) => {
+        clearTimeout(sessionTimeout);
         setSession(session);
         setLoading(false);
       })
       .catch((error) => {
+        clearTimeout(sessionTimeout);
         console.error('Session check failed:', error);
         handleAuthError(error, 'get_session');
         setLoading(false);
@@ -45,13 +52,18 @@ function App() {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('Auth state changed:', event, session ? 'session exists' : 'no session');
       setSession(session);
 
       // Log authentication events
-      if (event === 'SIGNED_IN' && session) {
-        await logAuditSuccess('login', 'auth');
-      } else if (event === 'SIGNED_OUT') {
-        await logAuditSuccess('logout', 'auth');
+      try {
+        if (event === 'SIGNED_IN' && session) {
+          await logAuditSuccess('login', 'auth');
+        } else if (event === 'SIGNED_OUT') {
+          await logAuditSuccess('logout', 'auth');
+        }
+      } catch (error) {
+        console.error('Error logging auth event:', error);
       }
     });
 
