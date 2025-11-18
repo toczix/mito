@@ -133,17 +133,20 @@ export async function createClient(client: Omit<Client, 'id' | 'created_at' | 'u
       }
     } catch (error) {
       console.error('❌ getSession failed or timed out:', error);
-      // Continue without userId - let RLS policy fail with clear error if needed
-      console.warn('⚠️ Continuing without user_id - RLS policy may reject insert');
+      // Continue without userId - RLS is disabled, so this is fine
+      console.warn('⚠️ Continuing without user_id (RLS disabled)');
     }
   } else {
-    console.log('🔓 Auth disabled - skipping session check');
+    console.log('🔓 Auth disabled - skipping session check, user_id will be null');
   }
 
   // Build insert data - only include user_id if we have it
+  // When auth is disabled, user_id will be null (which is now allowed)
   const insertData: any = { ...client };
   if (userId) {
     insertData.user_id = userId;
+  } else {
+    insertData.user_id = null;
   }
 
   const { data, error } = await supabase
