@@ -74,15 +74,8 @@ function App() {
       }
     };
 
-    // Initialize with timeout protection
-    const sessionTimeout = setTimeout(() => {
-      console.warn('⏰ Session check timed out after 10 seconds');
-      setLoading(false);
-    }, 10000);
-
-    initializeAuth().finally(() => {
-      clearTimeout(sessionTimeout);
-    });
+    // Initialize auth without timeout (let it complete naturally)
+    initializeAuth();
 
     // Listen for auth changes (login, logout, token refresh)
     const {
