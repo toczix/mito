@@ -8,7 +8,7 @@ import { LoginPage } from '@/pages/LoginPage';
 import { supabase, isAuthDisabled } from '@/lib/supabase';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { handleAuthError } from '@/lib/error-handler';
-import { logAuditSuccess, logAuditError } from '@/lib/audit-logger';
+import { logAuditSuccess } from '@/lib/audit-logger';
 import { Activity, FileText, Users, Settings as SettingsIcon, LogOut, Loader2 } from 'lucide-react';
 import type { Session } from '@supabase/supabase-js';
 
@@ -42,12 +42,10 @@ function App() {
       console.log('Auth state changed:', event, session ? 'logged in' : 'logged out');
       setSession(session);
 
-      // Log authentication events
+      // Log sign-in events (logout is logged in handleLogout before session ends)
       try {
         if (event === 'SIGNED_IN' && session) {
           await logAuditSuccess('login', 'auth');
-        } else if (event === 'SIGNED_OUT') {
-          await logAuditSuccess('logout', 'auth');
         }
       } catch (error) {
         console.error('Error logging auth event:', error);
@@ -60,10 +58,11 @@ function App() {
   const handleLogout = async () => {
     if (!supabase) return;
     try {
+      // Log BEFORE signing out (while session is still valid)
+      await logAuditSuccess('logout', 'auth');
       await supabase.auth.signOut();
     } catch (error) {
       handleAuthError(error, 'sign_out');
-      await logAuditError('logout', error, 'auth');
     }
   };
 
