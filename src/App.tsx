@@ -29,14 +29,15 @@ function App() {
       return;
     }
 
-    // Manually handle auth callback from magic link
-    const handleAuthCallback = async () => {
+    // Initialize auth with proper async handling
+    const initializeAuth = async () => {
+      // Manually handle auth callback from magic link
       const hashParams = new URLSearchParams(window.location.hash.substring(1));
       const accessToken = hashParams.get('access_token');
       const refreshToken = hashParams.get('refresh_token');
 
       if (accessToken && supabase) {
-        console.log('Detected auth callback, exchanging tokens...');
+        console.log('🔐 Detected auth callback, exchanging tokens...');
         try {
           const { error } = await supabase.auth.setSession({
             access_token: accessToken,
@@ -44,39 +45,48 @@ function App() {
           });
 
           if (error) {
-            console.error('Failed to set session:', error);
+            console.error('❌ Failed to set session:', error);
+            setLoading(false);
+            return;
           } else {
-            console.log('Session set successfully');
+            console.log('✅ Session set successfully');
             // Clear hash from URL
-            window.location.hash = '';
+            window.history.replaceState(null, '', window.location.pathname);
           }
         } catch (error) {
-          console.error('Error during auth callback:', error);
+          console.error('❌ Error during auth callback:', error);
+          setLoading(false);
+          return;
         }
+      }
+
+      // Get initial session after handling callback
+      if (!supabase) {
+        setLoading(false);
+        return;
+      }
+
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        console.log('📋 Current session:', session ? 'exists' : 'none');
+        setSession(session);
+        setLoading(false);
+      } catch (error) {
+        console.error('❌ Session check failed:', error);
+        handleAuthError(error, 'get_session');
+        setLoading(false);
       }
     };
 
-    // Handle callback first if present
-    handleAuthCallback();
-
-    // Get initial session with timeout
+    // Initialize with timeout protection
     const sessionTimeout = setTimeout(() => {
-      console.warn('Session check timed out after 10 seconds');
+      console.warn('⏰ Session check timed out after 10 seconds');
       setLoading(false);
     }, 10000);
 
-    supabase.auth.getSession()
-      .then(({ data: { session } }) => {
-        clearTimeout(sessionTimeout);
-        setSession(session);
-        setLoading(false);
-      })
-      .catch((error) => {
-        clearTimeout(sessionTimeout);
-        console.error('Session check failed:', error);
-        handleAuthError(error, 'get_session');
-        setLoading(false);
-      });
+    initializeAuth().finally(() => {
+      clearTimeout(sessionTimeout);
+    });
 
     // Listen for auth changes (login, logout, token refresh)
     const {
