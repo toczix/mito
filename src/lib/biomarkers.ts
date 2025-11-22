@@ -233,7 +233,7 @@ export const BIOMARKERS: Biomarker[] = [
       "Free T3", "FT3", "F T3", "F.T.3", "fT3",
       "T3 Free", "T3, Free", "Free T 3",
       "Free Triiodothyronine", "Triiodothyronine Free", "Triiodothyronine, Free",
-      "Free Tri-iodothyronine",
+      "Free Tri-iodothyronine", "Free tri-iodothyronine",
       // Spanish
       "T3 Libre", "FT3", "Triyodotironina Libre",
       // Portuguese
@@ -256,7 +256,7 @@ export const BIOMARKERS: Biomarker[] = [
       // English variations
       "Free T4", "FT4", "F T4", "F.T.4", "fT4",
       "T4 Free", "T4, Free", "Free T 4",
-      "Free Thyroxine", "Thyroxine Free", "Thyroxine, Free",
+      "Free Thyroxine", "Free thyroxine", "Thyroxine Free", "Thyroxine, Free",
       "Free Tetraiodothyronine",
       // Spanish
       "T4 Libre", "FT4", "Tiroxina Libre",
@@ -297,7 +297,7 @@ export const BIOMARKERS: Biomarker[] = [
       "HbA1C", "HbA1c", "Hb A1C", "Hb A1c", "HBA1C", "HBA1c",
       "A1C", "A1c", "Hemoglobin A1C", "Hemoglobin A1c",
       "Glycated Hemoglobin", "Glycosylated Hemoglobin", "Glycohemoglobin",
-      "Haemoglobin A1C", "Haemoglobin A1c",
+      "Haemoglobin A1C", "Haemoglobin A1c", "HAEMOGLOBIN A1c", "HAEMOGLOBIN A1C",
       "Hgb A1C", "Hgb A1c", "HGB A1C",
       "Glycated Hb", "Glycated HGB", "GHb",
       // Lab-specific formats
