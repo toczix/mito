@@ -2,9 +2,7 @@ import { supabase } from './supabase';
 import type { ProcessedPDF } from './pdf-processor';
 import type { ExtractedBiomarker, NormalizedBiomarker } from './biomarkers';
 import { biomarkerNormalizer } from './biomarker-normalizer';
-import { createAdaptiveBatches, calculateAdaptiveDelay, validateBatch } from './adaptive-batching';
 import { filterDocuments, isFileTooLarge } from './document-filter';
-import { generateBatchId, logBatchMetrics } from './batch-telemetry';
 import { categorizeFiles, processInParallel, estimateProcessingTime, type ProcessingProgress } from './parallel-processor';
 
 export interface PatientInfo {
@@ -567,109 +565,6 @@ export async function extractBiomarkersFromPdf(
   });
 }
 
-/**
- * Extract biomarkers from a BATCH of PDFs using INTELLIGENT batching
- * - Large PDFs (20+ pages or 30K+ chars): processed sequentially to avoid rate limiting
- * - Small PDFs: processed in parallel for speed
- */
-async function extractBiomarkersFromBatch(
-  processedPdfs: ProcessedPDF[],
-  onFileProgress?: (fileName: string, status: 'processing' | 'completed' | 'failed', error?: string) => void
-): Promise<ClaudeResponse[]> {
-  // Separate large and small PDFs
-  const LARGE_PDF_THRESHOLD_PAGES = 20;
-  const LARGE_PDF_THRESHOLD_CHARS = 30000;
-
-  const largePdfs = processedPdfs.filter(pdf =>
-    pdf.pageCount >= LARGE_PDF_THRESHOLD_PAGES ||
-    pdf.extractedText.length >= LARGE_PDF_THRESHOLD_CHARS
-  );
-
-  const smallPdfs = processedPdfs.filter(pdf =>
-    pdf.pageCount < LARGE_PDF_THRESHOLD_PAGES &&
-    pdf.extractedText.length < LARGE_PDF_THRESHOLD_CHARS
-  );
-
-  console.log(`📦 Intelligent batching: ${largePdfs.length} large PDFs (sequential), ${smallPdfs.length} small PDFs (parallel)`);
-
-  const results: ClaudeResponse[] = [];
-
-  // Process large PDFs sequentially to avoid rate limiting
-  if (largePdfs.length > 0) {
-    console.log(`🔄 Processing ${largePdfs.length} large PDFs sequentially...`);
-    for (const pdf of largePdfs) {
-      try {
-        if (onFileProgress) {
-          onFileProgress(pdf.fileName, 'processing');
-        }
-
-        // Use parallel page processing for multi-page text PDFs (>3 pages)
-        let result: ClaudeResponse;
-        if (pdf.pageTexts && pdf.pageTexts.length > 1 && pdf.pageCount > 3 && !pdf.isImage) {
-          console.log(`🚀 Using parallel page processing for ${pdf.fileName} (${pdf.pageCount} pages)`);
-
-          // Create progress callback for page-level progress
-          const pageProgressCallback = (pagesComplete: number, totalPages: number) => {
-            if (onFileProgress) {
-              const percentage = Math.round((pagesComplete / totalPages) * 100);
-              // Send page progress in a format that HomePage can parse
-              // Format: fileName, status, progressMessage
-              onFileProgress(pdf.fileName, 'processing', `page-progress ${pagesComplete}/${totalPages} ${percentage}%`);
-            }
-          };
-
-          result = await extractBiomarkersWithParallelPages(pdf, pageProgressCallback);
-        } else {
-          result = await extractBiomarkersFromPdf(pdf);
-        }
-
-        if (onFileProgress) {
-          onFileProgress(pdf.fileName, 'completed');
-        }
-
-        results.push(result);
-      } catch (error: any) {
-        if (onFileProgress) {
-          const errorMessage = error instanceof Error ? error.message : String(error);
-          onFileProgress(pdf.fileName, 'failed', errorMessage);
-        }
-        throw error;
-      }
-    }
-  }
-
-  // Process small PDFs in parallel for speed
-  if (smallPdfs.length > 0) {
-    console.log(`⚡ Processing ${smallPdfs.length} small PDFs in parallel...`);
-    const smallResults = await Promise.all(
-      smallPdfs.map(async (pdf) => {
-        try {
-          if (onFileProgress) {
-            onFileProgress(pdf.fileName, 'processing');
-          }
-
-          const result = await extractBiomarkersFromPdf(pdf);
-
-          if (onFileProgress) {
-            onFileProgress(pdf.fileName, 'completed');
-          }
-
-          return result;
-        } catch (error: any) {
-          if (onFileProgress) {
-            const errorMessage = error instanceof Error ? error.message : String(error);
-            onFileProgress(pdf.fileName, 'failed', errorMessage);
-          }
-          throw error;
-        }
-      })
-    );
-
-    results.push(...smallResults);
-  }
-
-  return results;
-}
 
 /**
  * Helper function to process items with concurrency limit
@@ -978,30 +873,6 @@ export async function extractBiomarkersFromPdfs(
   return batchResults;
 }
 
-/**
- * Determine error type for telemetry
- */
-function getErrorType(error: any): string {
-  if (error.message?.includes('timeout') || error.message?.includes('Timeout')) {
-    return 'timeout';
-  }
-  if (error.status === 429 || error.message?.includes('rate_limit')) {
-    return 'rate_limit';
-  }
-  if (error.status === 413 || error.message?.includes('too large') || error.message?.includes('Payload')) {
-    return 'payload_too_large';
-  }
-  if (error.status === 504) {
-    return 'gateway_timeout';
-  }
-  if (error.status >= 500) {
-    return 'server_error';
-  }
-  if (error.status >= 400) {
-    return 'client_error';
-  }
-  return 'unknown';
-}
 
 // NOTE: Old batch processing code removed - now using parallel processing
 // All sequential batch processing has been replaced with parallel processing above
