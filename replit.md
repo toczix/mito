@@ -7,6 +7,12 @@ A React-based web application that uses Claude AI to automatically analyze clini
 **Last Updated**: November 22, 2025
 
 ## Recent Changes
+- **November 22, 2025**: Biomarker Alias Improvements
+  - Added lab-specific aliases for HbA1C (IFCC HbA1c, DCCT HbA1c)
+  - Added aliases for SHBG (SHBG re-std)
+  - Added aliases for TPO Antibodies (TPOII, aTPOII, aTPO)
+  - Added aliases for Thyroglobulin Antibodies (aTGII, Anti-ThyroGlobulin assay)
+  - Improved extraction for multi-page lab reports with separate test sections
 - **November 22, 2025**: Unit Normalization Fix
   - Fixed biomarker unit inconsistencies (e.g., "Mio./μL" → "×10¹²/L", "%" → "g/L" for Albumin)
   - Added comprehensive unit normalization in biomarker-normalizer.ts

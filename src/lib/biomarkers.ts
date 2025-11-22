@@ -300,6 +300,8 @@ export const BIOMARKERS: Biomarker[] = [
       "Haemoglobin A1C", "Haemoglobin A1c",
       "Hgb A1C", "Hgb A1c", "HGB A1C",
       "Glycated Hb", "Glycated HGB", "GHb",
+      // Lab-specific formats
+      "IFCC HbA1c", "DCCT HbA1c", "IFCC HbA1C", "DCCT HbA1C",
       // Spanish
       "Hemoglobina Glicosilada", "Hemoglobina Glicada", "HbA1c", "A1C",
       // Portuguese
@@ -527,7 +529,7 @@ export const BIOMARKERS: Biomarker[] = [
     femaleRange: "50-80 nmol/L",
     units: ["nmol/L"],
     category: "Hormones",
-    aliases: ["Sex Hormone Binding Globulin", "Sex Hormone-Binding Globulin"]
+    aliases: ["Sex Hormone Binding Globulin", "Sex Hormone-Binding Globulin", "SHBG re-std", "SHBG re-std."]
   },
   {
     name: "Sodium",
@@ -551,7 +553,7 @@ export const BIOMARKERS: Biomarker[] = [
     femaleRange: "Refer to lab specific range",
     units: ["IU/mL", "U/mL"],
     category: "Thyroid",
-    aliases: ["Thyroid Peroxidase Antibodies", "Anti-TPO", "TPO Ab", "Thyroid Peroxidase Ab"]
+    aliases: ["Thyroid Peroxidase Antibodies", "Anti-TPO", "TPO Ab", "Thyroid Peroxidase Ab", "Thyroid Peroxidase(TPOII)antibodies", "TPOII", "aTPOII", "aTPO"]
   },
   {
     name: "TSH",
@@ -583,7 +585,7 @@ export const BIOMARKERS: Biomarker[] = [
     femaleRange: "Refer to lab specific range",
     units: ["IU/mL", "U/mL"],
     category: "Thyroid",
-    aliases: ["Anti-Thyroglobulin", "TgAb", "Thyroglobulin Ab", "Anti-Tg"]
+    aliases: ["Anti-Thyroglobulin", "TgAb", "Thyroglobulin Ab", "Anti-Tg", "Anti-ThyroGlobulin assay", "aTGII", "Anti-ThyroGlobulin"]
   },
   {
     name: "Total Bilirubin",
