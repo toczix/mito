@@ -31,61 +31,13 @@ function App() {
 
     // Initialize auth with proper async handling
     const initializeAuth = async () => {
-      // Check for PKCE code in query params (magic link callback)
-      const searchParams = new URLSearchParams(window.location.search);
-      const code = searchParams.get('code');
-
-      if (code && supabase) {
-        console.log('🔐 Detected PKCE auth code, exchanging for session...');
-        try {
-          // Race the PKCE exchange against a 5-second timeout
-          const exchangePromise = supabase.auth.exchangeCodeForSession(code);
-          const timeoutPromise = new Promise<{ data: any, error: any }>((_, reject) =>
-            setTimeout(() => reject(new Error('PKCE exchange timed out after 5 seconds')), 5000)
-          );
-          
-          const { data, error } = await Promise.race([exchangePromise, timeoutPromise]);
-
-          if (error) {
-            console.error('❌ Failed to exchange code for session:', error);
-            handleAuthError(error, 'pkce_exchange');
-            logAuditError('pkce_exchange_failed', error, 'auth');
-            
-            // Clear the bad code from URL to prevent repeated hangs
-            window.history.replaceState(null, '', window.location.pathname);
-            setSession(null);
-            setLoading(false);
-            return;
-          }
-          
-          console.log('✅ Session established successfully');
-          logAuditSuccess('pkce_exchange_success', 'auth', undefined, { user_id: data.session?.user?.id });
-          
-          // Clear code from URL
-          window.history.replaceState(null, '', window.location.pathname);
-          
-          // Set the session from the exchange result
-          setSession(data.session);
-          setLoading(false);
-          return; // Done - no need to check again
-        } catch (error) {
-          console.error('❌ Error during PKCE exchange (likely timeout):', error);
-          handleAuthError(error, 'pkce_exchange_timeout');
-          logAuditError('pkce_exchange_timeout', error, 'auth');
-          
-          // Clear the bad code from URL to prevent repeated hangs
-          window.history.replaceState(null, '', window.location.pathname);
-          setSession(null);
-          setLoading(false);
-          return;
-        }
-      }
-
-      // Get initial session after handling callback (only if no code was processed)
       if (!supabase) {
         setLoading(false);
         return;
       }
+      
+      // Supabase will automatically detect and handle magic link sessions
+      // because detectSessionInUrl: true is enabled
 
       try {
         console.log('🔍 Checking for session...');

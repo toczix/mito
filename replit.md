@@ -7,6 +7,12 @@ A React-based web application that uses Claude AI to automatically analyze clini
 **Last Updated**: November 22, 2025
 
 ## Recent Changes
+- **November 22, 2025**: Magic Link Authentication Fix
+  - Enabled automatic session detection (`detectSessionInUrl: true`) in Supabase client
+  - Removed manual PKCE exchange code that was causing 10-second timeouts
+  - Supabase now automatically handles magic link callbacks
+  - Added 3-second timeout to `getSession()` to prevent infinite loading on slow networks
+  - Magic link authentication now works reliably end-to-end
 - **November 22, 2025**: Real-time Progress Tracking Fix
   - Fixed progress bar to update in real-time during batch processing
   - Added granular progress callbacks that fire after each file completion

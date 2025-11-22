@@ -13,7 +13,7 @@ export const supabase = supabaseUrl && supabaseAnonKey
       auth: {
         autoRefreshToken: true,
         persistSession: true,
-        detectSessionInUrl: false, // Disable auto-detection to prevent hanging
+        detectSessionInUrl: true, // Enable auto-detection for magic links
         flowType: 'pkce',
         storage: typeof window !== 'undefined' ? window.localStorage : undefined,
         storageKey: 'mito-auth-token'
