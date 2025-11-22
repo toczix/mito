@@ -628,6 +628,14 @@ export const BIOMARKERS: Biomarker[] = [
     aliases: ["Protein Total", "Serum Protein"]
   },
   {
+    name: "Transferrin",
+    maleRange: "2.2-2.9 g/L",
+    femaleRange: "2.2-2.9 g/L",
+    units: ["g/L"],
+    category: "Iron Studies",
+    aliases: ["Serum Transferrin", "Transferrin Level"]
+  },
+  {
     name: "Transferrin Saturation %",
     maleRange: "20-35 %",
     femaleRange: "20-35 %",

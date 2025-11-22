@@ -3,10 +3,14 @@
 ## Overview
 A React-based web application that uses Claude AI to automatically analyze clinical pathology lab reports and compare biomarker values against optimal reference ranges. The app supports multilingual processing, multiple file formats (PDF, DOCX, images), and optional Supabase integration for client management.
 
-**Current State**: Parallel processing implemented for significantly faster file analysis
+**Current State**: 55 biomarkers tracked (added Transferrin), parallel processing for fast analysis
 **Last Updated**: November 22, 2025
 
 ## Recent Changes
+- **November 22, 2025**: Transferrin Biomarker Added
+  - Added Transferrin as separate biomarker (55 total biomarkers now)
+  - TIBC and Transferrin tracked independently (labs report one or the other)
+  - Optimal range: 2.2-2.9 g/L for both males and females
 - **November 22, 2025**: Biomarker Alias Improvements
   - Added lab-specific aliases for HbA1C (IFCC HbA1c, DCCT HbA1c)
   - Added aliases for SHBG (SHBG re-std)
@@ -89,7 +93,7 @@ mito/
 
 ### Key Features
 1. **Core Analysis**: Upload lab reports (PDF/DOCX/images) and get AI-powered biomarker extraction
-2. **57 Biomarkers Tracked**: Liver, kidney, CBC, lipids, metabolic, hormones, electrolytes, etc.
+2. **55 Biomarkers Tracked**: Liver, kidney, CBC, lipids, metabolic, hormones, electrolytes, iron studies, etc.
 3. **Client Management** (Optional with Supabase): Track patients, analysis history
 4. **Custom Benchmarks**: Edit and sync optimal reference ranges
 5. **Multilingual Support**: Process reports in any language
