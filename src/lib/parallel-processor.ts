@@ -89,17 +89,16 @@ export async function processInParallel(
     type: 'textBased' | 'visionBased'
   ) => {
     const queue = [...files];
-    const active: Promise<void>[] = [];
+    const active = new Set<Promise<void>>();
 
-    while (queue.length > 0 || active.length > 0) {
+    while (queue.length > 0 || active.size > 0) {
       // Fill up to limit
-      while (active.length < limit && queue.length > 0) {
+      while (active.size < limit && queue.length > 0) {
         const file = queue.shift()!;
         
         const task = (async () => {
           try {
             progress.currentFile = file.fileName;
-            updateProgress(type, 0, active.length);
             
             console.log(`🔄 [${type}] Processing: ${file.fileName}`);
             const result = await processorFn(file);
@@ -110,24 +109,19 @@ export async function processInParallel(
             console.error(`❌ [${type}] Failed: ${file.fileName}`, errorMsg);
             failures.push({ fileName: file.fileName, error: errorMsg });
           } finally {
-            updateProgress(type, 1, active.length - 1);
+            active.delete(task); // Remove from active set when done
+            updateProgress(type, 1, active.size);
           }
         })();
 
-        active.push(task);
+        active.add(task);
+        // Update progress after adding to show correct in-flight count
+        updateProgress(type, 0, active.size);
       }
 
       // Wait for at least one to complete
-      if (active.length > 0) {
+      if (active.size > 0) {
         await Promise.race(active);
-        // Remove completed tasks
-        const stillActive = active.filter(p => {
-          let settled = false;
-          p.then(() => { settled = true }).catch(() => { settled = true });
-          return !settled;
-        });
-        active.length = 0;
-        active.push(...stillActive);
       }
     }
   };

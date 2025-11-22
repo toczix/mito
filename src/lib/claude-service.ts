@@ -992,12 +992,6 @@ function getErrorType(error: any): string {
 // NOTE: Old batch processing code removed - now using parallel processing
 // All sequential batch processing has been replaced with parallel processing above
 
-    // If the batch mixes scanned/image documents, process them sequentially with Vision
-    if (containsVisionFiles && batch.files.length > 1) {
-  }
-}
-*/
-
 /**
  * Parse the Claude response and extract biomarker data + patient info
  */

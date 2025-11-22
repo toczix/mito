@@ -3,10 +3,17 @@
 ## Overview
 A React-based web application that uses Claude AI to automatically analyze clinical pathology lab reports and compare biomarker values against optimal reference ranges. The app supports multilingual processing, multiple file formats (PDF, DOCX, images), and optional Supabase integration for client management.
 
-**Current State**: Successfully imported and configured to run in Replit environment
+**Current State**: Parallel processing implemented for significantly faster file analysis
 **Last Updated**: November 22, 2025
 
 ## Recent Changes
+- **November 22, 2025**: Parallel Processing Optimization
+  - Implemented hybrid text quality assessment (good/poor/none based on chars/page)
+  - Added parallel processing with intelligent file categorization
+  - Good text files → Claude Haiku (10 concurrent, ~2-3s each)
+  - Poor/no text files → Vision API (3 concurrent, ~8-15s each)
+  - Expected 3x speed improvement for mixed batches
+  - Removed old sequential batch processing code
 - **November 22, 2025**: Magic Link Authentication Enabled
   - Configured Supabase authentication with magic link (passwordless)
   - Set up environment variables for Supabase connection
