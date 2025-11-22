@@ -1,0 +1,299 @@
+index-CKLeqNdV.js:642 [ErrorHandler] Initialized
+index-CKLeqNdV.js:683 🚀 Initializing Mito app...
+index-CKLeqNdV.js:663 🔄 Initializing biomarker normalizer...
+index-CKLeqNdV.js:663 ✅ Loaded 489 biomarker aliases
+index-CKLeqNdV.js:683 ✅ Biomarker normalizer initialized
+index-CKLeqNdV.js:680 📋 Current session: exists
+index-CKLeqNdV.js:680 Auth state changed: INITIAL_SESSION session exists
+/clients:1 Unchecked runtime.lastError: The message port closed before a response was received.
+index-CKLeqNdV.js:642 🗑️ Attempting to delete client: ab2755c7-a69c-4654-9e73-3111cfc8372b
+index-CKLeqNdV.js:642 ✅ Client deleted successfully
+index-CKLeqNdV.js:642 🗑️ Attempting to delete client: 9c6809a7-77e9-485e-b1de-ad18bce27928
+index-CKLeqNdV.js:642 ✅ Client deleted successfully
+index-CKLeqNdV.js:642 🗑️ Attempting to delete client: b7319c4e-e86f-44ee-9827-cd4d304596f3
+index-CKLeqNdV.js:642 ✅ Client deleted successfully
+index-CKLeqNdV.js:642 🗑️ Attempting to delete client: c14e6c56-4b61-4906-96ac-c9fc4e0a8131
+index-CKLeqNdV.js:642 ✅ Client deleted successfully
+index-CKLeqNdV.js:642 🗑️ Attempting to delete client: 9ebb1588-c0c4-44f8-af84-5ad683490ef7
+index-CKLeqNdV.js:642 ✅ Client deleted successfully
+index-CKLeqNdV.js:642 🗑️ Attempting to delete client: 28a0d61b-48f7-445f-9e4a-50501fe4a6bf
+index-CKLeqNdV.js:642 ✅ Client deleted successfully
+index-CKLeqNdV.js:305 📄 Processing PDF: Nairn David James lab.pdf
+index-CKLeqNdV.js:305    - PDF has 3 pages
+index-CKLeqNdV.js:305    - Page 1: Found 0 text items
+index-CKLeqNdV.js:305    - Page 1 text length: 0 chars
+index-CKLeqNdV.js:305    - Page 1 preview (first 300 chars): ""
+index-CKLeqNdV.js:305    - Page 2: Found 0 text items
+index-CKLeqNdV.js:305    - Page 2 text length: 0 chars
+index-CKLeqNdV.js:305    - Page 3: Found 0 text items
+index-CKLeqNdV.js:305    - Page 3 text length: 0 chars
+index-CKLeqNdV.js:308 ✅ PDF extraction complete: 51 total characters
+index-CKLeqNdV.js:308    Text quality: none (avg 17 chars/page)
+installHook.js:1 ⚠️ No meaningful text found (51 chars for 3 pages)
+overrideMethod @ installHook.js:1
+index-CKLeqNdV.js:308 🔄 Routing to Vision API - converting PDF pages to images...
+index-CKLeqNdV.js:308    Converting all 3 pages to images
+index-CKLeqNdV.js:308 ✅ Converted page 1 to image (789720 bytes)
+index-CKLeqNdV.js:308 ✅ Converted page 2 to image (664384 bytes)
+index-CKLeqNdV.js:308 ✅ Converted page 3 to image (359416 bytes)
+index-CKLeqNdV.js:308 📸 Sending 3 scanned PDF pages to Vision API...
+index-CKLeqNdV.js:665 🚀 Starting Adaptive Batch Processing
+index-CKLeqNdV.js:665 Total files: 1
+index-CKLeqNdV.js:665 
+🔍 Categorizing files by text quality...
+index-CKLeqNdV.js:663 📊 Categorized 1 files:
+index-CKLeqNdV.js:663    - Text-based (Claude Haiku): 0
+index-CKLeqNdV.js:663    - Vision-based (Vision API): 1
+index-CKLeqNdV.js:666 ⏱️ Estimated processing time: 7-17 seconds
+index-CKLeqNdV.js:666    Text: 0s (0 files) | Vision: 12s (1 files)
+index-CKLeqNdV.js:666 📊 Progress: 0/1 completed, 0 in progress
+index-CKLeqNdV.js:666    Text: 0/0, Vision: 0/1
+index-CKLeqNdV.js:663 
+🚀 Starting parallel processing...
+index-CKLeqNdV.js:664    Text-based files: 0 (concurrency: 10)
+index-CKLeqNdV.js:664    Vision-based files: 1 (concurrency: 3)
+index-CKLeqNdV.js:663 🔄 [visionBased] Processing: Nairn David James lab.pdf
+index-CKLeqNdV.js:666 📊 Progress: 0/1 completed, 0 in progress
+index-CKLeqNdV.js:666    Text: 0/0, Vision: 0/1
+index-CKLeqNdV.js:666 🔄 Processing: Nairn David James lab.pdf
+index-CKLeqNdV.js:665 📄 Processing file: Nairn David James lab.pdf
+index-CKLeqNdV.js:665    - Is Image: true
+index-CKLeqNdV.js:665    - Page Count: 3
+index-CKLeqNdV.js:665    - Extracted Text Length: 0 chars
+index-CKLeqNdV.js:665 📍 Preparing Edge Function call
+index-CKLeqNdV.js:665 📍 Supabase client exists: true
+index-CKLeqNdV.js:665 📍 ProcessedPDF object: Object
+index-CKLeqNdV.js:665 🚀 Sending request to Supabase Edge Function...
+index-CKLeqNdV.js:665 📦 Payload size: 1771.20 KB
+index-CKLeqNdV.js:680 Auth state changed: SIGNED_IN session exists
+index-CKLeqNdV.js:665 ✅ Received response from Edge Function
+index-CKLeqNdV.js:665 📊 Processing metrics: Nairn David James lab.pdf took 12.9s
+index-CKLeqNdV.js:663 ✅ [visionBased] Completed: Nairn David James lab.pdf
+index-CKLeqNdV.js:666 📊 Progress: 1/1 completed, 0 in progress
+index-CKLeqNdV.js:666    Text: 0/0, Vision: 1/1
+index-CKLeqNdV.js:666 ✅ Completed: Nairn David James lab.pdf (1/1)
+index-CKLeqNdV.js:664 
+✅ Parallel processing complete!
+index-CKLeqNdV.js:665    Total time: 13.0s
+index-CKLeqNdV.js:665    Successful: 1/1
+index-CKLeqNdV.js:665    Failed: 0/1
+index-CKLeqNdV.js:665    Avg time per file: 13.0s
+index-CKLeqNdV.js:666 📊 Progress: 1/1 completed, 0 in progress
+index-CKLeqNdV.js:666    Text: 0/0, Vision: 1/1
+index-CKLeqNdV.js:666 
+📊 Processing Summary:
+index-CKLeqNdV.js:667    Total time: 13.0s
+index-CKLeqNdV.js:667    Successful: 1/1
+index-CKLeqNdV.js:667    Failed: 0/1
+index-CKLeqNdV.js:673 📊 All extracted patient infos: [{…}]
+index-CKLeqNdV.js:673 ✅ Consolidated patient info: {name: 'Hall, Nairn David James', dateOfBirth: '2004-01-08', gender: 'male', testDate: '2025-10-16'}
+index-CKLeqNdV.js:673 ⚠️ Discrepancies: []
+index-CKLeqNdV.js:673 📊 Confidence: high
+index-CKLeqNdV.js:673 📊 Biomarker Extraction Summary
+index-CKLeqNdV.js:673 📄 PDF 1: Nairn David James lab.pdf
+index-CKLeqNdV.js:673 ✅ Extracted 56 biomarkers (normalized):
+index-CKLeqNdV.js:673 (index)namevalueunitoriginalconfidence(index)namevalueunitoriginalconfidence0'RBC''5.15''Mio./µL''Erythrocytes''100%'1'Hemoglobin''15.7''g/dl''Hemoglobin''100%'2'HCT''47''%''Hematocrit''100%'3'MCH''30.5''pg/Ery''MCH''100%'4'MCV''90.3''fl''MCV''100%'5'MCHC''33.8''g/dl''MCHC''100%'6'Erythrocyte Distribution Width''12.2''%''Erythrocyte Distribution Width''30%'7'WBC''4.6''×10³/µL''Leukocytes''100%'8'Platelets''302''×10³/µL''Thrombocytes''100%'9'Neutrophils''2.480''×10³/µL''Neutrophils''100%'10'Eosinophils''0.170''×10³/µL''Eosinophils''100%'11'Basophils''0.020''×10³/µL''Basophils''100%'12'Lymphocytes''1.530''×10³/µL''Lymphocytes''100%'13'Monocytes''0.390''×10³/µL''Monocytes''100%'14'D-Dimere''291''ng/ml''D-Dimere''30%'15'HbA1c (IFCC)''38''mmol/mol''HbA1c (IFCC)''30%'16'HbA1c (NGSP)''5.6''%''HbA1c (NGSP)''30%'17'Glucose venös (Serum)''95''mg/dl''Glucose venös (Serum)''30%'18'Natrium''140''mmol/l''Natrium''30%'19'Kalium''4.1''mmol/l''Kalium''30%'20'Calcium''2.44''mmol/l''Calcium''100%'21'Phosphat, anorganisch''2.52''mg/dl''Phosphat, anorganisch''30%'22'Chlorid''104''mmol/l''Chlorid''30%'23'Bicarbonat''23.9''mmol/l''Bicarbonat''30%'24'Eisen''93''µg/dl''Eisen''30%'25'Ferritin''192''µg/l''Ferritin''100%'26'Creatinine''0.8''mg/dl''Kreatinin''100%'27'GFR (CKD-EPI-Formel)''99''ml/min''GFR (CKD-EPI-Formel)''30%'28'Harnstoff''30''mg/dl''Harnstoff''30%'29'Harnsäure''6.4''mg/dl''Harnsäure''30%'30'Total Bilirubin''0.4''mg/dl''Bilirubin''100%'31'Cholesterin, Gesamt-''260''mg/dl''Cholesterin, Gesamt-''30%'32'HDL Cholesterol''52''mg/dl''HDL-Cholesterin''100%'33'LDL Cholesterol''194''mg/dl''LDL-Cholesterin''100%'34'Non HDL-Cholesterin''208''mg/dl''Non HDL-Cholesterin''30%'35'Triglycerides''35''mg/dl''Triglyceride''100%'36'CK (Creatinkinase)''130''U/l''CK (Creatinkinase)''30%'37'GOT (ASAT)''24''U/l''GOT (ASAT)''30%'38'GPT (ALAT)''20''U/l''GPT (ALAT)''30%'39'gamma-GT''17''U/l''gamma-GT''30%'40'AP (Alkalische Phosphatase)''123''U/l''AP (Alkalische Phosphatase)''30%'41'LDH (Lactatdehydrogenase)''167''U/l''LDH (Lactatdehydrogenase)''30%'42'alpha-Amylase''55''U/l''alpha-Amylase''30%'43'Lipase''32''U/l''Lipase''30%'44'CRP (C-reaktives Protein quant.)''5''mg/l''CRP (C-reaktives Protein quant.)''30%'45'Eiweiß, Gesamt-''80''g/l''Eiweiß, Gesamt-''30%'46'Albumin''61.7''%''Albumin''100%'47'alpha-1-Globulin''3.8''%''alpha-1-Globulin''30%'48'alpha-2-Globulin''10.5''%''alpha-2-Globulin''30%'49'beta-1-Globulin''5.3''%''beta-1-Globulin''30%'50'beta-2-Globulin''6.3''%''beta-2-Globulin''30%'51'gamma-Globulin''12.4''%''gamma-Globulin''30%'52'Vitamin D, 25-Hydroxy-''46.7''µg/l''Vitamin D, 25-Hydroxy-''30%'53'TSH, basal''1.85''mU/l''TSH, basal''30%'54'T3, freies (fT3)''3.20''ng/l''T3, freies (fT3)''30%'55'T4, freies (fT4)''11.0''ng/l''T4, freies (fT4)''30%'Array(56)
+index-CKLeqNdV.js:600 🔍 Detailed Biomarker Matching
+index-CKLeqNdV.js:600 Extracted biomarker names (normalized):
+index-CKLeqNdV.js:600 (56) ['albumin', 'alpha1globulin', 'alpha2globulin', 'alphaamylase', 'apalkalischephosphatase', 'basophils', 'beta1globulin', 'beta2globulin', 'bicarbonat', 'calcium', 'chlorid', 'cholesteringesamt', 'ckcreatinkinase', 'creatinine', 'crpcreaktivesproteinquant', 'ddimere', 'eisen', 'eiweigesamt', 'eosinophils', 'erythrocytedistributionwidth', 'ferritin', 'gammaglobulin', 'gammagt', 'gfrckdepiformel', 'glucosevensserum', 'gotasat', 'gptalat', 'harnstoff', 'harnsure', 'hba1cifcc', 'hba1cngsp', 'hct', 'hdlcholesterol', 'hemoglobin', 'kalium', 'ldhlactatdehydrogenase', 'ldlcholesterol', 'lipase', 'lymphocytes', 'mch', 'mchc', 'mcv', 'monocytes', 'natrium', 'neutrophils', 'nonhdlcholesterin', 'phosphatanorganisch', 'platelets', 'rbc', 't3freiesft3', 't4freiesft4', 'totalbilirubin', 'triglycerides', 'tshbasal', 'vitamind25hydroxy', 'wbc']
+installHook.js:1 ❌ Not found: "ALP" (tried: ALP, Alkaline Phosphatase, Alk Phos, ALKP)
+overrideMethod @ installHook.js:1
+matchBiomarkersWithRanges @ index-CKLeqNdV.js:600
+z @ index-CKLeqNdV.js:673
+installHook.js:1 ❌ Not found: "ALT" (tried: ALT, Alanine Aminotransferase, SGPT, ALT/SGPT)
+overrideMethod @ installHook.js:1
+matchBiomarkersWithRanges @ index-CKLeqNdV.js:600
+z @ index-CKLeqNdV.js:673
+installHook.js:1 ❌ Not found: "AST" (tried: AST, Aspartate Aminotransferase, SGOT, AST/SGOT)
+overrideMethod @ installHook.js:1
+matchBiomarkersWithRanges @ index-CKLeqNdV.js:600
+z @ index-CKLeqNdV.js:673
+installHook.js:1 ❌ Not found: "BUN" (tried: BUN, Blood Urea Nitrogen, Urea Nitrogen, Urea)
+overrideMethod @ installHook.js:1
+matchBiomarkersWithRanges @ index-CKLeqNdV.js:600
+z @ index-CKLeqNdV.js:673
+installHook.js:1 ❌ Not found: "Bicarbonate" (tried: Bicarbonate, Carbon Dioxide, CO2, Total CO2, HCO3, Bicarb)
+overrideMethod @ installHook.js:1
+matchBiomarkersWithRanges @ index-CKLeqNdV.js:600
+z @ index-CKLeqNdV.js:673
+installHook.js:1 ❌ Not found: "Chloride" (tried: Chloride, Cl, Serum Chloride)
+overrideMethod @ installHook.js:1
+matchBiomarkersWithRanges @ index-CKLeqNdV.js:600
+z @ index-CKLeqNdV.js:673
+installHook.js:1 ❌ Not found: "Fasting Glucose" (tried: Fasting Glucose, Glucose, Gluc, GLU, Glu, Fasting Glucose, Glucose Fasting, Glucose (Fasting), Glucose, Fasting, FBG, FBS, Fasting Blood Glucose, Fasting Blood Sugar, Blood Glucose, Blood Sugar, Blood Glucose Level, Blood Sugar Level, Serum Glucose, Plasma Glucose, Glucose Serum, Glucose Plasma, Glucose Level, Sugar Level, Glucosa, Glucosa en Ayunas, Glucosa Sanguínea, Azúcar en Sangre, Glicemia, Glicose, Glicose em Jejum, Glicose Sanguínea, Glicemia, Glucose, Glycémie, Glycémie à Jeun, Glucose à Jeun, Glukose, Nüchtern-Glukose, Blutzucker, Glucosio, Glicemia, Glucosio a Digiuno)
+overrideMethod @ installHook.js:1
+matchBiomarkersWithRanges @ index-CKLeqNdV.js:600
+z @ index-CKLeqNdV.js:673
+installHook.js:1 ❌ Not found: "Fasting Insulin" (tried: Fasting Insulin, Insulin, Insulin Fasting, Serum Insulin)
+overrideMethod @ installHook.js:1
+matchBiomarkersWithRanges @ index-CKLeqNdV.js:600
+z @ index-CKLeqNdV.js:673
+installHook.js:1 ❌ Not found: "Free T3" (tried: Free T3, Free T3, FT3, F T3, F.T.3, fT3, T3 Free, T3, Free, Free T 3, Free Triiodothyronine, Triiodothyronine Free, Triiodothyronine, Free, Free Tri-iodothyronine, T3 Libre, FT3, Triyodotironina Libre, T3 Livre, FT3, Triiodotironina Livre, T3 Libre, FT3, Triiodothyronine Libre, Freies T3, FT3, Freies Triiodthyronin, T3 Libero, FT3, Triiodotironina Libera)
+overrideMethod @ installHook.js:1
+matchBiomarkersWithRanges @ index-CKLeqNdV.js:600
+z @ index-CKLeqNdV.js:673
+installHook.js:1 ❌ Not found: "Free T4" (tried: Free T4, Free T4, FT4, F T4, F.T.4, fT4, T4 Free, T4, Free, Free T 4, Free Thyroxine, Thyroxine Free, Thyroxine, Free, Free Tetraiodothyronine, T4 Libre, FT4, Tiroxina Libre, T4 Livre, FT4, Tiroxina Livre, T4 Libre, FT4, Thyroxine Libre, Freies T4, FT4, Freies Thyroxin, T4 Libero, FT4, Tiroxina Libera)
+overrideMethod @ installHook.js:1
+matchBiomarkersWithRanges @ index-CKLeqNdV.js:600
+z @ index-CKLeqNdV.js:673
+index-CKLeqNdV.js:600 ✅ Matched: "gamma-GT" → "GGT" (via alias: "Gamma GT")
+installHook.js:1 ❌ Not found: "Globulin" (tried: Globulin, Serum Globulin, Calculated Globulin, Total Globulin, Glob, Globulina)
+overrideMethod @ installHook.js:1
+matchBiomarkersWithRanges @ index-CKLeqNdV.js:600
+z @ index-CKLeqNdV.js:673
+installHook.js:1 ❌ Not found: "HbA1C" (tried: HbA1C, HbA1C, HbA1c, Hb A1C, Hb A1c, HBA1C, HBA1c, A1C, A1c, Hemoglobin A1C, Hemoglobin A1c, Glycated Hemoglobin, Glycosylated Hemoglobin, Glycohemoglobin, Haemoglobin A1C, Haemoglobin A1c, Hgb A1C, Hgb A1c, HGB A1C, Glycated Hb, Glycated HGB, GHb, Hemoglobina Glicosilada, Hemoglobina Glicada, HbA1c, A1C, Hemoglobina Glicada, HbA1c, A1C, Hémoglobine Glyquée, HbA1c, A1C, Glykiertes Hämoglobin, HbA1c, A1C, Emoglobina Glicata, HbA1c, A1C)
+overrideMethod @ installHook.js:1
+matchBiomarkersWithRanges @ index-CKLeqNdV.js:600
+z @ index-CKLeqNdV.js:673
+installHook.js:1 ❌ Not found: "Homocysteine" (tried: Homocysteine, Homocystine, Plasma Homocysteine)
+overrideMethod @ installHook.js:1
+matchBiomarkersWithRanges @ index-CKLeqNdV.js:600
+z @ index-CKLeqNdV.js:673
+installHook.js:1 ❌ Not found: "LDH" (tried: LDH, Lactate Dehydrogenase, LD, LDH Total)
+overrideMethod @ installHook.js:1
+matchBiomarkersWithRanges @ index-CKLeqNdV.js:600
+z @ index-CKLeqNdV.js:673
+installHook.js:1 ❌ Not found: "Phosphorus" (tried: Phosphorus, Phosphate, Inorganic Phosphorus, Serum Phosphorus, P)
+overrideMethod @ installHook.js:1
+matchBiomarkersWithRanges @ index-CKLeqNdV.js:600
+z @ index-CKLeqNdV.js:673
+installHook.js:1 ❌ Not found: "Potassium" (tried: Potassium, K, Serum Potassium, S-Potassium, Potasio, K+)
+overrideMethod @ installHook.js:1
+matchBiomarkersWithRanges @ index-CKLeqNdV.js:600
+z @ index-CKLeqNdV.js:673
+installHook.js:1 ❌ Not found: "RDW" (tried: RDW, Red Cell Distribution Width, RDW-CV, RDW-SD)
+overrideMethod @ installHook.js:1
+matchBiomarkersWithRanges @ index-CKLeqNdV.js:600
+z @ index-CKLeqNdV.js:673
+installHook.js:1 ❌ Not found: "Serum Folate" (tried: Serum Folate, Folate, Folic Acid, Serum Folate, Folate Serum, Vitamin B9, Vitamin B-9, B9, B-9, Folate Level, Folic Acid Level, Folato, Ácido Fólico, Vitamina B9, Folato Sérico, Folato, Ácido Fólico, Vitamina B9, Folato Sérico, Folate, Acide Folique, Vitamine B9, Folsäure, Folat, Vitamin B9, Folato, Acido Folico, Vitamina B9)
+overrideMethod @ installHook.js:1
+matchBiomarkersWithRanges @ index-CKLeqNdV.js:600
+z @ index-CKLeqNdV.js:673
+installHook.js:1 ❌ Not found: "Serum Iron" (tried: Serum Iron, Iron, Fe, Iron Total)
+overrideMethod @ installHook.js:1
+matchBiomarkersWithRanges @ index-CKLeqNdV.js:600
+z @ index-CKLeqNdV.js:673
+installHook.js:1 ❌ Not found: "Serum Magnesium" (tried: Serum Magnesium, Magnesium, Mg, Mag)
+overrideMethod @ installHook.js:1
+matchBiomarkersWithRanges @ index-CKLeqNdV.js:600
+z @ index-CKLeqNdV.js:673
+installHook.js:1 ❌ Not found: "SHBG" (tried: SHBG, Sex Hormone Binding Globulin, Sex Hormone-Binding Globulin)
+overrideMethod @ installHook.js:1
+matchBiomarkersWithRanges @ index-CKLeqNdV.js:600
+z @ index-CKLeqNdV.js:673
+installHook.js:1 ❌ Not found: "Sodium" (tried: Sodium, Na, Serum Sodium, S-Sodium, Sodio, Na+)
+overrideMethod @ installHook.js:1
+matchBiomarkersWithRanges @ index-CKLeqNdV.js:600
+z @ index-CKLeqNdV.js:673
+installHook.js:1 ❌ Not found: "TIBC" (tried: TIBC, Total Iron Binding Capacity, Iron Binding Capacity)
+overrideMethod @ installHook.js:1
+matchBiomarkersWithRanges @ index-CKLeqNdV.js:600
+z @ index-CKLeqNdV.js:673
+installHook.js:1 ❌ Not found: "TPO Antibodies" (tried: TPO Antibodies, Thyroid Peroxidase Antibodies, Anti-TPO, TPO Ab, Thyroid Peroxidase Ab)
+overrideMethod @ installHook.js:1
+matchBiomarkersWithRanges @ index-CKLeqNdV.js:600
+z @ index-CKLeqNdV.js:673
+installHook.js:1 ❌ Not found: "TSH" (tried: TSH, TSH, T.S.H., T S H, Thyroid Stimulating Hormone, Thyroid-Stimulating Hormone, Thyrotropin, Thyrotropic Hormone, Serum TSH, TSH Serum, TSH, Hormona Estimulante de Tiroides, Tirotropina, TSH, Hormônio Estimulante da Tireoide, Tireotropina, TSH, Thyréostimuline, Hormone Thyréotrope, TSH, Thyreoidea-stimulierendes Hormon, Thyreotropin, TSH, Ormone Tireostimolante, Tireotropina)
+overrideMethod @ installHook.js:1
+matchBiomarkersWithRanges @ index-CKLeqNdV.js:600
+z @ index-CKLeqNdV.js:673
+installHook.js:1 ❌ Not found: "Thyroglobulin Antibodies" (tried: Thyroglobulin Antibodies, Anti-Thyroglobulin, TgAb, Thyroglobulin Ab, Anti-Tg)
+overrideMethod @ installHook.js:1
+matchBiomarkersWithRanges @ index-CKLeqNdV.js:600
+z @ index-CKLeqNdV.js:673
+installHook.js:1 ❌ Not found: "Total Cholesterol" (tried: Total Cholesterol, Cholesterol, Chol, CHOL, Total Cholesterol, Cholesterol Total, Total Chol, Chol Total, Serum Cholesterol, Cholesterol Serum, T-CHOL, T-Chol, T Chol, Colesterol, Colesterol Total, Total Colesterol, Colesterol, Colesterol Total, Cholestérol, Cholestérol Total, Cholesterin, Gesamtcholesterin, Colesterolo, Colesterolo Totale)
+overrideMethod @ installHook.js:1
+matchBiomarkersWithRanges @ index-CKLeqNdV.js:600
+z @ index-CKLeqNdV.js:673
+installHook.js:1 ❌ Not found: "Total Protein" (tried: Total Protein, Protein Total, Serum Protein)
+overrideMethod @ installHook.js:1
+matchBiomarkersWithRanges @ index-CKLeqNdV.js:600
+z @ index-CKLeqNdV.js:673
+installHook.js:1 ❌ Not found: "Transferrin Saturation %" (tried: Transferrin Saturation %, Transferrin Saturation, TSAT, Iron Saturation, Sat %)
+overrideMethod @ installHook.js:1
+matchBiomarkersWithRanges @ index-CKLeqNdV.js:600
+z @ index-CKLeqNdV.js:673
+installHook.js:1 ❌ Not found: "Vitamin B12" (tried: Vitamin B12, B12, B-12, B 12, Vitamin B12, Vitamin B-12, Vitamin B 12, B12 Vitamin, B-12 Vitamin, B 12 Vitamin, VitB12, Vit B12, Vit B-12, Vit B 12, Cobalamin, Cyanocobalamin, Methylcobalamin, Serum B12, Serum Cobalamin, Vitamina B12, Vitamina B-12, Vitamina B 12, B12 Vitamina, Cobalamina, Vitamina B12, B12 Vitamina, Cobalamina, Vitamine B12, B12 Vitamine, Vitamin B12, Vitamina B12, B12 Vitamina)
+overrideMethod @ installHook.js:1
+matchBiomarkersWithRanges @ index-CKLeqNdV.js:600
+z @ index-CKLeqNdV.js:673
+index-CKLeqNdV.js:600 ✅ Matched: "Vitamin D, 25-Hydroxy-" → "Vitamin D (25-Hydroxy D)" (via alias: "Vitamin D 25-Hydroxy")
+installHook.js:1 ❌ Not found: "eGFR" (tried: eGFR, Estimated GFR, GFR, Glomerular Filtration Rate, eGFR (CKD-EPI), eGFR (MDRD), Estimated Glomerular Filtration Rate)
+overrideMethod @ installHook.js:1
+matchBiomarkersWithRanges @ index-CKLeqNdV.js:600
+z @ index-CKLeqNdV.js:673
+index-CKLeqNdV.js:600 ⚠️ Extracted biomarkers that didn't match any benchmark:
+index-CKLeqNdV.js:600 "Erythrocyte Distribution Width" (normalized: "erythrocytedistributionwidth")
+index-CKLeqNdV.js:600 "D-Dimere" (normalized: "ddimere")
+index-CKLeqNdV.js:600 "HbA1c (IFCC)" (normalized: "hba1cifcc")
+index-CKLeqNdV.js:600 "HbA1c (NGSP)" (normalized: "hba1cngsp")
+index-CKLeqNdV.js:600 "Glucose venös (Serum)" (normalized: "glucosevensserum")
+index-CKLeqNdV.js:600 "Natrium" (normalized: "natrium")
+index-CKLeqNdV.js:600 "Kalium" (normalized: "kalium")
+index-CKLeqNdV.js:600 "Phosphat, anorganisch" (normalized: "phosphatanorganisch")
+index-CKLeqNdV.js:600 "Chlorid" (normalized: "chlorid")
+index-CKLeqNdV.js:600 "Bicarbonat" (normalized: "bicarbonat")
+index-CKLeqNdV.js:600 "Eisen" (normalized: "eisen")
+index-CKLeqNdV.js:600 "GFR (CKD-EPI-Formel)" (normalized: "gfrckdepiformel")
+index-CKLeqNdV.js:600 "Harnstoff" (normalized: "harnstoff")
+index-CKLeqNdV.js:600 "Harnsäure" (normalized: "harnsure")
+index-CKLeqNdV.js:600 "Cholesterin, Gesamt-" (normalized: "cholesteringesamt")
+index-CKLeqNdV.js:600 "Non HDL-Cholesterin" (normalized: "nonhdlcholesterin")
+index-CKLeqNdV.js:600 "CK (Creatinkinase)" (normalized: "ckcreatinkinase")
+index-CKLeqNdV.js:600 "GOT (ASAT)" (normalized: "gotasat")
+index-CKLeqNdV.js:600 "GPT (ALAT)" (normalized: "gptalat")
+index-CKLeqNdV.js:600 "AP (Alkalische Phosphatase)" (normalized: "apalkalischephosphatase")
+index-CKLeqNdV.js:600 "LDH (Lactatdehydrogenase)" (normalized: "ldhlactatdehydrogenase")
+index-CKLeqNdV.js:600 "alpha-Amylase" (normalized: "alphaamylase")
+index-CKLeqNdV.js:600 "Lipase" (normalized: "lipase")
+index-CKLeqNdV.js:600 "CRP (C-reaktives Protein quant.)" (normalized: "crpcreaktivesproteinquant")
+index-CKLeqNdV.js:600 "Eiweiß, Gesamt-" (normalized: "eiweigesamt")
+index-CKLeqNdV.js:600 "alpha-1-Globulin" (normalized: "alpha1globulin")
+index-CKLeqNdV.js:600 "alpha-2-Globulin" (normalized: "alpha2globulin")
+index-CKLeqNdV.js:600 "beta-1-Globulin" (normalized: "beta1globulin")
+index-CKLeqNdV.js:600 "beta-2-Globulin" (normalized: "beta2globulin")
+index-CKLeqNdV.js:600 "gamma-Globulin" (normalized: "gammaglobulin")
+index-CKLeqNdV.js:600 "TSH, basal" (normalized: "tshbasal")
+index-CKLeqNdV.js:600 "T3, freies (fT3)" (normalized: "t3freiesft3")
+index-CKLeqNdV.js:600 "T4, freies (fT4)" (normalized: "t4freiesft4")
+index-CKLeqNdV.js:673 🔄 Biomarker Consolidation
+index-CKLeqNdV.js:673 Total extracted across all PDFs: 56
+index-CKLeqNdV.js:673 After deduplication: 56
+index-CKLeqNdV.js:673 (index)namevalueunit(index)namevalueunit0'RBC''5.15''Mio./µL'1'Hemoglobin''15.7''g/dl'2'HCT''47''%'3'MCH''30.5''pg/Ery'4'MCV''90.3''fl'5'MCHC''33.8''g/dl'6'Erythrocyte Distribution Width''12.2''%'7'WBC''4.6''×10³/µL'8'Platelets''302''×10³/µL'9'Neutrophils''2.480''×10³/µL'10'Eosinophils''0.170''×10³/µL'11'Basophils''0.020''×10³/µL'12'Lymphocytes''1.530''×10³/µL'13'Monocytes''0.390''×10³/µL'14'D-Dimere''291''ng/ml'15'HbA1c (IFCC)''38''mmol/mol'16'HbA1c (NGSP)''5.6''%'17'Glucose venös (Serum)''95''mg/dl'18'Natrium''140''mmol/l'19'Kalium''4.1''mmol/l'20'Calcium''2.44''mmol/l'21'Phosphat, anorganisch''2.52''mg/dl'22'Chlorid''104''mmol/l'23'Bicarbonat''23.9''mmol/l'24'Eisen''93''µg/dl'25'Ferritin''192''µg/l'26'Creatinine''0.8''mg/dl'27'GFR (CKD-EPI-Formel)''99''ml/min'28'Harnstoff''30''mg/dl'29'Harnsäure''6.4''mg/dl'30'Total Bilirubin''0.4''mg/dl'31'Cholesterin, Gesamt-''260''mg/dl'32'HDL Cholesterol''52''mg/dl'33'LDL Cholesterol''194''mg/dl'34'Non HDL-Cholesterin''208''mg/dl'35'Triglycerides''35''mg/dl'36'CK (Creatinkinase)''130''U/l'37'GOT (ASAT)''24''U/l'38'GPT (ALAT)''20''U/l'39'gamma-GT''17''U/l'40'AP (Alkalische Phosphatase)''123''U/l'41'LDH (Lactatdehydrogenase)''167''U/l'42'alpha-Amylase''55''U/l'43'Lipase''32''U/l'44'CRP (C-reaktives Protein quant.)''5''mg/l'45'Eiweiß, Gesamt-''80''g/l'46'Albumin''61.7''%'47'alpha-1-Globulin''3.8''%'48'alpha-2-Globulin''10.5''%'49'beta-1-Globulin''5.3''%'50'beta-2-Globulin''6.3''%'51'gamma-Globulin''12.4''%'52'Vitamin D, 25-Hydroxy-''46.7''µg/l'53'TSH, basal''1.85''mU/l'54'T3, freies (fT3)''3.20''ng/l'55'T4, freies (fT4)''11.0''ng/l'Array(56)
+index-CKLeqNdV.js:671 🔍 Matching client... {name: 'Hall, Nairn David James', dob: '2004-01-08'}
+installHook.js:1 ⚠️ Client search timed out or failed, suggesting create new: Error: Client search timeout
+    at index-CKLeqNdV.js:671:1994
+overrideMethod @ installHook.js:1
+matchOrCreateClient @ index-CKLeqNdV.js:671
+await in matchOrCreateClient
+z @ index-CKLeqNdV.js:673
+index-CKLeqNdV.js:663 📋 ClientConfirmation received patientInfo: {name: 'Hall, Nairn David James', dateOfBirth: '2004-01-08', gender: 'male', testDate: '2025-10-16'}
+index-CKLeqNdV.js:663 📋 Match result: {matched: false, client: null, confidence: 'high', needsConfirmation: true, suggestedAction: 'create-new'}
+index-CKLeqNdV.js:663 📋 Updating editedInfo with patientInfo: {name: 'Hall, Nairn David James', dateOfBirth: '2004-01-08', gender: 'male', testDate: '2025-10-16'}
+installHook.js:1 ❌ getSession failed or timed out: Error: getSession timeout after 5 seconds
+    at index-CKLeqNdV.js:642:45581
+overrideMethod @ installHook.js:1
+createClient @ index-CKLeqNdV.js:642
+await in createClient
+autoCreateClient @ index-CKLeqNdV.js:671
+I @ index-CKLeqNdV.js:673
+u @ index-CKLeqNdV.js:663
+ih @ index-CKLeqNdV.js:48
+(anonymous) @ index-CKLeqNdV.js:48
+cc @ index-CKLeqNdV.js:48
+kl @ index-CKLeqNdV.js:48
+Vl @ index-CKLeqNdV.js:49
+Jp @ index-CKLeqNdV.js:49
+installHook.js:1 ⚠️ Continuing without user_id (RLS disabled)
+overrideMethod @ installHook.js:1
+createClient @ index-CKLeqNdV.js:642
+await in createClient
+autoCreateClient @ index-CKLeqNdV.js:671
+I @ index-CKLeqNdV.js:673
+u @ index-CKLeqNdV.js:663
+ih @ index-CKLeqNdV.js:48
+(anonymous) @ index-CKLeqNdV.js:48
+cc @ index-CKLeqNdV.js:48
+kl @ index-CKLeqNdV.js:48
+Vl @ index-CKLeqNdV.js:49
+Jp @ index-CKLeqNdV.js:49

@@ -113,18 +113,15 @@ export async function getClient(id: string): Promise<Client | null> {
 export async function createClient(client: Omit<Client, 'id' | 'created_at' | 'updated_at'>): Promise<Client | null> {
   if (!supabase) return null;
 
-  // Get current user ID from cached session with timeout to prevent infinite hang
+  console.log('📝 Creating new client:', client.full_name);
+
+  // Get current user ID from cached session
   // Skip auth check entirely if auth is disabled
   let userId: string | undefined;
 
   if (!isAuthDisabled) {
     try {
-      const sessionPromise = supabase.auth.getSession();
-      const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error('getSession timeout after 5 seconds')), 5000)
-      );
-
-      const { data: { session } } = await Promise.race([sessionPromise, timeoutPromise]);
+      const { data: { session } } = await supabase.auth.getSession();
       if (session?.user) {
         userId = session.user.id;
         console.log('✅ Got user ID from session:', userId);
@@ -132,9 +129,9 @@ export async function createClient(client: Omit<Client, 'id' | 'created_at' | 'u
         console.warn('⚠️ No session found - will attempt insert without user_id');
       }
     } catch (error) {
-      console.error('❌ getSession failed or timed out:', error);
-      // Continue without userId - RLS is disabled, so this is fine
-      console.warn('⚠️ Continuing without user_id (RLS disabled)');
+      console.error('❌ getSession failed:', error);
+      // Continue without userId - user_id is nullable
+      console.warn('⚠️ Continuing without user_id');
     }
   } else {
     console.log('🔓 Auth disabled - skipping session check, user_id will be null');
@@ -149,6 +146,7 @@ export async function createClient(client: Omit<Client, 'id' | 'created_at' | 'u
     insertData.user_id = null;
   }
 
+  console.log('🚀 Inserting client into database...');
   const { data, error } = await supabase
     .from('clients')
     .insert(insertData)
@@ -156,10 +154,12 @@ export async function createClient(client: Omit<Client, 'id' | 'created_at' | 'u
     .single();
 
   if (error) {
+    console.error('❌ Failed to insert client:', error);
     handleDatabaseError(error, 'clients', 'insert');
-    return null;
+    throw new Error(`Failed to create client: ${error.message}`);
   }
 
+  console.log('✅ Client created successfully:', data.id);
   return data;
 }
 
