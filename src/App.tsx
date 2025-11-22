@@ -8,7 +8,6 @@ import { LoginPage } from '@/pages/LoginPage';
 import { supabase, isAuthDisabled } from '@/lib/supabase';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { handleAuthError } from '@/lib/error-handler';
-import { logAuditSuccess } from '@/lib/audit-logger';
 import { Activity, FileText, Users, Settings as SettingsIcon, LogOut, Loader2 } from 'lucide-react';
 import type { Session } from '@supabase/supabase-js';
 
@@ -38,18 +37,9 @@ function App() {
     // Listen for auth changes (handles magic links automatically)
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
+    } = supabase.auth.onAuthStateChange((event, session) => {
       console.log('Auth state changed:', event, session ? 'logged in' : 'logged out');
       setSession(session);
-
-      // Log sign-in events (logout is logged in handleLogout before session ends)
-      try {
-        if (event === 'SIGNED_IN' && session) {
-          await logAuditSuccess('login', 'auth');
-        }
-      } catch (error) {
-        console.error('Error logging auth event:', error);
-      }
     });
 
     return () => subscription.unsubscribe();
@@ -58,18 +48,9 @@ function App() {
   const handleLogout = async () => {
     if (!supabase) return;
     
-    console.log('🚪 Logout initiated...');
+    console.log('🚪 Logging out...');
     
     try {
-      // Log BEFORE signing out (while session is still valid)
-      try {
-        await logAuditSuccess('logout', 'auth');
-        console.log('✅ Audit log recorded');
-      } catch (auditError) {
-        console.warn('⚠️ Failed to log audit (proceeding with logout):', auditError);
-      }
-      
-      console.log('🔓 Signing out...');
       await supabase.auth.signOut();
       console.log('✅ Signed out successfully');
     } catch (error) {
