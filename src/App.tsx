@@ -38,25 +38,32 @@ function App() {
       if (code && supabase) {
         console.log('🔐 Detected PKCE auth code, exchanging for session...');
         try {
-          const { error } = await supabase.auth.exchangeCodeForSession(code);
+          const { data, error } = await supabase.auth.exchangeCodeForSession(code);
 
           if (error) {
             console.error('❌ Failed to exchange code for session:', error);
+            setSession(null);
             setLoading(false);
             return;
-          } else {
-            console.log('✅ Session established successfully');
-            // Clear code from URL
-            window.history.replaceState(null, '', window.location.pathname);
           }
+          
+          console.log('✅ Session established successfully');
+          // Clear code from URL
+          window.history.replaceState(null, '', window.location.pathname);
+          
+          // Set the session from the exchange result
+          setSession(data.session);
+          setLoading(false);
+          return; // Done - no need to check again
         } catch (error) {
           console.error('❌ Error during PKCE exchange:', error);
+          setSession(null);
           setLoading(false);
           return;
         }
       }
 
-      // Get initial session after handling callback
+      // Get initial session after handling callback (only if no code was processed)
       if (!supabase) {
         setLoading(false);
         return;
@@ -73,7 +80,6 @@ function App() {
         
         if (error) {
           console.error('❌ Session check error:', error);
-          // Continue with no session rather than blocking
           setSession(null);
         } else {
           setSession(session);
@@ -83,7 +89,6 @@ function App() {
       } catch (error) {
         console.error('❌ Session check failed:', error);
         handleAuthError(error, 'get_session');
-        // Don't block - just proceed with no session
         setSession(null);
         setLoading(false);
       }
