@@ -5,6 +5,7 @@ import { biomarkerNormalizer } from './biomarker-normalizer';
 import { createAdaptiveBatches, calculateAdaptiveDelay, validateBatch } from './adaptive-batching';
 import { filterDocuments, isFileTooLarge } from './document-filter';
 import { generateBatchId, logBatchMetrics } from './batch-telemetry';
+import { categorizeFiles, processInParallel, estimateProcessingTime, type ProcessingProgress } from './parallel-processor';
 
 export interface PatientInfo {
   name: string | null;
@@ -843,283 +844,71 @@ export async function extractBiomarkersFromPdfs(
     throw new Error('No files within size limits. All files are too large to process.');
   }
 
-  // Step 3: Create adaptive batches
-  const adaptiveBatches = createAdaptiveBatches(validFiles);
+  // Step 3: NEW - Categorize files by text quality for parallel processing
+  console.log('\n🔍 Categorizing files by text quality...');
+  const queue = categorizeFiles(validFiles);
+  const estimate = estimateProcessingTime(queue);
+  
+  console.log(`⏱️ Estimated processing time: ${estimate.min}-${estimate.max} seconds`);
+  console.log(`   ${estimate.breakdown}`);
   console.groupEnd();
 
-  const results: ClaudeResponse[] = [];
-  const failedFiles: Array<{ fileName: string; error: string; retryCount: number }> = [];
-  let processedCount = skipped.length + oversizedFiles.length; // Already "processed" skipped files
-  let lastBatchDurationMs = 0;
-
-  // Process each adaptive batch
-  for (let batchIndex = 0; batchIndex < adaptiveBatches.length; batchIndex++) {
-    const batch = adaptiveBatches[batchIndex];
-    const batchNumber = batchIndex + 1;
-    const batchId = generateBatchId();
-
-    const containsVisionFiles = batch.files.some(pdf =>
-      pdf.isImage ||
-      (pdf.imagePages && pdf.imagePages.length > 0)
-    );
-
-    // If the batch mixes scanned/image documents, process them sequentially with Vision
-    if (containsVisionFiles && batch.files.length > 1) {
-      console.log(`📸 Batch ${batchNumber}/${adaptiveBatches.length} contains scanned images. Processing sequentially via Vision API.`);
-
-      let maxSequentialDuration = 0;
-
-      for (const pdf of batch.files) {
-        const singleBatchId = generateBatchId();
-        const singleStartTime = Date.now();
-
-        if (onProgress) {
+  // Step 4: Process files in parallel with concurrency limits
+  const processingResult = await processInParallel(
+    queue,
+    (pdf) => extractBiomarkersFromPdf(pdf), // Process each file individually
+    (progress: ProcessingProgress) => {
+      // Map parallel processing progress to UI progress (20-90%)
+      const progressPercent = Math.round((progress.completed / progress.total) * 70) + 20;
+      
+      if (onProgress) {
+        // Report overall status
+        const statusMsg = progress.currentFile 
+          ? `${progress.status} ${progress.currentFile}` 
+          : progress.status;
+        
+        onProgress(
+          progress.completed,
+          progress.total,
+          `Text: ${progress.textBased.completed}/${progress.textBased.total} | Vision: ${progress.visionBased.completed}/${progress.visionBased.total}`,
+          statusMsg
+        );
+      }
+      
+      // Update file-level progress
+      if (progress.currentFile && onProgress) {
+        if (progress.status === 'processing') {
           onProgress(
-            processedCount,
-            processedPdfs.length,
-            ` (batch ${batchNumber}/${adaptiveBatches.length})`,
-            `processing ${pdf.fileName}`
+            progress.completed,
+            progress.total,
+            '',
+            `processing ${progress.currentFile}`
+          );
+        } else if (progress.completed > 0) {
+          onProgress(
+            progress.completed,
+            progress.total,
+            '',
+            `completed ${progress.currentFile}`
           );
         }
-
-        try {
-          const singleResult = await extractBiomarkersFromPdf(pdf);
-          const singleDuration = Date.now() - singleStartTime;
-          maxSequentialDuration = Math.max(maxSequentialDuration, singleDuration);
-
-          logBatchMetrics(singleBatchId, [pdf], singleDuration, true);
-
-          results.push(singleResult);
-          processedCount++;
-          console.log(`✅ Processed image document via Vision: ${pdf.fileName} (${(singleDuration / 1000).toFixed(1)}s)`);
-
-          if (onProgress) {
-            onProgress(
-              processedCount,
-              processedPdfs.length,
-              ` (batch ${batchNumber}/${adaptiveBatches.length})`,
-              `completed ${pdf.fileName}`
-            );
-          }
-        } catch (singleError: any) {
-          const singleDuration = Date.now() - singleStartTime;
-          maxSequentialDuration = Math.max(maxSequentialDuration, singleDuration);
-
-          const errorMessage = singleError instanceof Error ? singleError.message : String(singleError);
-          const errorType = getErrorType(singleError);
-
-          logBatchMetrics(
-            singleBatchId,
-            [pdf],
-            singleDuration,
-            false,
-            singleError.status || singleError.statusCode,
-            errorType
-          );
-
-          failedFiles.push({
-            fileName: pdf.fileName,
-            error: errorMessage,
-            retryCount: 0
-          });
-          processedCount++;
-          console.error(`❌ Vision processing failed: ${pdf.fileName} - ${errorMessage}`);
-
-          if (onProgress) {
-            onProgress(
-              processedCount,
-              processedPdfs.length,
-              ` (batch ${batchNumber}/${adaptiveBatches.length})`,
-              `failed ${pdf.fileName}`
-            );
-          }
-        }
-
-        // Small delay between Vision requests to avoid rate limits
-        await new Promise(resolve => setTimeout(resolve, 500));
-      }
-
-      lastBatchDurationMs = maxSequentialDuration;
-
-      // Adaptive delay handled at end of loop
-      continue;
-    }
-
-    // Validate batch before sending (text or non-image batches)
-    const validation = validateBatch(batch);
-    if (!validation.valid) {
-      console.error(`❌ Batch ${batchNumber} validation failed:`, validation.errors);
-      for (const pdf of batch.files) {
-        failedFiles.push({
-          fileName: pdf.fileName,
-          error: validation.errors.join('; '),
-          retryCount: 0
-        });
-        processedCount++;
-      }
-      continue;
-    }
-
-    // Log warnings
-    if (validation.warnings.length > 0) {
-      console.warn(`⚠️ Batch ${batchNumber} warnings:`, validation.warnings);
-    }
-
-    // Update progress
-    if (onProgress) {
-      onProgress(
-        processedCount,
-        processedPdfs.length,
-        ` (batch ${batchNumber}/${adaptiveBatches.length})`,
-        `processing ${batch.fileCount} ${batch.batchType} files`
-      );
-    }
-
-    console.log(`🚀 Processing adaptive batch ${batchNumber}/${adaptiveBatches.length} [${batch.batchType}]`);
-    const batchStartTime = Date.now();
-
-    try {
-      // Process batch with per-file progress tracking
-      const batchResults = await extractBiomarkersFromBatch(
-        batch.files,
-        (fileName, status, error) => {
-          if (onProgress) {
-            // If error contains page-progress info, include it in status
-            const statusMessage = error && error.startsWith('page-progress')
-              ? `${status} ${fileName} ${error}`
-              : `${status} ${fileName}`;
-
-            onProgress(
-              processedCount,
-              processedPdfs.length,
-              ` (batch ${batchNumber}/${adaptiveBatches.length})`,
-              statusMessage
-            );
-          }
-        }
-      );
-      const batchDuration = Date.now() - batchStartTime;
-      lastBatchDurationMs = batchDuration;
-
-      // Log telemetry
-      logBatchMetrics(batchId, batch.files, batchDuration, true);
-
-      results.push(...batchResults);
-      processedCount += batch.files.length;
-
-      console.log(`✅ Batch ${batchNumber}/${adaptiveBatches.length} completed in ${(batchDuration / 1000).toFixed(1)}s`);
-
-      // Update progress
-      if (onProgress) {
-        onProgress(
-          processedCount,
-          processedPdfs.length,
-          ` (batch ${batchNumber}/${adaptiveBatches.length})`,
-          `completed ${batch.fileCount} files`
-        );
-      }
-
-    } catch (error: any) {
-      const batchDuration = Date.now() - batchStartTime;
-      const errorMessage = error instanceof Error ? error.message : String(error);
-      const errorType = getErrorType(error);
-
-      console.error(`❌ Batch ${batchNumber}/${adaptiveBatches.length} failed: ${errorMessage}`);
-
-      // Log failed batch metrics
-      logBatchMetrics(
-        batchId,
-        batch.files,
-        batchDuration,
-        false,
-        error.status || error.statusCode,
-        errorType
-      );
-
-      // SPLIT-ON-FAILURE RETRY: If batch fails, retry files individually
-      if (batch.files.length > 1) {
-        console.log(`🔄 Retrying ${batch.files.length} files individually...`);
-
-        for (const pdf of batch.files) {
-          try {
-            if (onProgress) {
-              onProgress(
-                processedCount,
-                processedPdfs.length,
-                ` (batch ${batchNumber}/${adaptiveBatches.length})`,
-                `processing ${pdf.fileName}`
-              );
-            }
-
-            const singleResult = await extractBiomarkersFromPdf(pdf);
-            results.push(singleResult);
-            processedCount++;
-            console.log(`✅ Individual retry succeeded: ${pdf.fileName}`);
-
-            if (onProgress) {
-              onProgress(
-                processedCount,
-                processedPdfs.length,
-                ` (batch ${batchNumber}/${adaptiveBatches.length})`,
-                `completed ${pdf.fileName}`
-              );
-            }
-          } catch (retryError: any) {
-            const retryErrorMessage = retryError instanceof Error ? retryError.message : String(retryError);
-            failedFiles.push({
-              fileName: pdf.fileName,
-              error: `Batch failed, retry failed: ${retryErrorMessage}`,
-              retryCount: 1
-            });
-            processedCount++;
-            console.error(`❌ Individual retry failed: ${pdf.fileName}`);
-
-            if (onProgress) {
-              onProgress(
-                processedCount,
-                processedPdfs.length,
-                ` (batch ${batchNumber}/${adaptiveBatches.length})`,
-                `failed ${pdf.fileName}`
-              );
-            }
-          }
-
-          // Small delay between individual retries
-          await new Promise(resolve => setTimeout(resolve, 500));
-        }
-      } else {
-        // Single file batch failed, no retry
-        for (const pdf of batch.files) {
-          failedFiles.push({
-            fileName: pdf.fileName,
-            error: errorMessage,
-            retryCount: 0
-          });
-          processedCount++;
-        }
-      }
-
-      if (onProgress) {
-        onProgress(
-          processedCount,
-          processedPdfs.length,
-          ` (batch ${batchNumber}/${adaptiveBatches.length})`,
-          `batch failed, retried individually`
-        );
       }
     }
+  );
 
-    // Adaptive delay between batches
-    if (batchIndex < adaptiveBatches.length - 1) {
-      const delay = calculateAdaptiveDelay(lastBatchDurationMs);
-      if (delay > 0) {
-        console.log(`⏸️ Adaptive delay: ${(delay / 1000).toFixed(1)}s before next batch...`);
-        await new Promise(resolve => setTimeout(resolve, delay));
-      }
-    }
-  }
+  const results = processingResult.success;
+  const failedFiles = processingResult.failed.map(f => ({
+    fileName: f.fileName,
+    error: f.error,
+    retryCount: 0
+  }));
 
-  // Add skipped files to failed list (with special marker)
+  console.log(`\n📊 Processing Summary:`);
+  console.log(`   Total time: ${(processingResult.processingTime / 1000).toFixed(1)}s`);
+  console.log(`   Successful: ${results.length}/${validFiles.length}`);
+  console.log(`   Failed: ${failedFiles.length}/${validFiles.length}`);
+
+  // Add skipped and oversized files to failed list
   for (const { pdf, reason } of skipped) {
     failedFiles.push({
       fileName: pdf.fileName,
@@ -1128,7 +917,6 @@ export async function extractBiomarkersFromPdfs(
     });
   }
 
-  // Add oversized files to failed list
   for (const { pdf, reason } of oversizedFiles) {
     failedFiles.push({
       fileName: pdf.fileName,
@@ -1162,11 +950,15 @@ export async function extractBiomarkersFromPdfs(
     const skippedCount = failedFiles.filter(f => f.error.startsWith('Skipped:')).length;
     const oversizedCount = failedFiles.filter(f => f.error.startsWith('Too large:')).length;
 
-    console.log(`📊 Processing Summary:`);
+    console.log(`📊 Final Summary:`);
     console.log(`   ✅ Successful: ${results.length}`);
     console.log(`   ❌ Failed: ${actualFailures.length}`);
     console.log(`   ⏭️  Skipped: ${skippedCount}`);
-    console.log(`   ⚠️  Too Large: ${oversizedCount}`);
+    console.log(`   📏 Oversized: ${oversizedCount}`);
+
+    if (actualFailures.length > 0) {
+      console.warn(`\n⚠️ Failed files:`, actualFailures.map(f => `\n   - ${f.fileName}: ${f.error}`).join(''));
+    }
   }
 
   return batchResults;
@@ -1197,47 +989,11 @@ function getErrorType(error: any): string {
   return 'unknown';
 }
 
-/**
- * Generate a smart panel name based on biomarkers found
- */
-/* Unused - panel name now generated in Edge Function
-function generatePanelName(biomarkers: ExtractedBiomarker[]): string {
-  const biomarkerNames = biomarkers.map(b => b.name.toLowerCase());
-  const categories: string[] = [];
+// NOTE: Old batch processing code removed - now using parallel processing
+// All sequential batch processing has been replaced with parallel processing above
 
-  // Check for different panel types
-  if (biomarkerNames.some(n => n.includes('wbc') || n.includes('rbc') || n.includes('hemoglobin') || n.includes('hematocrit'))) {
-    categories.push('CBC');
-  }
-  if (biomarkerNames.some(n => n.includes('cholesterol') || n.includes('hdl') || n.includes('ldl') || n.includes('triglyceride'))) {
-    categories.push('Lipid Panel');
-  }
-  if (biomarkerNames.some(n => n.includes('testosterone') || n.includes('estrogen') || n.includes('cortisol') || n.includes('dhea'))) {
-    categories.push('Hormone Panel');
-  }
-  if (biomarkerNames.some(n => n.includes('glucose') || n.includes('sodium') || n.includes('potassium') || n.includes('creatinine'))) {
-    categories.push('Metabolic Panel');
-  }
-  if (biomarkerNames.some(n => n.includes('tsh') || n.includes('t3') || n.includes('t4') || n.includes('thyroid'))) {
-    categories.push('Thyroid Panel');
-  }
-  if (biomarkerNames.some(n => n.includes('iron') || n.includes('ferritin') || n.includes('tibc'))) {
-    categories.push('Iron Studies');
-  }
-  if (biomarkerNames.some(n => n.includes('vitamin') || n.includes('b12') || n.includes('folate'))) {
-    categories.push('Vitamin Panel');
-  }
-  if (biomarkerNames.some(n => n.includes('lead') || n.includes('mercury') || n.includes('arsenic') || n.includes('cadmium'))) {
-    categories.push('Heavy Metals');
-  }
-
-  // Return combined name or default
-  if (categories.length === 0) {
-    return `Lab Panel (${biomarkers.length} biomarkers)`;
-  } else if (categories.length === 1) {
-    return categories[0];
-  } else {
-    return categories.join(' + ');
+    // If the batch mixes scanned/image documents, process them sequentially with Vision
+    if (containsVisionFiles && batch.files.length > 1) {
   }
 }
 */

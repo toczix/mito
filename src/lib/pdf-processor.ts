@@ -7,6 +7,8 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
   import.meta.url
 ).toString();
 
+export type TextQuality = 'good' | 'poor' | 'none';
+
 export interface ProcessedPDF {
   fileName: string;
   extractedText: string;
@@ -19,6 +21,8 @@ export interface ProcessedPDF {
   qualityWarning?: string;
   pageTexts?: string[]; // Array of text per page for parallel processing
   originalFile?: File; // Store original file for fallback OCR
+  textQuality?: TextQuality; // Assessment of extracted text quality for routing
+  avgCharsPerPage?: number; // Average characters per page
 }
 
 /**
@@ -130,13 +134,16 @@ export async function processPdfFile(
 
   console.log(`✅ PDF extraction complete: ${extractedText.length} total characters`);
   
-  // Check if we actually extracted meaningful text (not just page markers)
-  // Page markers add about 20 chars per page, so if total is less than pages * 30, it's probably empty
-  const minExpectedChars = pageCount * 50; // Expect at least 50 chars of actual content per page
+  // Assess text quality for routing decision
+  const avgCharsPerPage = extractedText.length / pageCount;
+  const textQuality = assessTextQuality(extractedText, pageCount, avgCharsPerPage);
   
-  if (extractedText.trim().length === 0 || extractedText.length < minExpectedChars) {
-    console.warn(`⚠️ PDF text extraction failed (${extractedText.length} chars for ${pageCount} pages)`);
-    console.log(`🔄 Falling back to Vision API - converting PDF pages to images...`);
+  console.log(`   Text quality: ${textQuality} (avg ${Math.round(avgCharsPerPage)} chars/page)`);
+  
+  // Route based on text quality
+  if (textQuality === 'none') {
+    console.warn(`⚠️ No meaningful text found (${extractedText.length} chars for ${pageCount} pages)`);
+    console.log(`🔄 Routing to Vision API - converting PDF pages to images...`);
 
     // Fallback: Convert ALL PDF pages to images for Vision API
     const pagesToConvert = pageCount; // Process ALL pages, no limit
@@ -180,17 +187,104 @@ export async function processPdfFile(
       isImage: true, // Mark as image so Edge Function uses Vision API
       imagePages: imagePages, // Send all page images to Vision API
       mimeType: 'image/png',
+      textQuality: 'none',
+      avgCharsPerPage: 0,
     };
   }
 
+  // For 'poor' quality text, also include images as fallback
+  if (textQuality === 'poor') {
+    console.log(`⚠️ Poor text quality detected - also preparing images as fallback...`);
+    
+    const imagePages: string[] = [];
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d');
+    
+    if (context) {
+      for (let pageNum = 1; pageNum <= Math.min(pageCount, 20); pageNum++) {
+        const page = await pdf.getPage(pageNum);
+        const viewport = page.getViewport({ scale: 2.0 });
+        
+        canvas.width = viewport.width;
+        canvas.height = viewport.height;
+        
+        await page.render({
+          canvasContext: context,
+          viewport: viewport,
+          canvas: canvas,
+        }).promise;
+        
+        const imageData = canvas.toDataURL('image/png').split(',')[1];
+        imagePages.push(imageData);
+      }
+      
+      console.log(`   Prepared ${imagePages.length} page images as fallback`);
+    }
+    
+    return {
+      fileName: file.name,
+      extractedText: extractedText.trim(),
+      pageCount,
+      isImage: true, // Mark for Vision API due to poor text quality
+      imagePages: imagePages.length > 0 ? imagePages : undefined,
+      mimeType: 'image/png',
+      textQuality,
+      avgCharsPerPage,
+      pageTexts,
+      originalFile: file,
+    };
+  }
+
+  // Good quality text - use text-based processing
   return {
     fileName: file.name,
     extractedText: extractedText.trim(),
     pageCount,
     isImage: false,
     pageTexts, // Store individual page texts for parallel processing
-    originalFile: file, // Store original file for fallback OCR
+    originalFile: file,
+    textQuality,
+    avgCharsPerPage,
   };
+}
+
+/**
+ * Assess the quality of extracted text to determine processing route
+ * @returns 'good' - high quality text, use Claude Haiku
+ *          'poor' - some text but low quality, use Vision API
+ *          'none' - no meaningful text, use Vision API
+ */
+function assessTextQuality(text: string, pageCount: number, avgCharsPerPage: number): TextQuality {
+  const trimmedText = text.trim();
+  
+  // No text at all
+  if (trimmedText.length === 0) {
+    return 'none';
+  }
+  
+  // Very little text (less than 50 chars per page on average)
+  if (avgCharsPerPage < 50) {
+    return 'none';
+  }
+  
+  // Poor quality text (50-200 chars per page)
+  // This could be scanned text with OCR artifacts or sparse content
+  if (avgCharsPerPage < 200) {
+    return 'poor';
+  }
+  
+  // Check for common OCR artifacts or quality issues
+  const hasMultipleSpaces = (text.match(/\s{3,}/g) || []).length > pageCount * 5; // Many long gaps
+  const hasShortWords = text.split(/\s+/).filter(w => w.length > 0 && w.length < 3).length > text.split(/\s+/).length * 0.5; // >50% very short words
+  const hasNumbers = (text.match(/\d/g) || []).length > text.length * 0.3; // >30% numbers (common in lab reports)
+  
+  // If text has quality issues but contains medical/lab data, mark as poor
+  if (hasMultipleSpaces || hasShortWords) {
+    return hasNumbers ? 'poor' : 'none';
+  }
+  
+  // Good quality text
+  return 'good';
 }
 
 /**
