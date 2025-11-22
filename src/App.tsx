@@ -73,7 +73,16 @@ function App() {
         console.log('🔍 Checking for session...');
         const startTime = Date.now();
         
-        const { data: { session }, error } = await supabase.auth.getSession();
+        // Race between session check and 3-second timeout
+        const sessionPromise = supabase.auth.getSession();
+        const timeoutPromise = new Promise<{ data: { session: null }, error: any }>((resolve) =>
+          setTimeout(() => {
+            console.warn('⏰ Session check timed out after 3s, proceeding without session');
+            resolve({ data: { session: null }, error: null });
+          }, 3000)
+        );
+        
+        const { data: { session }, error } = await Promise.race([sessionPromise, timeoutPromise]);
         
         const duration = Date.now() - startTime;
         console.log(`📋 Session check completed in ${duration}ms:`, session ? 'exists' : 'none');
