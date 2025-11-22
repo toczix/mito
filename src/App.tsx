@@ -38,16 +38,29 @@ function App() {
       if (code && supabase) {
         console.log('🔐 Detected PKCE auth code, exchanging for session...');
         try {
-          const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+          // Race the PKCE exchange against a 5-second timeout
+          const exchangePromise = supabase.auth.exchangeCodeForSession(code);
+          const timeoutPromise = new Promise<{ data: any, error: any }>((_, reject) =>
+            setTimeout(() => reject(new Error('PKCE exchange timed out after 5 seconds')), 5000)
+          );
+          
+          const { data, error } = await Promise.race([exchangePromise, timeoutPromise]);
 
           if (error) {
             console.error('❌ Failed to exchange code for session:', error);
+            handleAuthError(error, 'pkce_exchange');
+            logAuditError('pkce_exchange_failed', error, 'auth');
+            
+            // Clear the bad code from URL to prevent repeated hangs
+            window.history.replaceState(null, '', window.location.pathname);
             setSession(null);
             setLoading(false);
             return;
           }
           
           console.log('✅ Session established successfully');
+          logAuditSuccess('pkce_exchange_success', 'auth', undefined, { user_id: data.session?.user?.id });
+          
           // Clear code from URL
           window.history.replaceState(null, '', window.location.pathname);
           
@@ -56,7 +69,12 @@ function App() {
           setLoading(false);
           return; // Done - no need to check again
         } catch (error) {
-          console.error('❌ Error during PKCE exchange:', error);
+          console.error('❌ Error during PKCE exchange (likely timeout):', error);
+          handleAuthError(error, 'pkce_exchange_timeout');
+          logAuditError('pkce_exchange_timeout', error, 'auth');
+          
+          // Clear the bad code from URL to prevent repeated hangs
+          window.history.replaceState(null, '', window.location.pathname);
           setSession(null);
           setLoading(false);
           return;
