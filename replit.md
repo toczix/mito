@@ -106,11 +106,12 @@ VITE_AUTH_DISABLED=false  # Authentication is ENABLED
 ## Usage Notes
 
 ### Authentication Setup
-**IMPORTANT**: Before first use, you must run the database migration SQL:
-1. See **MAGIC_LINK_SETUP.md** for complete instructions
-2. Enable email provider in Supabase Dashboard
-3. Run the SQL migration to create database tables
-4. Then you can log in with magic links!
+✅ **Fully Configured!** The database and authentication are ready to use.
+
+To verify setup status, run:
+```bash
+npm run check-db
+```
 
 ### For Users
 1. **Login**: Enter your email, receive magic link, click to login (no password!)

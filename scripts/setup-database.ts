@@ -25,14 +25,16 @@ console.log('🚀 Starting Mito database setup...\n');
 
 async function executeSql(sql: string, description: string): Promise<boolean> {
   try {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'apikey': supabaseServiceKey!,
+      'Authorization': `Bearer ${supabaseServiceKey}`,
+      'Prefer': 'return=minimal'
+    };
+    
     const response = await fetch(`${supabaseUrl}/rest/v1/rpc/exec_sql`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'apikey': supabaseServiceKey,
-        'Authorization': `Bearer ${supabaseServiceKey}`,
-        'Prefer': 'return=minimal'
-      },
+      headers,
       body: JSON.stringify({ query: sql })
     });
     
@@ -88,7 +90,8 @@ async function setupDatabase() {
     
     console.log('\n📦 Creating missing tables via Supabase Dashboard SQL...\n');
     console.log('⚠️  Important: Please run the following SQL in your Supabase Dashboard:');
-    console.log('   1. Go to: https://supabase.com/dashboard/project/' + supabaseUrl.match(/https:\/\/(.+?)\.supabase\.co/)?.[1] + '/sql');
+    const projectRef = supabaseUrl?.match(/https:\/\/(.+?)\.supabase\.co/)?.[1] || 'your-project';
+    console.log('   1. Go to: https://supabase.com/dashboard/project/' + projectRef + '/sql');
     console.log('   2. Click "New Query"');
     console.log('   3. Copy and paste the SQL from MAGIC_LINK_SETUP.md');
     console.log('   4. Click "Run"');

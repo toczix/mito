@@ -9,6 +9,7 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "ui:add": "npx shadcn@latest add",
+    "check-db": "tsx scripts/setup-database.ts",
     "assign-clients": "tsx scripts/assign-clients.ts",
     "assign-clients:dry-run": "tsx scripts/assign-clients.ts --dry-run",
     "verify-deployment": "tsx scripts/verify-deployment-readiness.ts"
