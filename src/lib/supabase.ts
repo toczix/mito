@@ -14,7 +14,14 @@ export const supabase = supabaseUrl && supabaseAnonKey
         autoRefreshToken: true,
         persistSession: true,
         detectSessionInUrl: false, // Disable auto-detection to prevent hanging
-        flowType: 'pkce'
+        flowType: 'pkce',
+        storage: typeof window !== 'undefined' ? window.localStorage : undefined,
+        storageKey: 'mito-auth-token'
+      },
+      global: {
+        headers: {
+          'x-application-name': 'mito-analysis'
+        }
       }
     })
   : null;

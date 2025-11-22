@@ -63,13 +63,28 @@ function App() {
       }
 
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        console.log('📋 Current session:', session ? 'exists' : 'none');
-        setSession(session);
+        console.log('🔍 Checking for session...');
+        const startTime = Date.now();
+        
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        const duration = Date.now() - startTime;
+        console.log(`📋 Session check completed in ${duration}ms:`, session ? 'exists' : 'none');
+        
+        if (error) {
+          console.error('❌ Session check error:', error);
+          // Continue with no session rather than blocking
+          setSession(null);
+        } else {
+          setSession(session);
+        }
+        
         setLoading(false);
       } catch (error) {
         console.error('❌ Session check failed:', error);
         handleAuthError(error, 'get_session');
+        // Don't block - just proceed with no session
+        setSession(null);
         setLoading(false);
       }
     };
