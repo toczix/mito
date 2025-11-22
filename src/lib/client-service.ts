@@ -182,7 +182,13 @@ export async function updateClient(id: string, updates: Partial<Client>): Promis
 }
 
 export async function deleteClient(id: string): Promise<boolean> {
-  if (!supabase) return false;
+  if (!supabase) {
+    console.error('❌ Supabase not initialized');
+    alert('Database not available. Please enable authentication to delete clients.');
+    return false;
+  }
+  
+  console.log(`🗑️ Attempting to delete client: ${id}`);
   
   const { error } = await supabase
     .from('clients')
@@ -190,10 +196,20 @@ export async function deleteClient(id: string): Promise<boolean> {
     .eq('id', id);
   
   if (error) {
+    console.error('❌ Delete failed:', error);
+    
+    // Check if it's an RLS/auth error
+    if (error.message?.includes('row-level security') || error.message?.includes('policy')) {
+      alert('Delete failed: Authentication required. Please enable authentication (set VITE_AUTH_DISABLED=false) to delete clients.');
+    } else {
+      alert(`Delete failed: ${error.message}`);
+    }
+    
     handleDatabaseError(error, 'clients', 'delete');
     return false;
   }
   
+  console.log('✅ Client deleted successfully');
   return true;
 }
 
