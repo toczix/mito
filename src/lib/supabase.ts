@@ -13,15 +13,8 @@ export const supabase = supabaseUrl && supabaseAnonKey
       auth: {
         autoRefreshToken: true,
         persistSession: true,
-        detectSessionInUrl: true, // Enable auto-detection for magic links
-        flowType: 'pkce',
-        storage: typeof window !== 'undefined' ? window.localStorage : undefined,
-        storageKey: 'mito-auth-token'
-      },
-      global: {
-        headers: {
-          'x-application-name': 'mito-analysis'
-        }
+        // Use default detectSessionInUrl (true by default)
+        // flowType defaults to 'implicit' for client-side apps
       }
     })
   : null;
