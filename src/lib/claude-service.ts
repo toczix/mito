@@ -870,17 +870,15 @@ export async function extractBiomarkersFromPdfs(
       // Send both the batch info and status
       const batchInfo = `Text: ${progress.textBased.completed}/${progress.textBased.total} | Vision: ${progress.visionBased.completed}/${progress.visionBased.total}`;
       
+      // Track last completed count to detect new completions
+      const lastCompleted = (onProgress as any)._lastCompleted || 0;
+      const newCompletion = completedCount > lastCompleted;
+      (onProgress as any)._lastCompleted = completedCount;
+      
       // Report file-level status
       if (progress.currentFile) {
-        if (progress.status === 'processing') {
-          console.log(`🔄 Processing: ${progress.currentFile}`);
-          onProgress(
-            completedCount,
-            progress.total,
-            batchInfo,
-            `processing ${progress.currentFile}`
-          );
-        } else if (completedCount > 0 && progress.status === 'completed') {
+        if (newCompletion && completedCount > 0) {
+          // A file just completed
           console.log(`✅ Completed: ${progress.currentFile} (${completedCount}/${progress.total})`);
           onProgress(
             completedCount,
@@ -888,9 +886,20 @@ export async function extractBiomarkersFromPdfs(
             batchInfo,
             `completed ${progress.currentFile}`
           );
+        } else if (progress.status === 'processing') {
+          // File is in progress
+          console.log(`🔄 Processing: ${progress.currentFile}`);
+          onProgress(
+            completedCount,
+            progress.total,
+            batchInfo,
+            `processing ${progress.currentFile}`
+          );
         }
-      } else {
-        // General status update
+      }
+      
+      // Always send general status update
+      if (!progress.currentFile || progress.status === 'completed') {
         onProgress(
           completedCount,
           progress.total,

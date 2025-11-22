@@ -144,6 +144,9 @@ export function HomePage() {
       const claudeResponses: ClaudeResponseBatch = await extractBiomarkersFromPdfs(
         validPdfs,
         (_current, _total, _batchInfo, status) => {
+          // Debug: Log all status updates
+          console.log(`🔔 UI Callback - Status: "${status}", BatchInfo: "${_batchInfo}"`);
+          
           // Update file progress based on status
           if (status) {
             if (status.startsWith('processing')) {
