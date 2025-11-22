@@ -7,6 +7,11 @@ A React-based web application that uses Claude AI to automatically analyze clini
 **Last Updated**: November 22, 2025
 
 ## Recent Changes
+- **November 22, 2025**: Magic Link Authentication Enabled
+  - Configured Supabase authentication with magic link (passwordless)
+  - Set up environment variables for Supabase connection
+  - Enabled multi-user support with Row Level Security (RLS)
+  - Created comprehensive setup guide (MAGIC_LINK_SETUP.md)
 - **November 22, 2025**: Initial Replit setup
   - Configured Vite to run on port 5000 with proper host settings (0.0.0.0)
   - Fixed HMR (Hot Module Replacement) WebSocket configuration for Replit proxy
@@ -67,14 +72,14 @@ The app is configured to run automatically via the "Start application" workflow:
 - **Host**: 0.0.0.0 (required for Replit proxy)
 
 ### Environment Variables
-Optional Supabase configuration (create `.env` file):
+Supabase configuration (already set in Replit):
 ```
-VITE_SUPABASE_URL=https://your-project-id.supabase.co
-VITE_SUPABASE_ANON_KEY=your-anon-key-here
-VITE_AUTH_DISABLED=true
+VITE_SUPABASE_URL=https://dfgadsjqofgkrclpwgkf.supabase.co
+VITE_SUPABASE_ANON_KEY=<configured>
+VITE_AUTH_DISABLED=false  # Authentication is ENABLED
 ```
 
-**Note**: Claude API key is stored in browser localStorage or Supabase (not in .env)
+**Note**: Claude API key is now stored securely in Supabase (per-user)
 
 ### Key Dependencies
 - `@anthropic-ai/sdk`: Claude AI integration
@@ -100,12 +105,20 @@ VITE_AUTH_DISABLED=true
 
 ## Usage Notes
 
+### Authentication Setup
+**IMPORTANT**: Before first use, you must run the database migration SQL:
+1. See **MAGIC_LINK_SETUP.md** for complete instructions
+2. Enable email provider in Supabase Dashboard
+3. Run the SQL migration to create database tables
+4. Then you can log in with magic links!
+
 ### For Users
-1. **API Key Setup**: Enter Claude API key in the Settings tab (starts with `sk-ant-`)
-2. **Upload Reports**: Drag & drop PDFs, DOCX, or images
-3. **Analyze**: Click "Analyze Reports" to extract biomarker data
-4. **Review Results**: View comprehensive biomarker table with optimal range comparisons
-5. **Client Management** (Optional): Requires Supabase setup (see SUPABASE_SETUP.md)
+1. **Login**: Enter your email, receive magic link, click to login (no password!)
+2. **API Key Setup**: Enter Claude API key in the Settings tab (synced to your account)
+3. **Upload Reports**: Drag & drop PDFs, DOCX, or images
+4. **Analyze**: Click "Analyze Reports" to extract biomarker data
+5. **Review Results**: View comprehensive biomarker table with optimal range comparisons
+6. **Client Management**: Organize clients, save analyses, track history over time
 
 ### Cost Optimization
 - Uses Claude Haiku 4.5 (cheapest model)
