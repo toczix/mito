@@ -7,6 +7,11 @@ A React-based web application that uses Claude AI to automatically analyze clini
 **Last Updated**: November 22, 2025
 
 ## Recent Changes
+- **November 22, 2025**: Real-time Progress Tracking Fix
+  - Fixed progress bar to update in real-time during batch processing
+  - Added granular progress callbacks that fire after each file completion
+  - Removed debug logging for cleaner production console output
+  - Progress now updates smoothly from 20% → 90% as files complete
 - **November 22, 2025**: Parallel Processing Optimization
   - Implemented hybrid text quality assessment (good/poor/none based on chars/page)
   - Added parallel processing with intelligent file categorization
