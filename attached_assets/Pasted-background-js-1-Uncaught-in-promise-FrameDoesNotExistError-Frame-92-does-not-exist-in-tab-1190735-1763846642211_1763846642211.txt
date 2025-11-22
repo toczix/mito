@@ -1,0 +1,410 @@
+background.js:1 Uncaught (in promise) FrameDoesNotExistError: Frame 92 does not exist in tab 1190735957
+    at DelayedMessageSender.<anonymous> (background.js:1:49079)
+background.js:1 Uncaught (in promise) FrameIsBrowserFrameError: Frame 177 in tab 1190735997 is a browser frame.
+    at Frame.setUpContentScript (background.js:1:50484)
+    at Frame.readyToReceiveMessages (background.js:1:51048)
+    at Tab.frameIsReadyToReceiveMessages (background.js:1:52965)
+    at TabMonitor.frameIsReadyToReceiveMessages (background.js:1:55545)
+    at background.js:1:70409
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+Unchecked runtime.lastError: The message port closed before a response was received.
+background.js:1 Uncaught (in promise) FrameDoesNotExistError: Frame 348 does not exist in tab 1190736041
+    at DelayedMessageSender.<anonymous> (background.js:1:49079)
+background.js:1 Uncaught (in promise) FrameIsBrowserFrameError: Frame 376 in tab 1190736049 is a browser frame.
+    at Frame.setUpContentScript (background.js:1:50484)
+    at Frame.readyToReceiveMessages (background.js:1:51048)
+    at Tab.frameIsReadyToReceiveMessages (background.js:1:52965)
+    at TabMonitor.frameIsReadyToReceiveMessages (background.js:1:55545)
+    at background.js:1:70409
+background.js:1 Uncaught (in promise) FrameIsBrowserFrameError: Frame 378 in tab 1190736049 is a browser frame.
+    at Frame.setUpContentScript (background.js:1:50484)
+    at Frame.readyToReceiveMessages (background.js:1:51048)
+    at Tab.frameIsReadyToReceiveMessages (background.js:1:52965)
+    at TabMonitor.frameIsReadyToReceiveMessages (background.js:1:55545)
+    at background.js:1:70409
+background.js:1 Uncaught (in promise) FrameIsBrowserFrameError: Frame 407 in tab 1190736058 is a browser frame.
+    at Frame.setUpContentScript (background.js:1:50484)
+    at Frame.readyToReceiveMessages (background.js:1:51048)
+    at Tab.frameIsReadyToReceiveMessages (background.js:1:52965)
+    at TabMonitor.frameIsReadyToReceiveMessages (background.js:1:55545)
+    at background.js:1:70409
+background.js:1 Uncaught (in promise) FrameIsBrowserFrameError: Frame 410 in tab 1190736058 is a browser frame.
+    at Frame.setUpContentScript (background.js:1:50484)
+    at Frame.readyToReceiveMessages (background.js:1:51048)
+    at Tab.frameIsReadyToReceiveMessages (background.js:1:52965)
+    at TabMonitor.frameIsReadyToReceiveMessages (background.js:1:55545)
+    at background.js:1:70409
+background.js:1 Uncaught (in promise) FrameIsBrowserFrameError: Frame 452 in tab 1190736035 is a browser frame.
+    at Frame.setUpContentScript (background.js:1:50484)
+    at Frame.readyToReceiveMessages (background.js:1:51048)
+    at Tab.frameIsReadyToReceiveMessages (background.js:1:52965)
+    at TabMonitor.frameIsReadyToReceiveMessages (background.js:1:55545)
+    at background.js:1:70409
+background.js:1 Uncaught (in promise) FrameIsBrowserFrameError: Frame 454 in tab 1190736035 is a browser frame.
+    at Frame.setUpContentScript (background.js:1:50484)
+    at Frame.readyToReceiveMessages (background.js:1:51048)
+    at Tab.frameIsReadyToReceiveMessages (background.js:1:52965)
+    at TabMonitor.frameIsReadyToReceiveMessages (background.js:1:55545)
+    at background.js:1:70409
+background.js:1 Uncaught (in promise) FrameIsBrowserFrameError: Frame 467 in tab 1190736065 is a browser frame.
+    at Frame.setUpContentScript (background.js:1:50484)
+    at Frame.readyToReceiveMessages (background.js:1:51048)
+    at Tab.frameIsReadyToReceiveMessages (background.js:1:52965)
+    at TabMonitor.frameIsReadyToReceiveMessages (background.js:1:55545)
+    at background.js:1:70409
+background.js:1 Uncaught (in promise) FrameIsBrowserFrameError: Frame 470 in tab 1190736065 is a browser frame.
+    at Frame.setUpContentScript (background.js:1:50484)
+    at Frame.readyToReceiveMessages (background.js:1:51048)
+    at Tab.frameIsReadyToReceiveMessages (background.js:1:52965)
+    at TabMonitor.frameIsReadyToReceiveMessages (background.js:1:55545)
+    at background.js:1:70409
+background.js:1 Uncaught (in promise) FrameIsBrowserFrameError: Frame 471 in tab 1190736065 is a browser frame.
+    at Frame.setUpContentScript (background.js:1:50484)
+    at Frame.readyToReceiveMessages (background.js:1:51048)
+    at Tab.frameIsReadyToReceiveMessages (background.js:1:52965)
+    at TabMonitor.frameIsReadyToReceiveMessages (background.js:1:55545)
+    at background.js:1:70409
+background.js:1 Uncaught (in promise) FrameIsBrowserFrameError: Frame 482 in tab 1190736065 is a browser frame.
+    at Frame.setUpContentScript (background.js:1:50484)
+    at Frame.readyToReceiveMessages (background.js:1:51048)
+    at Tab.frameIsReadyToReceiveMessages (background.js:1:52965)
+    at TabMonitor.frameIsReadyToReceiveMessages (background.js:1:55545)
+    at background.js:1:70409
+background.js:1 Uncaught (in promise) FrameIsBrowserFrameError: Frame 484 in tab 1190736065 is a browser frame.
+    at Frame.setUpContentScript (background.js:1:50484)
+    at Frame.readyToReceiveMessages (background.js:1:51048)
+    at Tab.frameIsReadyToReceiveMessages (background.js:1:52965)
+    at TabMonitor.frameIsReadyToReceiveMessages (background.js:1:55545)
+    at background.js:1:70409
+background.js:1 Uncaught (in promise) FrameIsBrowserFrameError: Frame 487 in tab 1190736065 is a browser frame.
+    at Frame.setUpContentScript (background.js:1:50484)
+    at Frame.readyToReceiveMessages (background.js:1:51048)
+    at Tab.frameIsReadyToReceiveMessages (background.js:1:52965)
+    at TabMonitor.frameIsReadyToReceiveMessages (background.js:1:55545)
+    at background.js:1:70409
+background.js:1 Uncaught (in promise) FrameIsBrowserFrameError: Frame 491 in tab 1190736065 is a browser frame.
+    at Frame.setUpContentScript (background.js:1:50484)
+    at Frame.readyToReceiveMessages (background.js:1:51048)
+    at Tab.frameIsReadyToReceiveMessages (background.js:1:52965)
+    at TabMonitor.frameIsReadyToReceiveMessages (background.js:1:55545)
+    at background.js:1:70409
+background.js:1 Uncaught (in promise) FrameIsBrowserFrameError: Frame 541 in tab 1190736065 is a browser frame.
+    at Frame.setUpContentScript (background.js:1:50484)
+    at Frame.readyToReceiveMessages (background.js:1:51048)
+    at Tab.frameIsReadyToReceiveMessages (background.js:1:52965)
+    at TabMonitor.frameIsReadyToReceiveMessages (background.js:1:55545)
+    at background.js:1:70409
+Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.
+Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.
+Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.
+Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.
+Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.
+Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.
+Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.
+Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.
+Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.
+Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.
+Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.
+Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.
+Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.
+Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.
+Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.
+Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.
+Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.
+Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.
+Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.
+Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.
+Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.
+Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.
+Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.
+Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.
+Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.
+Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.
+Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.
+Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.
+Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.
+Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.
+Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.
+Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.
+Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.
+Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.
+Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.
+Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.
+Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.
+Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.
+Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.
+Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.
+Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.
+Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.
+Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.
+Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.
+Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.
+Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.
+Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.
+Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.
+Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.
+Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.
+Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.
+Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.
+Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.
+Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.
+Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.
+Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.
+Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.
+Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.
+Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.
+Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.
+Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.
+Unchecked runtime.lastError: Could not establish connection. Receiving end does not exist.
+background.js:1 Uncaught (in promise) FrameIsBrowserFrameError: Frame 553 in tab 1190736065 is a browser frame.
+    at Frame.setUpContentScript (background.js:1:50484)
+    at Frame.readyToReceiveMessages (background.js:1:51048)
+    at Tab.frameIsReadyToReceiveMessages (background.js:1:52965)
+    at TabMonitor.frameIsReadyToReceiveMessages (background.js:1:55545)
+    at background.js:1:70409
+background.js:1 Uncaught (in promise) FrameIsBrowserFrameError: Frame 556 in tab 1190736065 is a browser frame.
+    at Frame.setUpContentScript (background.js:1:50484)
+    at Frame.readyToReceiveMessages (background.js:1:51048)
+    at Tab.frameIsReadyToReceiveMessages (background.js:1:52965)
+    at TabMonitor.frameIsReadyToReceiveMessages (background.js:1:55545)
+    at background.js:1:70409
+background.js:1 Uncaught (in promise) FrameDoesNotExistError: Frame 580 does not exist in tab 1190736073
+    at DelayedMessageSender.<anonymous> (background.js:1:49079)
+background.js:1 Uncaught (in promise) FrameIsBrowserFrameError: Frame 588 in tab 1190736065 is a browser frame.
+    at Frame.setUpContentScript (background.js:1:50484)
+    at Frame.readyToReceiveMessages (background.js:1:51048)
+    at Tab.frameIsReadyToReceiveMessages (background.js:1:52965)
+    at TabMonitor.frameIsReadyToReceiveMessages (background.js:1:55545)
+    at background.js:1:70409
+background.js:1 Uncaught (in promise) FrameIsBrowserFrameError: Frame 728 in tab 1190736065 is a browser frame.
+    at Frame.setUpContentScript (background.js:1:50484)
+    at Frame.readyToReceiveMessages (background.js:1:51048)
+    at Tab.frameIsReadyToReceiveMessages (background.js:1:52965)
+    at TabMonitor.frameIsReadyToReceiveMessages (background.js:1:55545)
+    at background.js:1:70409
+setUpContentScript @ background.js:1
+readyToReceiveMessages @ background.js:1
+frameIsReadyToReceiveMessages @ background.js:1
+frameIsReadyToReceiveMessages @ background.js:1
+(anonymous) @ background.js:1
+Error in event handler: ReferenceError: strURL is not defined
+    at chrome-extension://pejdijmoenmkgeppbflobdenhhabjlaj/background.js:1:67391
+background.js:1 Uncaught (in promise) FrameDoesNotExistError: Frame 751 does not exist in tab 1190736091
+    at DelayedMessageSender.<anonymous> (background.js:1:49079)
+(anonymous) @ background.js:1
+setTimeout
+(anonymous) @ background.js:1
+enqueueRequest @ background.js:1
+setUpContentScript @ background.js:1
+readyToReceiveMessages @ background.js:1
+frameIsReadyToReceiveMessages @ background.js:1
+frameIsReadyToReceiveMessages @ background.js:1
+(anonymous) @ background.js:1
+index-Btv2vQNc.js:642 [ErrorHandler] Initialized
+index-Btv2vQNc.js:683 🚀 Initializing Mito app...
+index-Btv2vQNc.js:663 🔄 Initializing biomarker normalizer...
+index-Btv2vQNc.js:663 ✅ Loaded 489 biomarker aliases
+index-Btv2vQNc.js:683 ✅ Biomarker normalizer initialized
+index-Btv2vQNc.js:680 📋 Current session: none
+index-Btv2vQNc.js:680 Auth state changed: INITIAL_SESSION no session
+utils.js:1  Failed to load resource: net::ERR_FILE_NOT_FOUND
+extensionState.js:1  Failed to load resource: net::ERR_FILE_NOT_FOUND
+heuristicsRedefinitions.js:1  Failed to load resource: net::ERR_FILE_NOT_FOUND

@@ -31,30 +31,26 @@ function App() {
 
     // Initialize auth with proper async handling
     const initializeAuth = async () => {
-      // Manually handle auth callback from magic link
-      const hashParams = new URLSearchParams(window.location.hash.substring(1));
-      const accessToken = hashParams.get('access_token');
-      const refreshToken = hashParams.get('refresh_token');
+      // Check for PKCE code in query params (magic link callback)
+      const searchParams = new URLSearchParams(window.location.search);
+      const code = searchParams.get('code');
 
-      if (accessToken && supabase) {
-        console.log('🔐 Detected auth callback, exchanging tokens...');
+      if (code && supabase) {
+        console.log('🔐 Detected PKCE auth code, exchanging for session...');
         try {
-          const { error } = await supabase.auth.setSession({
-            access_token: accessToken,
-            refresh_token: refreshToken || ''
-          });
+          const { error } = await supabase.auth.exchangeCodeForSession(code);
 
           if (error) {
-            console.error('❌ Failed to set session:', error);
+            console.error('❌ Failed to exchange code for session:', error);
             setLoading(false);
             return;
           } else {
-            console.log('✅ Session set successfully');
-            // Clear hash from URL
+            console.log('✅ Session established successfully');
+            // Clear code from URL
             window.history.replaceState(null, '', window.location.pathname);
           }
         } catch (error) {
-          console.error('❌ Error during auth callback:', error);
+          console.error('❌ Error during PKCE exchange:', error);
           setLoading(false);
           return;
         }
