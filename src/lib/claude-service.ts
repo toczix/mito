@@ -216,10 +216,10 @@ INSTRUCTIONS:
 
    THYROID (5):
    - TSH (may appear as: TSH, T.S.H., Thyroid Stimulating Hormone, Thyroid-Stimulating Hormone, Thyrotropin, Tirotropina [Spanish/Italian], Tireotropina [Portuguese], Thyréostimuline [French], Тиреотропный гормон [Russian], 甲状腺刺激ホルモン [Japanese], 促甲状腺激素 [Chinese], 갑상선자극호르몬 [Korean])
-   - Free T3 (may appear as: Free T3, FT3, F T3, fT3, F.T.3, T3 Free, T3 Libre [Spanish/French], T3 Livre [Portuguese], Freies T3 [German], T3 Libero [Italian], Свободный T3 [Russian], 遊離T3 [Japanese], 游离T3 [Chinese], 유리T3 [Korean])
-   - Free T4 (may appear as: Free T4, FT4, F T4, fT4, F.T.4, T4 Free, T4 Libre [Spanish/French], T4 Livre [Portuguese], Freies T4 [German], T4 Libero [Italian], Свободный T4 [Russian], 遊離T4 [Japanese], 游离T4 [Chinese], 유리T4 [Korean])
-   - TPO Antibodies (may appear as: TPO Antibodies, TPO Ab, Thyroid Peroxidase Antibodies, Anti-TPO, Thyroid Peroxidase Ab, Anticuerpos anti-TPO [Spanish], Anticorpos anti-TPO [Portuguese], Anticorps anti-TPO [French])
-   - Thyroglobulin Antibodies (may appear as: Thyroglobulin Antibodies, TgAb, Anti-Thyroglobulin, Anti-Tg, Thyroglobulin Ab, Anticuerpos antitiroglobulina [Spanish], Anticorpos antitiroglobulina [Portuguese])
+   - Free T3 (may appear as: Free T3, FT3, F T3, fT3, F.T.3, T3 Free, Free Tri-iodothyronine, Free Triiodothyronine, T3 Libre [Spanish/French], T3 Livre [Portuguese], Freies T3 [German], T3 Libero [Italian], Свободный T3 [Russian], 遊離T3 [Japanese], 游离T3 [Chinese], 유리T3 [Korean])
+   - Free T4 (may appear as: Free T4, FT4, F T4, fT4, F.T.4, T4 Free, Free thyroxine, Free Thyroxine, T4 Libre [Spanish/French], T4 Livre [Portuguese], Freies T4 [German], T4 Libero [Italian], Свободный T4 [Russian], 遊離T4 [Japanese], 游离T4 [Chinese], 유리T4 [Korean])
+   - TPO Antibodies (may appear as: TPO Antibodies, TPO Ab, Thyroid Peroxidase Antibodies, Anti-TPO, Thyroid Peroxidase Ab, Thyroid Peroxidase(TPOII)antibodies, TPOII, aTPOII, Anticuerpos anti-TPO [Spanish], Anticorpos anti-TPO [Portuguese], Anticorps anti-TPO [French])
+   - Thyroglobulin Antibodies (may appear as: Thyroglobulin Antibodies, TgAb, Anti-Thyroglobulin, Anti-ThyroGlobulin assay, aTGII, Anti-Tg, Thyroglobulin Ab, Anticuerpos antitiroglobulina [Spanish], Anticorpos antitiroglobulina [Portuguese])
 
    HORMONES (1):
    - SHBG (may appear as: Sex Hormone Binding Globulin)
