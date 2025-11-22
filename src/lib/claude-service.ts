@@ -858,40 +858,45 @@ export async function extractBiomarkersFromPdfs(
     queue,
     (pdf) => extractBiomarkersFromPdf(pdf), // Process each file individually
     (progress: ProcessingProgress) => {
-      // Map parallel processing progress to UI progress (20-90%)
-      const progressPercent = Math.round((progress.completed / progress.total) * 70) + 20;
+      if (!onProgress) return;
       
-      if (onProgress) {
-        // Report overall status
-        const statusMsg = progress.currentFile 
-          ? `${progress.status} ${progress.currentFile}` 
-          : progress.status;
-        
-        onProgress(
-          progress.completed,
-          progress.total,
-          `Text: ${progress.textBased.completed}/${progress.textBased.total} | Vision: ${progress.visionBased.completed}/${progress.visionBased.total}`,
-          statusMsg
-        );
-      }
+      // Calculate overall progress (files completed + files in progress)
+      const inProgressCount = progress.textBased.processing + progress.visionBased.processing;
+      const completedCount = progress.completed;
       
-      // Update file-level progress
-      if (progress.currentFile && onProgress) {
+      console.log(`📊 Progress: ${completedCount}/${progress.total} completed, ${inProgressCount} in progress`);
+      console.log(`   Text: ${progress.textBased.completed}/${progress.textBased.total}, Vision: ${progress.visionBased.completed}/${progress.visionBased.total}`);
+      
+      // Send both the batch info and status
+      const batchInfo = `Text: ${progress.textBased.completed}/${progress.textBased.total} | Vision: ${progress.visionBased.completed}/${progress.visionBased.total}`;
+      
+      // Report file-level status
+      if (progress.currentFile) {
         if (progress.status === 'processing') {
+          console.log(`🔄 Processing: ${progress.currentFile}`);
           onProgress(
-            progress.completed,
+            completedCount,
             progress.total,
-            '',
+            batchInfo,
             `processing ${progress.currentFile}`
           );
-        } else if (progress.completed > 0) {
+        } else if (completedCount > 0 && progress.status === 'completed') {
+          console.log(`✅ Completed: ${progress.currentFile} (${completedCount}/${progress.total})`);
           onProgress(
-            progress.completed,
+            completedCount,
             progress.total,
-            '',
+            batchInfo,
             `completed ${progress.currentFile}`
           );
         }
+      } else {
+        // General status update
+        onProgress(
+          completedCount,
+          progress.total,
+          batchInfo,
+          progress.status
+        );
       }
     }
   );

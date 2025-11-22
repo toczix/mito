@@ -60,7 +60,6 @@ export async function processInParallel(
   const failures: Array<{ fileName: string; error: string }> = [];
 
   const total = queue.textBased.length + queue.visionBased.length;
-  let completed = 0;
 
   const progress: ProcessingProgress = {
     total,
@@ -96,11 +95,19 @@ export async function processInParallel(
       while (active.size < limit && queue.length > 0) {
         const file = queue.shift()!;
         
-        const task = (async () => {
+        let taskPromise: Promise<void>;
+        const task = async () => {
           try {
             progress.currentFile = file.fileName;
+            progress.status = 'processing';
             
             console.log(`🔄 [${type}] Processing: ${file.fileName}`);
+            
+            // Notify UI that we started this file
+            if (onProgress) {
+              onProgress({ ...progress });
+            }
+            
             const result = await processorFn(file);
             results.push(result);
             console.log(`✅ [${type}] Completed: ${file.fileName}`);
@@ -109,14 +116,15 @@ export async function processInParallel(
             console.error(`❌ [${type}] Failed: ${file.fileName}`, errorMsg);
             failures.push({ fileName: file.fileName, error: errorMsg });
           } finally {
-            active.delete(task); // Remove from active set when done
+            active.delete(taskPromise); // Remove from active set when done
             updateProgress(type, 1, active.size);
           }
-        })();
+        };
 
-        active.add(task);
-        // Update progress after adding to show correct in-flight count
-        updateProgress(type, 0, active.size);
+        taskPromise = task();
+        active.add(taskPromise);
+        // Don't call updateProgress here - we'll do it inside the task
+        // This prevents double updates
       }
 
       // Wait for at least one to complete
