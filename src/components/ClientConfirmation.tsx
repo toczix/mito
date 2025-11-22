@@ -104,7 +104,13 @@ export function ClientConfirmation({
             <Button
               variant={useExisting ? 'default' : 'outline'}
               size="sm"
-              onClick={() => setUseExisting(true)}
+              onClick={() => {
+                setUseExisting(true);
+                // Auto-proceed if data is valid
+                if (editedInfo.name && editedInfo.gender) {
+                  handleConfirm();
+                }
+              }}
             >
               Yes, Use Existing
             </Button>
