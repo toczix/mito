@@ -36,11 +36,28 @@ function App() {
         return;
       }
       
-      // Supabase will automatically detect and handle magic link sessions
-      // because detectSessionInUrl: true is enabled
+      // Check if we have a magic link code in the URL
+      const urlParams = new URLSearchParams(window.location.search);
+      const hasAuthCode = urlParams.has('code');
+      
+      if (hasAuthCode) {
+        console.log('🔐 Magic link detected - waiting for automatic session detection...');
+        // Don't manually check session - let Supabase's auto-detection handle it
+        // onAuthStateChange will fire when the session is ready
+        // Set a 10-second timeout for auto-detection
+        setTimeout(() => {
+          console.warn('⏰ Magic link auto-detection timed out after 10s');
+          setLoading(false);
+          setSession(null);
+          // Clear the code from URL to prevent repeated attempts
+          window.history.replaceState(null, '', window.location.pathname);
+        }, 10000);
+        return; // Don't call getSession - wait for auth state change
+      }
 
+      // No auth code - check for existing session normally
       try {
-        console.log('🔍 Checking for session...');
+        console.log('🔍 Checking for existing session...');
         const startTime = Date.now();
         
         // Race between session check and 3-second timeout
@@ -80,8 +97,18 @@ function App() {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log('Auth state changed:', event, session ? 'session exists' : 'no session');
+      console.log('🔄 Auth state changed:', event, session ? 'session exists' : 'no session');
+      
+      // Update session state
       setSession(session);
+      
+      // If we were waiting for magic link detection, stop loading
+      if (event === 'SIGNED_IN' && session) {
+        console.log('✅ Magic link session established');
+        setLoading(false);
+        // Clear code from URL
+        window.history.replaceState(null, '', window.location.pathname);
+      }
 
       // Log authentication events
       try {
