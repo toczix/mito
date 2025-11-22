@@ -251,7 +251,16 @@ function normalizeUnit(unit: string): string {
     .replace(/×10\^3/gi, '×10³')
     .replace(/×10\^12/gi, '×10¹²')
     .replace(/K\/uL/gi, 'K/µL')
-    .replace(/M\/uL/gi, 'M/µL');
+    .replace(/M\/uL/gi, 'M/µL')
+    // Normalize "Mio./μL" and similar to "×10¹²/L" (millions per microliter = 10^12/L)
+    .replace(/Mio\.?\/[μu]L/gi, '×10¹²/L')
+    .replace(/mio\.?\/[μu]L/gi, '×10³/µL')  // lowercase mio might be thousands
+    .replace(/Mil\.?\/[μu]L/gi, '×10¹²/L')
+    // Normalize scientific notation formats
+    .replace(/\bE\+?12\b/gi, '×10¹²')
+    .replace(/\bE\+?9\b/gi, '×10⁹')
+    .replace(/\bE\+?6\b/gi, '×10⁶')
+    .replace(/\bE\+?3\b/gi, '×10³');
   
   // Normalize µIU/mL to mIU/L (they are equivalent: 1 µIU/mL = 1 mIU/L)
   normalized = normalized.replace(/µIU\/mL/gi, 'mIU/L');

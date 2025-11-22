@@ -7,6 +7,14 @@ A React-based web application that uses Claude AI to automatically analyze clini
 **Last Updated**: November 22, 2025
 
 ## Recent Changes
+- **November 22, 2025**: Unit Normalization Fix
+  - Fixed biomarker unit inconsistencies (e.g., "Mio./μL" → "×10¹²/L", "%" → "g/L" for Albumin)
+  - Added comprehensive unit normalization in biomarker-normalizer.ts
+  - Biomarker-specific unit validation (WBC differentials must be absolute counts, not %)
+  - Units now match reference ranges consistently
+- **November 22, 2025**: Logout Fix
+  - Removed audit logging from authentication flow (was hanging on logout)
+  - Logout now works instantly without hanging
 - **November 22, 2025**: Magic Link Authentication - FULLY WORKING
   - Simplified to official Supabase pattern (removed all custom timeout/detection logic)
   - Fixed logout 403 errors by logging audit trail BEFORE signOut() (while session valid)
