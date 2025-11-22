@@ -51,4 +51,4 @@ publicDir = "dist"
 [userenv.shared]
 VITE_SUPABASE_URL = "https://dfgadsjqofgkrclpwgkf.supabase.co"
 VITE_SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRmZ2Fkc2pxb2Zna3JjbHB3Z2tmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjA1MDE5ODksImV4cCI6MjA3NjA3Nzk4OX0.uR6S_6RyAyfZqPFF3ZU6YNcEEYCZQ3o0gS1KltsfWHA"
-VITE_AUTH_DISABLED = "false"
+VITE_AUTH_DISABLED = "true"
