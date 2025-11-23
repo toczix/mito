@@ -649,15 +649,18 @@ export function HomePage() {
     setState('upload');
   };
 
+  // Check if email verification is required
+  const requiresVerification = isSupabaseEnabled && user && !user.email_confirmed_at;
+
   return (
     <div className="space-y-4">
       {/* Email Verification Banner */}
-      {isSupabaseEnabled && user && !user.email_confirmed_at && user.email && (
+      {requiresVerification && user.email && (
         <VerificationBanner userEmail={user.email} />
       )}
 
       {/* Hero Section */}
-      {state === 'upload' && (
+      {state === 'upload' && !requiresVerification && (
         <div className="text-center max-w-3xl mx-auto">
           <h2 className="text-xl font-bold mb-2">
             Automated Biomarker Analysis
@@ -698,7 +701,7 @@ export function HomePage() {
       )}
 
       {/* PDF Upload */}
-      {state === 'upload' && (
+      {state === 'upload' && !requiresVerification && (
         <PdfUploader
           onFilesSelected={handleFilesSelected}
           onAnalyze={handleAnalyze}
