@@ -33,7 +33,21 @@ export function HomePage() {
   // Get current user for email verification check
   useEffect(() => {
     if (isSupabaseEnabled) {
-      AuthService.getCurrentUser().then(setUser).catch(() => setUser(null));
+      AuthService.getCurrentUser()
+        .then(setUser)
+        .catch(() => {
+          // If no user session, check if there's a pending verification
+          const pendingEmail = localStorage.getItem('pendingVerificationEmail');
+          if (pendingEmail) {
+            // Create a mock user object for verification banner
+            setUser({
+              email: pendingEmail,
+              email_confirmed_at: null,
+            } as AuthUser);
+          } else {
+            setUser(null);
+          }
+        });
     }
   }, []);
   

@@ -32,10 +32,14 @@ export class AuthService {
           role,
           invitation_code: invitationCode,
         },
+        emailRedirectTo: `${window.location.origin}/`,
       },
     });
 
     if (error) throw error;
+    
+    // If session was created, user can access dashboard immediately
+    // If email confirmation is required, user will need to verify first
     return data;
   }
 

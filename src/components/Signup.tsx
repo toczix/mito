@@ -35,7 +35,13 @@ export function Signup({ onSignup, onSwitchToLogin }: SignupProps) {
     setIsLoading(true);
 
     try {
-      await AuthService.signUp(email, password, fullName, 'practitioner');
+      const { session, user } = await AuthService.signUp(email, password, fullName, 'practitioner');
+      
+      // Store pending verification info in localStorage if no session created yet
+      if (!session && user) {
+        localStorage.setItem('pendingVerificationEmail', user.email || email);
+      }
+      
       toast.success('Account created successfully! Welcome to Mito.');
       onSignup();
     } catch (error: any) {
