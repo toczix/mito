@@ -3,10 +3,16 @@
 ## Overview
 A React-based web application that uses Claude AI to automatically analyze clinical pathology lab reports and compare biomarker values against optimal reference ranges. The app supports multilingual processing, multiple file formats (PDF, DOCX, images), and optional Supabase integration for client management.
 
-**Current State**: 55 biomarkers tracked (added Transferrin), parallel processing for fast analysis
-**Last Updated**: November 22, 2025
+**Current State**: 55 biomarkers tracked (added Transferrin), parallel processing for fast analysis, permanent dark mode
+**Last Updated**: November 23, 2025
 
 ## Recent Changes
+- **November 23, 2025**: Permanent Dark Mode Theme
+  - Pure black background (#000000) for OLED-friendly design
+  - High contrast white text for readability
+  - Blue accent colors for interactive elements
+  - Dark cards and components for consistent aesthetic
+  - Removed light mode - app is permanently dark themed
 - **November 23, 2025**: Email/Password Authentication Implemented
   - Replaced magic link authentication with email/password login
   - Added role-based authentication (practitioner, admin, client)
