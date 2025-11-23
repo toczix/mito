@@ -10,15 +10,13 @@ import { AuthService } from '../lib/auth-service';
 interface SignupProps {
   onSignup: () => void;
   onSwitchToLogin: () => void;
-  onSwitchToRequestInvite: () => void;
 }
 
-export function Signup({ onSignup, onSwitchToLogin, onSwitchToRequestInvite }: SignupProps) {
+export function Signup({ onSignup, onSwitchToLogin }: SignupProps) {
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  const [invitationCode, setInvitationCode] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -37,8 +35,8 @@ export function Signup({ onSignup, onSwitchToLogin, onSwitchToRequestInvite }: S
     setIsLoading(true);
 
     try {
-      await AuthService.signUp(email, password, fullName, 'practitioner', invitationCode || undefined);
-      toast.success('Account created! Please check your email to verify your account.');
+      await AuthService.signUp(email, password, fullName, 'practitioner');
+      toast.success('Account created successfully! Welcome to Mito.');
       onSignup();
     } catch (error: any) {
       toast.error(error.message || 'Failed to create account. Please try again.');
@@ -160,39 +158,9 @@ export function Signup({ onSignup, onSwitchToLogin, onSwitchToRequestInvite }: S
             </motion.div>
 
             <motion.div
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: 0.6 }}
-            >
-              <Label htmlFor="invitationCode" className="text-xs">
-                Invitation Code <span className="text-muted-foreground">(Optional)</span>
-              </Label>
-              <div className="relative mt-1">
-                <Input
-                  id="invitationCode"
-                  type="text"
-                  placeholder="Enter code if you have one"
-                  value={invitationCode}
-                  onChange={(e) => setInvitationCode(e.target.value)}
-                  className="h-9 rounded-lg text-xs"
-                />
-              </div>
-              <p className="text-[10px] text-muted-foreground mt-1">
-                Don't have a code?{' '}
-                <button
-                  type="button"
-                  className="text-primary hover:underline"
-                  onClick={onSwitchToRequestInvite}
-                >
-                  Request one here
-                </button>
-              </p>
-            </motion.div>
-
-            <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              transition={{ delay: 0.65 }}
+              transition={{ delay: 0.6 }}
               className="pt-1"
             >
               <Button
@@ -216,7 +184,7 @@ export function Signup({ onSignup, onSwitchToLogin, onSwitchToRequestInvite }: S
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              transition={{ delay: 0.7 }}
+              transition={{ delay: 0.65 }}
               className="text-center pt-1"
             >
               <div className="text-[10px] text-muted-foreground">

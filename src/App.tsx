@@ -10,7 +10,6 @@ import { PractitionerLogin } from '@/components/PractitionerLogin';
 import { ClientLogin } from '@/components/ClientLogin';
 import { Signup } from '@/components/Signup';
 import { ForgotPassword } from '@/components/ForgotPassword';
-import { RequestInvite } from '@/components/RequestInvite';
 import { isAuthDisabled } from '@/lib/supabase';
 import { AuthService, type AuthUser } from '@/lib/auth-service';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
@@ -58,7 +57,6 @@ function SignupWrapper() {
   return <Signup 
     onSignup={() => {}} 
     onSwitchToLogin={() => navigate('/login')} 
-    onSwitchToRequestInvite={() => navigate('/request-invite')} 
   />;
 }
 
@@ -67,10 +65,6 @@ function ForgotPasswordWrapper() {
   return <ForgotPassword onBackToLogin={() => navigate('/login')} />;
 }
 
-function RequestInviteWrapper() {
-  const navigate = useNavigate();
-  return <RequestInvite onBackToSignup={() => navigate('/signup')} onBackToLogin={() => navigate('/login')} />;
-}
 
 function App() {
   const location = useLocation();
@@ -146,7 +140,6 @@ function App() {
           <Route path="/login/client" element={<ClientLoginWrapper />} />
           <Route path="/signup" element={<SignupWrapper />} />
           <Route path="/forgot-password" element={<ForgotPasswordWrapper />} />
-          <Route path="/request-invite" element={<RequestInviteWrapper />} />
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
         <Toaster />
