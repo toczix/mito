@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Routes, Route, NavLink, useLocation } from 'react-router-dom';
+import { Routes, Route, NavLink, useLocation, useNavigate, Navigate } from 'react-router-dom';
 import { HomePage } from '@/pages/HomePage';
 import { ClientsPage } from '@/pages/ClientsPage';
 import { BenchmarksPage } from '@/pages/BenchmarksPage';
@@ -17,16 +17,72 @@ import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { Activity, FileText, Users, Settings as SettingsIcon, LogOut, Loader2 } from 'lucide-react';
 import { Toaster } from 'sonner';
 
+// Wrapper components that call useNavigate themselves (inside Router context)
+// Note: onLogin/onSignup handlers are empty - navigation happens via useEffect when user state updates
+function LoginWrapper() {
+  const navigate = useNavigate();
+  return <Login 
+    onLogin={() => {}} 
+    onSwitchToSignup={() => navigate('/signup')} 
+    onSwitchToForgotPassword={() => navigate('/forgot-password')} 
+  />;
+}
+
+function AdminLoginWrapper() {
+  const navigate = useNavigate();
+  return <AdminLogin 
+    onLogin={() => {}} 
+    onSwitchToForgotPassword={() => navigate('/forgot-password')} 
+  />;
+}
+
+function PractitionerLoginWrapper() {
+  const navigate = useNavigate();
+  return <PractitionerLogin 
+    onLogin={() => {}} 
+    onSwitchToSignup={() => navigate('/signup')} 
+    onSwitchToForgotPassword={() => navigate('/forgot-password')} 
+  />;
+}
+
+function ClientLoginWrapper() {
+  const navigate = useNavigate();
+  return <ClientLogin 
+    onLogin={() => {}} 
+    onSwitchToForgotPassword={() => navigate('/forgot-password')} 
+  />;
+}
+
+function SignupWrapper() {
+  const navigate = useNavigate();
+  return <Signup 
+    onSignup={() => {}} 
+    onSwitchToLogin={() => navigate('/login')} 
+    onSwitchToRequestInvite={() => navigate('/request-invite')} 
+  />;
+}
+
+function ForgotPasswordWrapper() {
+  const navigate = useNavigate();
+  return <ForgotPassword onBackToLogin={() => navigate('/login')} />;
+}
+
+function RequestInviteWrapper() {
+  const navigate = useNavigate();
+  return <RequestInvite onBackToSignup={() => navigate('/signup')} onBackToLogin={() => navigate('/login')} />;
+}
+
 function App() {
   const location = useLocation();
+  const navigate = useNavigate();
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Skip auth check if disabled
+    // Skip auth check if disabled - return early before calling AuthService
     if (isAuthDisabled) {
       setLoading(false);
-      return;
+      return; // Exit effect immediately - don't call AuthService
     }
 
     // Check for existing session
@@ -41,7 +97,7 @@ function App() {
         setLoading(false);
       });
 
-    // Listen for auth changes
+    // Listen for auth changes (don't navigate here - let separate effect handle it)
     const { data: { subscription } } = AuthService.onAuthStateChange((authUser) => {
       setUser(authUser);
     });
@@ -49,11 +105,19 @@ function App() {
     return () => subscription.unsubscribe();
   }, []);
 
+  // Separate effect to navigate when user becomes authenticated
+  useEffect(() => {
+    // Only navigate if auth is enabled, not loading, and user just became authenticated
+    if (!isAuthDisabled && !loading && user && location.pathname.startsWith('/login')) {
+      navigate('/', { replace: true });
+    }
+  }, [user, loading, location.pathname, navigate]);
+
   const handleLogout = async () => {
     try {
       await AuthService.signOut();
       setUser(null);
-      window.location.href = '/login';
+      navigate('/login');
     } catch (error) {
       console.error('Logout error:', error);
     }
@@ -72,32 +136,22 @@ function App() {
   }
 
   // Show authentication views if not logged in (unless auth is disabled)
-  const isAuthPath = location.pathname.startsWith('/login') || 
-                     location.pathname.startsWith('/signup') || 
-                     location.pathname.startsWith('/forgot-password') ||
-                     location.pathname.startsWith('/request-invite');
-
-  if (!isAuthDisabled && !user && isAuthPath) {
+  if (!isAuthDisabled && !user) {
     return (
       <ErrorBoundary>
         <Routes>
-          <Route path="/login" element={<Login onLogin={() => window.location.href = '/'} onSwitchToSignup={() => window.location.href = '/signup'} onSwitchToForgotPassword={() => window.location.href = '/forgot-password'} />} />
-          <Route path="/login/admin" element={<AdminLogin onLogin={() => window.location.href = '/'} onSwitchToForgotPassword={() => window.location.href = '/forgot-password'} />} />
-          <Route path="/login/practitioner" element={<PractitionerLogin onLogin={() => window.location.href = '/'} onSwitchToSignup={() => window.location.href = '/signup'} onSwitchToForgotPassword={() => window.location.href = '/forgot-password'} />} />
-          <Route path="/login/client" element={<ClientLogin onLogin={() => window.location.href = '/'} onSwitchToForgotPassword={() => window.location.href = '/forgot-password'} />} />
-          <Route path="/signup" element={<Signup onSignup={() => window.location.href = '/'} onSwitchToLogin={() => window.location.href = '/login'} onSwitchToRequestInvite={() => window.location.href = '/request-invite'} />} />
-          <Route path="/forgot-password" element={<ForgotPassword onBackToLogin={() => window.location.href = '/login'} />} />
-          <Route path="/request-invite" element={<RequestInvite onBackToSignup={() => window.location.href = '/signup'} onBackToLogin={() => window.location.href = '/login'} />} />
+          <Route path="/login" element={<LoginWrapper />} />
+          <Route path="/login/admin" element={<AdminLoginWrapper />} />
+          <Route path="/login/practitioner" element={<PractitionerLoginWrapper />} />
+          <Route path="/login/client" element={<ClientLoginWrapper />} />
+          <Route path="/signup" element={<SignupWrapper />} />
+          <Route path="/forgot-password" element={<ForgotPasswordWrapper />} />
+          <Route path="/request-invite" element={<RequestInviteWrapper />} />
+          <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
         <Toaster />
       </ErrorBoundary>
     );
-  }
-
-  // Redirect to login if not authenticated and not on auth page
-  if (!isAuthDisabled && !user) {
-    window.location.href = '/login';
-    return null;
   }
 
   const navItems = [

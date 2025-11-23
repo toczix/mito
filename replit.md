@@ -7,6 +7,17 @@ A React-based web application that uses Claude AI to automatically analyze clini
 **Last Updated**: November 22, 2025
 
 ## Recent Changes
+- **November 23, 2025**: Email/Password Authentication Implemented
+  - Replaced magic link authentication with email/password login
+  - Added role-based authentication (practitioner, admin, client)
+  - Created separate login portals at /login/admin, /login/practitioner, /login/client
+  - Implemented signup flow with optional invitation codes
+  - Added password reset functionality via email
+  - Created request invitation system for new users
+  - Beautiful Motion-animated UI for all auth components
+  - Proper React Router navigation (no page reloads)
+  - Role enforcement using Supabase user_metadata
+  - Authentication can be enabled/disabled via VITE_AUTH_DISABLED env var
 - **November 22, 2025**: Transferrin Biomarker Added
   - Added Transferrin as separate biomarker (55 total biomarkers now)
   - TIBC and Transferrin tracked independently (labs report one or the other)
@@ -142,20 +153,36 @@ VITE_AUTH_DISABLED=false  # Authentication is ENABLED
 ## Usage Notes
 
 ### Authentication Setup
-✅ **Fully Configured!** The database and authentication are ready to use.
+✅ **Email/Password Authentication Configured!**
 
-To verify setup status, run:
+**Available Login Portals:**
+- General Login: `/login` (auto-detects role)
+- Admin Portal: `/login/admin` (admin users only)
+- Practitioner Portal: `/login/practitioner` (practitioner users only)
+- Client Portal: `/login/client` (client users only)
+
+**Signup & Recovery:**
+- Signup: `/signup` (with optional invitation code)
+- Password Reset: `/forgot-password`
+- Request Invite: `/request-invite`
+
+**Toggle Authentication:**
 ```bash
-npm run check-db
+# Development (disable auth for testing)
+VITE_AUTH_DISABLED=true
+
+# Production (enable auth)
+VITE_AUTH_DISABLED=false
 ```
 
 ### For Users
-1. **Login**: Enter your email, receive magic link, click to login (no password!)
-2. **API Key Setup**: Enter Claude API key in the Settings tab (synced to your account)
-3. **Upload Reports**: Drag & drop PDFs, DOCX, or images
-4. **Analyze**: Click "Analyze Reports" to extract biomarker data
-5. **Review Results**: View comprehensive biomarker table with optimal range comparisons
-6. **Client Management**: Organize clients, save analyses, track history over time
+1. **Signup**: Create account at `/signup` with email + password
+2. **Login**: Use role-specific portal or general `/login`
+3. **API Key Setup**: Enter Claude API key in the Settings tab (synced to your account)
+4. **Upload Reports**: Drag & drop PDFs, DOCX, or images
+5. **Analyze**: Click "Analyze Reports" to extract biomarker data
+6. **Review Results**: View comprehensive biomarker table with optimal range comparisons
+7. **Client Management**: Organize clients, save analyses, track history over time
 
 ### Cost Optimization
 - Uses Claude Haiku 4.5 (cheapest model)
