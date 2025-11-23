@@ -12,23 +12,19 @@ import { Signup } from '@/components/Signup';
 import { ForgotPassword } from '@/components/ForgotPassword';
 import { RequestInvite } from '@/components/RequestInvite';
 import { isAuthDisabled } from '@/lib/supabase';
-import { AuthService, type AuthUser, type UserRole } from '@/lib/auth-service';
+import { AuthService, type AuthUser } from '@/lib/auth-service';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { Activity, FileText, Users, Settings as SettingsIcon, LogOut, Loader2 } from 'lucide-react';
 import { Toaster } from 'sonner';
 
-type ViewType = 'login' | 'admin-login' | 'practitioner-login' | 'client-login' | 'signup' | 'forgot-password' | 'request-invite' | 'dashboard';
-
 function App() {
   const location = useLocation();
-  const [currentView, setCurrentView] = useState<ViewType>('login');
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     // Skip auth check if disabled
     if (isAuthDisabled) {
-      setCurrentView('dashboard');
       setLoading(false);
       return;
     }
@@ -38,7 +34,6 @@ function App() {
       .then((currentUser) => {
         if (currentUser) {
           setUser(currentUser);
-          setCurrentView('dashboard');
         }
         setLoading(false);
       })
@@ -49,32 +44,19 @@ function App() {
     // Listen for auth changes
     const { data: { subscription } } = AuthService.onAuthStateChange((authUser) => {
       setUser(authUser);
-      if (authUser) {
-        setCurrentView('dashboard');
-      } else {
-        setCurrentView('login');
-      }
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
-  const handleLogin = (_role: UserRole = 'practitioner') => {
-    setCurrentView('dashboard');
-  };
-
   const handleLogout = async () => {
     try {
       await AuthService.signOut();
       setUser(null);
-      setCurrentView('login');
+      window.location.href = '/login';
     } catch (error) {
       console.error('Logout error:', error);
     }
-  };
-
-  const navigate = (view: ViewType) => {
-    setCurrentView(view);
   };
 
   // Show loading spinner while checking auth
@@ -90,54 +72,32 @@ function App() {
   }
 
   // Show authentication views if not logged in (unless auth is disabled)
-  if (!isAuthDisabled && currentView !== 'dashboard') {
+  const isAuthPath = location.pathname.startsWith('/login') || 
+                     location.pathname.startsWith('/signup') || 
+                     location.pathname.startsWith('/forgot-password') ||
+                     location.pathname.startsWith('/request-invite');
+
+  if (!isAuthDisabled && !user && isAuthPath) {
     return (
-      <>
-        {currentView === 'login' && (
-          <Login 
-            onLogin={handleLogin}
-            onSwitchToSignup={() => navigate('signup')}
-            onSwitchToForgotPassword={() => navigate('forgot-password')}
-          />
-        )}
-        {currentView === 'admin-login' && (
-          <AdminLogin 
-            onLogin={() => handleLogin('admin')}
-            onSwitchToForgotPassword={() => navigate('forgot-password')}
-          />
-        )}
-        {currentView === 'practitioner-login' && (
-          <PractitionerLogin 
-            onLogin={() => handleLogin('practitioner')}
-            onSwitchToSignup={() => navigate('signup')}
-            onSwitchToForgotPassword={() => navigate('forgot-password')}
-          />
-        )}
-        {currentView === 'client-login' && (
-          <ClientLogin 
-            onLogin={() => handleLogin('client')}
-            onSwitchToForgotPassword={() => navigate('forgot-password')}
-          />
-        )}
-        {currentView === 'signup' && (
-          <Signup 
-            onSignup={() => handleLogin('practitioner')}
-            onSwitchToLogin={() => navigate('login')}
-            onSwitchToRequestInvite={() => navigate('request-invite')}
-          />
-        )}
-        {currentView === 'forgot-password' && (
-          <ForgotPassword onBackToLogin={() => navigate('login')} />
-        )}
-        {currentView === 'request-invite' && (
-          <RequestInvite 
-            onBackToSignup={() => navigate('signup')}
-            onBackToLogin={() => navigate('login')}
-          />
-        )}
+      <ErrorBoundary>
+        <Routes>
+          <Route path="/login" element={<Login onLogin={() => window.location.href = '/'} onSwitchToSignup={() => window.location.href = '/signup'} onSwitchToForgotPassword={() => window.location.href = '/forgot-password'} />} />
+          <Route path="/login/admin" element={<AdminLogin onLogin={() => window.location.href = '/'} onSwitchToForgotPassword={() => window.location.href = '/forgot-password'} />} />
+          <Route path="/login/practitioner" element={<PractitionerLogin onLogin={() => window.location.href = '/'} onSwitchToSignup={() => window.location.href = '/signup'} onSwitchToForgotPassword={() => window.location.href = '/forgot-password'} />} />
+          <Route path="/login/client" element={<ClientLogin onLogin={() => window.location.href = '/'} onSwitchToForgotPassword={() => window.location.href = '/forgot-password'} />} />
+          <Route path="/signup" element={<Signup onSignup={() => window.location.href = '/'} onSwitchToLogin={() => window.location.href = '/login'} onSwitchToRequestInvite={() => window.location.href = '/request-invite'} />} />
+          <Route path="/forgot-password" element={<ForgotPassword onBackToLogin={() => window.location.href = '/login'} />} />
+          <Route path="/request-invite" element={<RequestInvite onBackToSignup={() => window.location.href = '/signup'} onBackToLogin={() => window.location.href = '/login'} />} />
+        </Routes>
         <Toaster />
-      </>
+      </ErrorBoundary>
     );
+  }
+
+  // Redirect to login if not authenticated and not on auth page
+  if (!isAuthDisabled && !user) {
+    window.location.href = '/login';
+    return null;
   }
 
   const navItems = [
