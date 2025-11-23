@@ -37,13 +37,20 @@ export function Signup({ onSignup, onSwitchToLogin }: SignupProps) {
     try {
       const { session, user } = await AuthService.signUp(email, password, fullName, 'practitioner');
       
-      // Store pending verification info in localStorage if no session created yet
       if (!session && user) {
-        localStorage.setItem('pendingVerificationEmail', user.email || email);
+        // Supabase requires email confirmation - user needs to check email before logging in
+        toast.success('Account created! Please check your email to verify your account, then come back and log in.');
+        // Redirect to login page instead
+        setTimeout(() => {
+          onSwitchToLogin();
+        }, 2000);
+      } else if (session && user) {
+        // Session created immediately - user can access dashboard
+        toast.success('Account created successfully! Welcome to Mito.');
+        onSignup();
+      } else {
+        throw new Error('Unexpected signup response');
       }
-      
-      toast.success('Account created successfully! Welcome to Mito.');
-      onSignup();
     } catch (error: any) {
       toast.error(error.message || 'Failed to create account. Please try again.');
     } finally {

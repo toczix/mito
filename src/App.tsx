@@ -133,12 +133,8 @@ function App() {
     );
   }
 
-  // Check if user has pending verification (just signed up but no session yet)
-  const pendingEmail = !user && typeof window !== 'undefined' ? localStorage.getItem('pendingVerificationEmail') : null;
-  const showDashboard = user || (pendingEmail && location.pathname === '/');
-
-  // Show authentication views if not logged in (unless auth is disabled or pending verification)
-  if (!isAuthDisabled && !showDashboard) {
+  // Show authentication views if not logged in (unless auth is disabled)
+  if (!isAuthDisabled && !user) {
     return (
       <ErrorBoundary>
         <Routes>
@@ -153,11 +149,6 @@ function App() {
         <Toaster />
       </ErrorBoundary>
     );
-  }
-  
-  // Clear pending email if user successfully logs in
-  if (user && pendingEmail) {
-    localStorage.removeItem('pendingVerificationEmail');
   }
 
   const navItems = [

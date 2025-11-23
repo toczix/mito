@@ -35,19 +35,7 @@ export function HomePage() {
     if (isSupabaseEnabled) {
       AuthService.getCurrentUser()
         .then(setUser)
-        .catch(() => {
-          // If no user session, check if there's a pending verification
-          const pendingEmail = localStorage.getItem('pendingVerificationEmail');
-          if (pendingEmail) {
-            // Create a mock user object for verification banner
-            setUser({
-              email: pendingEmail,
-              email_confirmed_at: null,
-            } as AuthUser);
-          } else {
-            setUser(null);
-          }
-        });
+        .catch(() => setUser(null));
     }
   }, []);
   
@@ -665,12 +653,13 @@ export function HomePage() {
 
   // Check if email verification is required
   const requiresVerification = isSupabaseEnabled && user && !user.email_confirmed_at;
+  const displayEmail = user?.email || '';
 
   return (
     <div className="space-y-4">
       {/* Email Verification Banner */}
-      {requiresVerification && user.email && (
-        <VerificationBanner userEmail={user.email} />
+      {requiresVerification && displayEmail && (
+        <VerificationBanner userEmail={displayEmail} />
       )}
 
       {/* Hero Section */}

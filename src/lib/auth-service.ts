@@ -20,6 +20,9 @@ export class AuthService {
 
   /**
    * Sign up with email and password
+   * Note: Supabase will create a session immediately if email confirmation is disabled.
+   * If email confirmation is enabled in Supabase settings, session will only be created
+   * after the user clicks the verification link in their email.
    */
   static async signUp(email: string, password: string, fullName?: string, role: UserRole = 'practitioner', invitationCode?: string) {
     const client = this.ensureSupabase();
@@ -37,9 +40,6 @@ export class AuthService {
     });
 
     if (error) throw error;
-    
-    // If session was created, user can access dashboard immediately
-    // If email confirmation is required, user will need to verify first
     return data;
   }
 
