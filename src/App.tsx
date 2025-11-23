@@ -4,12 +4,18 @@ import { HomePage } from '@/pages/HomePage';
 import { ClientsPage } from '@/pages/ClientsPage';
 import { BenchmarksPage } from '@/pages/BenchmarksPage';
 import { SettingsPage } from '@/pages/SettingsPage';
-import { LoginPage } from '@/pages/LoginPage';
-import { supabase, isAuthDisabled } from '@/lib/supabase';
+import { Login } from '@/components/Login';
+import { AdminLogin } from '@/components/AdminLogin';
+import { PractitionerLogin } from '@/components/PractitionerLogin';
+import { ClientLogin } from '@/components/ClientLogin';
+import { Signup } from '@/components/Signup';
+import { ForgotPassword } from '@/components/ForgotPassword';
+import { RequestInvite } from '@/components/RequestInvite';
+import { isAuthDisabled } from '@/lib/supabase';
+import { AuthService, type AuthUser, type UserRole } from '@/lib/auth-service';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
-import { handleAuthError } from '@/lib/error-handler';
 import { Activity, FileText, Users, Settings as SettingsIcon, LogOut, Loader2 } from 'lucide-react';
-import type { Session } from '@supabase/supabase-js';
+import { Toaster } from '@/components/ui/sonner';
 
 function App() {
   const location = useLocation();

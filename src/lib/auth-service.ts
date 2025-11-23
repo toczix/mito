@@ -1,4 +1,4 @@
-import { supabase } from './supabase';
+import { supabase, isSupabaseEnabled } from './supabase';
 import type { User } from '@supabase/supabase-js';
 
 export type UserRole = 'practitioner' | 'admin' | 'client';
@@ -9,10 +9,21 @@ export interface AuthUser extends User {
 
 export class AuthService {
   /**
+   * Ensure Supabase is configured
+   */
+  private static ensureSupabase() {
+    if (!isSupabaseEnabled || !supabase) {
+      throw new Error('Supabase is not configured. Please check your environment variables.');
+    }
+    return supabase;
+  }
+
+  /**
    * Sign up with email and password
    */
   static async signUp(email: string, password: string, fullName?: string, role: UserRole = 'practitioner', invitationCode?: string) {
-    const { data, error } = await supabase.auth.signUp({
+    const client = this.ensureSupabase();
+    const { data, error } = await client.auth.signUp({
       email,
       password,
       options: {
@@ -32,7 +43,8 @@ export class AuthService {
    * Sign in with email and password
    */
   static async signIn(email: string, password: string) {
-    const { data, error } = await supabase.auth.signInWithPassword({
+    const client = this.ensureSupabase();
+    const { data, error } = await client.auth.signInWithPassword({
       email,
       password,
     });
@@ -45,7 +57,8 @@ export class AuthService {
    * Sign in with role validation (for role-specific login pages)
    */
   static async signInWithRole(email: string, password: string, expectedRole: UserRole) {
-    const { data, error } = await supabase.auth.signInWithPassword({
+    const client = this.ensureSupabase();
+    const { data, error } = await client.auth.signInWithPassword({
       email,
       password,
     });
@@ -68,7 +81,8 @@ export class AuthService {
    * Sign out
    */
   static async signOut() {
-    const { error } = await supabase.auth.signOut();
+    const client = this.ensureSupabase();
+    const { error } = await client.auth.signOut();
     if (error) throw error;
   }
 
@@ -76,7 +90,8 @@ export class AuthService {
    * Get current user with role
    */
   static async getCurrentUser(): Promise<AuthUser | null> {
-    const { data: { user } } = await supabase.auth.getUser();
+    const client = this.ensureSupabase();
+    const { data: { user } } = await client.auth.getUser();
     if (!user) return null;
 
     return {
@@ -97,7 +112,8 @@ export class AuthService {
    * Request password reset
    */
   static async resetPassword(email: string) {
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    const client = this.ensureSupabase();
+    const { error } = await client.auth.resetPasswordForEmail(email, {
       redirectTo: `${window.location.origin}/reset-password`,
     });
 
@@ -108,7 +124,8 @@ export class AuthService {
    * Update password
    */
   static async updatePassword(newPassword: string) {
-    const { error } = await supabase.auth.updateUser({
+    const client = this.ensureSupabase();
+    const { error } = await client.auth.updateUser({
       password: newPassword,
     });
 
@@ -119,7 +136,8 @@ export class AuthService {
    * Social login (Google)
    */
   static async signInWithGoogle() {
-    const { error } = await supabase.auth.signInWithOAuth({
+    const client = this.ensureSupabase();
+    const { error } = await client.auth.signInWithOAuth({
       provider: 'google',
       options: {
         redirectTo: `${window.location.origin}/dashboard`,
@@ -133,7 +151,8 @@ export class AuthService {
    * Social login (Apple)
    */
   static async signInWithApple() {
-    const { error } = await supabase.auth.signInWithOAuth({
+    const client = this.ensureSupabase();
+    const { error } = await client.auth.signInWithOAuth({
       provider: 'apple',
       options: {
         redirectTo: `${window.location.origin}/dashboard`,
@@ -147,7 +166,8 @@ export class AuthService {
    * Listen to auth state changes
    */
   static onAuthStateChange(callback: (user: AuthUser | null) => void) {
-    return supabase.auth.onAuthStateChange((_event, session) => {
+    const client = this.ensureSupabase();
+    return client.auth.onAuthStateChange((_event, session) => {
       const user = session?.user;
       if (user) {
         callback({
