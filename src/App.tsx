@@ -121,7 +121,8 @@ function App() {
     // Only navigate if auth is enabled, not loading, and user just became authenticated
     const isAuthPage = location.pathname.startsWith('/login') || 
                        location.pathname.startsWith('/signup') ||
-                       location.pathname.startsWith('/forgot-password');
+                       location.pathname.startsWith('/forgot-password') ||
+                       location.pathname.startsWith('/check-email');
     
     if (!isAuthDisabled && !loading && user && isAuthPage) {
       navigate('/', { replace: true });
