@@ -10,6 +10,7 @@ import { PractitionerLogin } from '@/components/PractitionerLogin';
 import { ClientLogin } from '@/components/ClientLogin';
 import { Signup } from '@/components/Signup';
 import { ForgotPassword } from '@/components/ForgotPassword';
+import { CheckEmailPending } from '@/components/CheckEmailPending';
 import { isAuthDisabled } from '@/lib/supabase';
 import { AuthService, type AuthUser } from '@/lib/auth-service';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
@@ -54,8 +55,14 @@ function ClientLoginWrapper() {
 
 function SignupWrapper() {
   const navigate = useNavigate();
+  
   return <Signup 
-    onSignup={() => navigate('/', { replace: true })} 
+    onSignup={() => {
+      // Navigate to check-email with the email in the URL
+      const emailInput = document.querySelector('input[type="email"]') as HTMLInputElement;
+      const email = emailInput?.value || '';
+      navigate(`/check-email?email=${encodeURIComponent(email)}`, { replace: true });
+    }}
     onSwitchToLogin={() => navigate('/login')} 
   />;
 }
@@ -65,6 +72,16 @@ function ForgotPasswordWrapper() {
   return <ForgotPassword onBackToLogin={() => navigate('/login')} />;
 }
 
+function CheckEmailWrapper() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const email = new URLSearchParams(location.search).get('email') || '';
+  
+  return <CheckEmailPending 
+    email={email} 
+    onBackToLogin={() => navigate('/login')} 
+  />;
+}
 
 function App() {
   const location = useLocation();
@@ -144,6 +161,7 @@ function App() {
           <Route path="/login/client" element={<ClientLoginWrapper />} />
           <Route path="/signup" element={<SignupWrapper />} />
           <Route path="/forgot-password" element={<ForgotPasswordWrapper />} />
+          <Route path="/check-email" element={<CheckEmailWrapper />} />
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
         <Toaster />
