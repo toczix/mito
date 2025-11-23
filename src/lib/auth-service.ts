@@ -133,6 +133,25 @@ export class AuthService {
   }
 
   /**
+   * Resend verification email
+   */
+  static async resendVerificationEmail() {
+    const client = this.ensureSupabase();
+    const { data: { user } } = await client.auth.getUser();
+    
+    if (!user?.email) {
+      throw new Error('No user email found');
+    }
+
+    const { error } = await client.auth.resend({
+      type: 'signup',
+      email: user.email,
+    });
+
+    if (error) throw error;
+  }
+
+  /**
    * Social login (Google)
    */
   static async signInWithGoogle() {

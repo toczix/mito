@@ -102,7 +102,11 @@ function App() {
   // Separate effect to navigate when user becomes authenticated
   useEffect(() => {
     // Only navigate if auth is enabled, not loading, and user just became authenticated
-    if (!isAuthDisabled && !loading && user && location.pathname.startsWith('/login')) {
+    const isAuthPage = location.pathname.startsWith('/login') || 
+                       location.pathname.startsWith('/signup') ||
+                       location.pathname.startsWith('/forgot-password');
+    
+    if (!isAuthDisabled && !loading && user && isAuthPage) {
       navigate('/', { replace: true });
     }
   }, [user, loading, location.pathname, navigate]);

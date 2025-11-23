@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { PdfUploader } from '@/components/PdfUploader';
 import { LoadingState, type FileProgress } from '@/components/LoadingState';
 import { AnalysisResults } from '@/components/AnalysisResults';
 import { ClientConfirmation } from '@/components/ClientConfirmation';
+import { VerificationBanner } from '@/components/VerificationBanner';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { processMultiplePdfs } from '@/lib/pdf-processor';
 import { extractBiomarkersFromPdfs, type PatientInfo, consolidatePatientInfo, type ClaudeResponseBatch } from '@/lib/claude-service';
@@ -12,10 +13,12 @@ import { matchOrCreateClient, autoCreateClient, type ClientMatchResult } from '@
 import type { AnalysisResult, ExtractedBiomarker } from '@/lib/biomarkers';
 import { AlertCircle } from 'lucide-react';
 import { isSupabaseEnabled } from '@/lib/supabase';
+import { AuthService, type AuthUser } from '@/lib/auth-service';
 
 type AppState = 'upload' | 'processing' | 'confirmation' | 'analyzing' | 'results' | 'error';
 
 export function HomePage() {
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [state, setState] = useState<AppState>('upload');
   const [selectedClientId, setSelectedClientId] = useState<string>('');
   const [selectedClientName, setSelectedClientName] = useState<string>('');
@@ -26,6 +29,13 @@ export function HomePage() {
   const [processingMessage, setProcessingMessage] = useState<string>('Processing...');
   const [processingProgress, setProcessingProgress] = useState<number>(0);
   const [fileProgress, setFileProgress] = useState<FileProgress[]>([]);
+
+  // Get current user for email verification check
+  useEffect(() => {
+    if (isSupabaseEnabled) {
+      AuthService.getCurrentUser().then(setUser).catch(() => setUser(null));
+    }
+  }, []);
   
   // Step 1: Confirmation state
   const [consolidatedPatientInfo, setConsolidatedPatientInfo] = useState<PatientInfo | null>(null);
@@ -641,6 +651,11 @@ export function HomePage() {
 
   return (
     <div className="space-y-4">
+      {/* Email Verification Banner */}
+      {isSupabaseEnabled && user && !user.email_confirmed_at && user.email && (
+        <VerificationBanner userEmail={user.email} />
+      )}
+
       {/* Hero Section */}
       {state === 'upload' && (
         <div className="text-center max-w-3xl mx-auto">
