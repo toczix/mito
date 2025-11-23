@@ -15,54 +15,66 @@ import { isAuthDisabled } from '@/lib/supabase';
 import { AuthService, type AuthUser, type UserRole } from '@/lib/auth-service';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { Activity, FileText, Users, Settings as SettingsIcon, LogOut, Loader2 } from 'lucide-react';
-import { Toaster } from '@/components/ui/sonner';
+import { Toaster } from 'sonner';
+
+type ViewType = 'login' | 'admin-login' | 'practitioner-login' | 'client-login' | 'signup' | 'forgot-password' | 'request-invite' | 'dashboard';
 
 function App() {
   const location = useLocation();
-  const [session, setSession] = useState<Session | null>(null);
+  const [currentView, setCurrentView] = useState<ViewType>('login');
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     // Skip auth check if disabled
     if (isAuthDisabled) {
+      setCurrentView('dashboard');
       setLoading(false);
       return;
     }
 
-    if (!supabase) {
-      setLoading(false);
-      return;
-    }
+    // Check for existing session
+    AuthService.getCurrentUser()
+      .then((currentUser) => {
+        if (currentUser) {
+          setUser(currentUser);
+          setCurrentView('dashboard');
+        }
+        setLoading(false);
+      })
+      .catch(() => {
+        setLoading(false);
+      });
 
-    // OFFICIAL SUPABASE PATTERN - Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setLoading(false);
-    });
-
-    // Listen for auth changes (handles magic links automatically)
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log('Auth state changed:', event, session ? 'logged in' : 'logged out');
-      setSession(session);
+    // Listen for auth changes
+    const { data: { subscription } } = AuthService.onAuthStateChange((authUser) => {
+      setUser(authUser);
+      if (authUser) {
+        setCurrentView('dashboard');
+      } else {
+        setCurrentView('login');
+      }
     });
 
     return () => subscription.unsubscribe();
   }, []);
 
+  const handleLogin = (_role: UserRole = 'practitioner') => {
+    setCurrentView('dashboard');
+  };
+
   const handleLogout = async () => {
-    if (!supabase) return;
-    
-    console.log('🚪 Logging out...');
-    
     try {
-      await supabase.auth.signOut();
-      console.log('✅ Signed out successfully');
+      await AuthService.signOut();
+      setUser(null);
+      setCurrentView('login');
     } catch (error) {
-      console.error('❌ Logout error:', error);
-      handleAuthError(error, 'sign_out');
+      console.error('Logout error:', error);
     }
+  };
+
+  const navigate = (view: ViewType) => {
+    setCurrentView(view);
   };
 
   // Show loading spinner while checking auth
@@ -77,11 +89,55 @@ function App() {
     );
   }
 
-  // Show login page if not authenticated (and Supabase is enabled)
-  const enforceAuth = supabase && !isAuthDisabled;
-
-  if (enforceAuth && !session) {
-    return <LoginPage />;
+  // Show authentication views if not logged in (unless auth is disabled)
+  if (!isAuthDisabled && currentView !== 'dashboard') {
+    return (
+      <>
+        {currentView === 'login' && (
+          <Login 
+            onLogin={handleLogin}
+            onSwitchToSignup={() => navigate('signup')}
+            onSwitchToForgotPassword={() => navigate('forgot-password')}
+          />
+        )}
+        {currentView === 'admin-login' && (
+          <AdminLogin 
+            onLogin={() => handleLogin('admin')}
+            onSwitchToForgotPassword={() => navigate('forgot-password')}
+          />
+        )}
+        {currentView === 'practitioner-login' && (
+          <PractitionerLogin 
+            onLogin={() => handleLogin('practitioner')}
+            onSwitchToSignup={() => navigate('signup')}
+            onSwitchToForgotPassword={() => navigate('forgot-password')}
+          />
+        )}
+        {currentView === 'client-login' && (
+          <ClientLogin 
+            onLogin={() => handleLogin('client')}
+            onSwitchToForgotPassword={() => navigate('forgot-password')}
+          />
+        )}
+        {currentView === 'signup' && (
+          <Signup 
+            onSignup={() => handleLogin('practitioner')}
+            onSwitchToLogin={() => navigate('login')}
+            onSwitchToRequestInvite={() => navigate('request-invite')}
+          />
+        )}
+        {currentView === 'forgot-password' && (
+          <ForgotPassword onBackToLogin={() => navigate('login')} />
+        )}
+        {currentView === 'request-invite' && (
+          <RequestInvite 
+            onBackToSignup={() => navigate('signup')}
+            onBackToLogin={() => navigate('login')}
+          />
+        )}
+        <Toaster />
+      </>
+    );
   }
 
   const navItems = [
@@ -136,11 +192,11 @@ function App() {
               </nav>
 
               {/* User Info & Logout */}
-              {session && (
+              {user && (
                 <div className="flex items-center gap-3 pl-4 border-l">
                   <div className="text-sm text-right">
                     <p className="text-muted-foreground">Signed in as</p>
-                    <p className="font-medium">{session.user.email}</p>
+                    <p className="font-medium">{user.email}</p>
                   </div>
                   <button
                     onClick={handleLogout}
@@ -178,6 +234,7 @@ function App() {
         </div>
       </footer>
       </div>
+      <Toaster />
     </ErrorBoundary>
   );
 }
