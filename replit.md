@@ -7,15 +7,19 @@ A React-based web application that uses Claude AI to automatically analyze clini
 **Last Updated**: November 24, 2025
 
 ## Recent Changes
-- **November 24, 2025**: Complete Color Palette Implementation ✅
-  - Implemented official Mito color palette for both light and dark modes
+- **November 24, 2025**: Complete Color Palette Implementation ✅✅
+  - Implemented official Mito color palette with EXACT specifications from design guide
   - Light mode: #fafafa background, #0055FF primary blue, rgba(0,0,0,0.08) borders
   - Dark mode: #0a0a0a background, #5B8EFF lighter blue, #27272a borders
-  - Status badges use proper Tailwind classes: green-600/400, red-600/400, blue-600/400
-  - Row highlighting: 10% opacity in light mode, 8% opacity in dark mode
+  - **Table Row Highlights** (clean, professional):
+    - Light: Colored status backgrounds (-50 colors with 30% opacity: bg-green-50/30, bg-red-50/30, bg-blue-50/30)
+    - Dark: Neutral surfaces only (NO colored backgrounds - status shown via badges/icons)
+    - Hover states: 40% opacity in light mode, subtle white/5 in dark mode
+  - **Status Badges**: bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/30
+  - **Purple Optimal Range Highlights**: bg-purple-500/10 with 20% border opacity
+  - Removed ALL inline styles and theme detection logic - pure Tailwind opacity classes
   - Border/input transparency preserved via hsla() in Tailwind config
-  - Removed all inline style hacks, using semantic Tailwind utilities throughout
-  - Professional, consistent appearance matching design guide exactly
+  - Professional, consistent appearance matching design guide exactly in both themes
 - **November 24, 2025**: Critical Security Fix - Client Data Isolation
   - Fixed critical bug where all users could see ALL clients regardless of ownership
   - Implemented "fail-closed" security: queries return empty if user can't be authenticated

@@ -1,0 +1,729 @@
+ANALYSIS COMPLETE PAGE - FULL CODE WITH COLOR ANNOTATIONS
+
+Here's the complete code with detailed color explanations for every section:
+
+```tsx
+import { useState, useEffect } from 'react';
+import { motion } from 'motion/react';
+import { CheckCircle, AlertTriangle, TrendingUp, TrendingDown, HelpCircle, Download, RotateCcw, FileText, Info } from 'lucide-react';
+import { Button } from './ui/button';
+import { Card } from './ui/card';
+import { Badge } from './ui/badge';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from './ui/table';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from './ui/dialog';
+import { Alert, AlertDescription } from './ui/alert';
+
+interface AnalysisResult {
+  biomarkerName: string;
+  hisValue: string;
+  unit: string;
+  optimalRange: string;
+  status: 'optimal' | 'suboptimal' | 'high' | 'low' | 'unknown';
+  testDate?: string;
+  category?: string;
+}
+
+interface AnalysisResultsProps {
+  results: AnalysisResult[];
+  onReset: () => void;
+  selectedClientName?: string;
+  documentCount?: number;
+  savedAnalysesCount?: number;
+  patientInfoDiscrepancies?: string[];
+}
+
+export function AnalysisResults({
+  results,
+  onReset,
+  selectedClientName,
+  documentCount = 1,
+  savedAnalysesCount = 0,
+  patientInfoDiscrepancies = [],
+}: AnalysisResultsProps) {
+  const [selectedBiomarker, setSelectedBiomarker] = useState<AnalysisResult | null>(null);
+  const [isReasonDialogOpen, setIsReasonDialogOpen] = useState(false);
+
+  const handleBiomarkerClick = (result: AnalysisResult) => {
+    if (['high', 'low', 'suboptimal'].includes(result.status)) {
+      setSelectedBiomarker(result);
+      setIsReasonDialogOpen(true);
+    }
+  };
+
+  // Status icon helper - returns colored icons
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'optimal':
+        // ✅ GREEN ICON - Light: #16a34a (green-600), Dark: #4ade80 (green-400)
+        return <CheckCircle className="w-4 h-4 text-green-600 dark:text-green-400" />;
+      case 'high':
+        // 🔴 RED ICON - Light: #dc2626 (red-600), Dark: #f87171 (red-400)
+        return <TrendingUp className="w-4 h-4 text-red-600 dark:text-red-400" />;
+      case 'low':
+        // 🔵 BLUE ICON - Light: #2563eb (blue-600), Dark: #60a5fa (blue-400)
+        return <TrendingDown className="w-4 h-4 text-blue-600 dark:text-blue-400" />;
+      case 'suboptimal':
+        // ⚠️ AMBER ICON - Light: #d97706 (amber-600), Dark: #fbbf24 (amber-400)
+        return <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400" />;
+      default:
+        // ❓ GRAY ICON - Light: #9ca3af (gray-400), Dark: #6b7280 (gray-500)
+        return <HelpCircle className="w-4 h-4 text-gray-400 dark:text-gray-500" />;
+    }
+  };
+
+  // Status badge helper - returns colored badges
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'optimal':
+        // ✅ GREEN BADGE
+        // Background: rgba(34, 197, 94, 0.1) - green with 10% opacity
+        // Text: #16a34a (green-600) light, #4ade80 (green-400) dark
+        // Border: rgba(34, 197, 94, 0.3) - green with 30% opacity
+        return (
+          <Badge className="bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/30 text-[10px]">
+            Optimal
+          </Badge>
+        );
+      case 'high':
+        // 🔴 RED BADGE
+        // Background: rgba(239, 68, 68, 0.1) - red with 10% opacity
+        // Text: #dc2626 (red-600) light, #f87171 (red-400) dark
+        // Border: rgba(239, 68, 68, 0.3) - red with 30% opacity
+        return (
+          <Badge className="bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/30 text-[10px]">
+            High
+          </Badge>
+        );
+      case 'low':
+        // 🔵 BLUE BADGE
+        // Background: rgba(59, 130, 246, 0.1) - blue with 10% opacity
+        // Text: #2563eb (blue-600) light, #60a5fa (blue-400) dark
+        // Border: rgba(59, 130, 246, 0.3) - blue with 30% opacity
+        return (
+          <Badge className="bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/30 text-[10px]">
+            Low
+          </Badge>
+        );
+      case 'suboptimal':
+        // ⚠️ AMBER BADGE
+        // Background: rgba(245, 158, 11, 0.1) - amber with 10% opacity
+        // Text: #d97706 (amber-600) light, #fbbf24 (amber-400) dark
+        // Border: rgba(245, 158, 11, 0.3) - amber with 30% opacity
+        return (
+          <Badge className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30 text-[10px]">
+            Suboptimal
+          </Badge>
+        );
+      default:
+        // ⚪ GRAY BADGE (N/A)
+        // Uses default outline variant
+        return <Badge variant="outline" className="text-[10px]">N/A</Badge>;
+    }
+  };
+
+  const measuredResults = results.filter(r => r.hisValue !== 'N/A');
+  const optimalCount = measuredResults.filter(r => r.status === 'optimal').length;
+  const suboptimalCount = measuredResults.filter(r => ['high', 'low', 'suboptimal'].includes(r.status)).length;
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="p-6 max-w-7xl mx-auto"
+    >
+      {/* 
+        ═══════════════════════════════════════════════════════════
+        HEADER SECTION
+        Background: transparent (inherits from page)
+        Title: text-2xl with default foreground color
+        Subtitle: text-sm with foreground/70 (70% opacity)
+        ═══════════════════════════════════════════════════════════
+      */}
+      <div className="mb-6">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            {/* 
+              TITLE
+              Light mode: #1a1a1a (--foreground)
+              Dark mode: #fafafa (--foreground)
+            */}
+            <h1 className="text-2xl mb-1">Analysis Complete</h1>
+            
+            {/* 
+              SUBTITLE/METADATA
+              Light mode: rgba(26, 26, 26, 0.7) - foreground with 70% opacity
+              Dark mode: rgba(250, 250, 250, 0.7) - foreground with 70% opacity
+            */}
+            <p className="text-sm text-foreground/70">
+              {selectedClientName && `Client: ${selectedClientName} • `}
+              {documentCount} document{documentCount !== 1 ? 's' : ''} processed
+              {savedAnalysesCount > 0 && ` • ${savedAnalysesCount} analysis saved`}
+            </p>
+          </div>
+
+          {/* 
+            ACTION BUTTONS
+            Export: Outline variant (transparent with border)
+            New Analysis: Default variant (uses primary color)
+          */}
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => {}} size="sm">
+              <Download className="w-4 h-4 mr-2" />
+              Export
+            </Button>
+            <Button onClick={onReset} size="sm">
+              <RotateCcw className="w-4 h-4 mr-2" />
+              New Analysis
+            </Button>
+          </div>
+        </div>
+
+        {/* 
+          ═══════════════════════════════════════════════════════════
+          ALERT/WARNING BANNER (Optional - shows if discrepancies exist)
+          ═══════════════════════════════════════════════════════════
+          AMBER/YELLOW ALERT COLORS:
+          
+          Border: rgba(245, 158, 11, 0.5) - amber-500 with 50% opacity
+          
+          Background Light: rgba(245, 158, 11, 0.1) - amber-500 with 10% opacity
+          Background Dark: rgba(245, 158, 11, 0.05) - amber-500 with 5% opacity
+          
+          Icon Light: #d97706 (amber-600)
+          Icon Dark: #fbbf24 (amber-400)
+          
+          Title Light: #78350f (amber-900)
+          Title Dark: #fbbf24 (amber-400)
+          
+          List Text Light: #92400e (amber-800)
+          List Text Dark: #fde68a (amber-300)
+        */}
+        {patientInfoDiscrepancies.length > 0 && (
+          <Alert className="border-amber-500/50 bg-amber-500/10 dark:bg-amber-500/5 mb-4">
+            <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+            <AlertDescription>
+              <strong className="text-amber-900 dark:text-amber-400">Data discrepancies found</strong>
+              <ul className="text-sm mt-2 space-y-1">
+                {patientInfoDiscrepancies.map((disc, i) => (
+                  <li key={i} className="text-amber-800 dark:text-amber-300">• {disc}</li>
+                ))}
+              </ul>
+            </AlertDescription>
+          </Alert>
+        )}
+      </div>
+
+      {/* 
+        ═══════════════════════════════════════════════════════════
+        SUMMARY CARDS (4-Column Grid)
+        Each card has a unique color scheme
+        ═══════════════════════════════════════════════════════════
+      */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        
+        {/* 
+          ─────────────────────────────────────────────────────────
+          CARD 1: TOTAL BIOMARKERS (BLUE)
+          ─────────────────────────────────────────────────────────
+          Gradient Background:
+          Light: from-blue-50 (#eff6ff) to-white (#ffffff)
+          Dark: from-blue-950/30 (rgba(23, 37, 84, 0.3)) to-background (#141414)
+          
+          Border:
+          Light: border-blue-200 (#bfdbfe)
+          Dark: border-blue-900/50 (rgba(30, 58, 138, 0.5))
+          
+          Icon Background:
+          Light: bg-blue-100 (#dbeafe)
+          Dark: bg-blue-900/50 (rgba(30, 58, 138, 0.5))
+          
+          Icon Color:
+          Light: text-blue-600 (#2563eb)
+          Dark: text-blue-400 (#60a5fa)
+        */}
+        <Card className="p-4 bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/30 dark:to-background border-blue-200 dark:border-blue-900/50">
+          <div className="flex items-center gap-3">
+            <div className="bg-blue-100 dark:bg-blue-900/50 p-2 rounded-lg">
+              <FileText className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Total Biomarkers</p>
+              <p className="text-xl">{results.length}</p>
+            </div>
+          </div>
+        </Card>
+
+        {/* 
+          ─────────────────────────────────────────────────────────
+          CARD 2: MEASURED (PURPLE)
+          ─────────────────────────────────────────────────────────
+          Gradient Background:
+          Light: from-purple-50 (#faf5ff) to-white (#ffffff)
+          Dark: from-purple-950/30 (rgba(59, 7, 100, 0.3)) to-background (#141414)
+          
+          Border:
+          Light: border-purple-200 (#e9d5ff)
+          Dark: border-purple-900/50 (rgba(88, 28, 135, 0.5))
+          
+          Icon Background:
+          Light: bg-purple-100 (#f3e8ff)
+          Dark: bg-purple-900/50 (rgba(88, 28, 135, 0.5))
+          
+          Icon Color:
+          Light: text-purple-600 (#9333ea)
+          Dark: text-purple-400 (#c084fc)
+        */}
+        <Card className="p-4 bg-gradient-to-br from-purple-50 to-white dark:from-purple-950/30 dark:to-background border-purple-200 dark:border-purple-900/50">
+          <div className="flex items-center gap-3">
+            <div className="bg-purple-100 dark:bg-purple-900/50 p-2 rounded-lg">
+              <CheckCircle className="w-5 h-5 text-purple-600 dark:text-purple-400" />
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Measured</p>
+              <p className="text-xl">{measuredResults.length}</p>
+            </div>
+          </div>
+        </Card>
+
+        {/* 
+          ─────────────────────────────────────────────────────────
+          CARD 3: OPTIMAL (GREEN)
+          ─────────────────────────────────────────────────────────
+          Gradient Background:
+          Light: from-green-50 (#f0fdf4) to-white (#ffffff)
+          Dark: from-green-950/30 (rgba(5, 46, 22, 0.3)) to-background (#141414)
+          
+          Border:
+          Light: border-green-200 (#bbf7d0)
+          Dark: border-green-900/50 (rgba(20, 83, 45, 0.5))
+          
+          Icon Background:
+          Light: bg-green-100 (#dcfce7)
+          Dark: bg-green-900/50 (rgba(20, 83, 45, 0.5))
+          
+          Icon Color:
+          Light: text-green-600 (#16a34a)
+          Dark: text-green-400 (#4ade80)
+        */}
+        <Card className="p-4 bg-gradient-to-br from-green-50 to-white dark:from-green-950/30 dark:to-background border-green-200 dark:border-green-900/50">
+          <div className="flex items-center gap-3">
+            <div className="bg-green-100 dark:bg-green-900/50 p-2 rounded-lg">
+              <TrendingUp className="w-5 h-5 text-green-600 dark:text-green-400" />
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Optimal</p>
+              <p className="text-xl">{optimalCount}</p>
+            </div>
+          </div>
+        </Card>
+
+        {/* 
+          ─────────────────────────────────────────────────────────
+          CARD 4: NEEDS ATTENTION (AMBER/YELLOW)
+          ─────────────────────────────────────────────────────────
+          Gradient Background:
+          Light: from-amber-50 (#fffbeb) to-white (#ffffff)
+          Dark: from-amber-950/30 (rgba(69, 26, 3, 0.3)) to-background (#141414)
+          
+          Border:
+          Light: border-amber-200 (#fde68a)
+          Dark: border-amber-900/50 (rgba(120, 53, 15, 0.5))
+          
+          Icon Background:
+          Light: bg-amber-100 (#fef3c7)
+          Dark: bg-amber-900/50 (rgba(120, 53, 15, 0.5))
+          
+          Icon Color:
+          Light: text-amber-600 (#d97706)
+          Dark: text-amber-400 (#fbbf24)
+        */}
+        <Card className="p-4 bg-gradient-to-br from-amber-50 to-white dark:from-amber-950/30 dark:to-background border-amber-200 dark:border-amber-900/50">
+          <div className="flex items-center gap-3">
+            <div className="bg-amber-100 dark:bg-amber-900/50 p-2 rounded-lg">
+              <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Needs Attention</p>
+              <p className="text-xl">{suboptimalCount}</p>
+            </div>
+          </div>
+        </Card>
+      </div>
+
+      {/* 
+        ═══════════════════════════════════════════════════════════
+        RESULTS TABLE
+        ═══════════════════════════════════════════════════════════
+        Card Background:
+        Light: #ffffff (--card)
+        Dark: #141414 (--card)
+        
+        Table Border: Uses --border variable
+        Light: rgba(0, 0, 0, 0.08)
+        Dark: #27272a
+      */}
+      <Card>
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                {/* 
+                  TABLE HEADER
+                  Font: text-xs (12px), font-semibold (600 weight)
+                  Color: Inherits from --foreground
+                */}
+                <TableHead className="w-10 text-xs font-semibold">#</TableHead>
+                <TableHead className="text-xs font-semibold">Biomarker</TableHead>
+                <TableHead className="text-xs font-semibold">Category</TableHead>
+                <TableHead className="text-xs font-semibold">Patient Value</TableHead>
+                <TableHead className="text-xs font-semibold">Optimal Range</TableHead>
+                <TableHead className="text-xs font-semibold">Status</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {results.map((result, index) => {
+                const isClickable = ['high', 'low', 'suboptimal'].includes(result.status);
+                
+                return (
+                  <TableRow
+                    key={`${result.biomarkerName}-${index}`}
+                    onClick={() => isClickable && handleBiomarkerClick(result)}
+                    className={`
+                      transition-all duration-300
+                      ${result.hisValue === 'N/A' ? 'opacity-50' : ''}
+                      ${result.status === 'optimal' ? 'bg-green-50/30 dark:bg-green-950/20' : ''}
+                      ${result.status === 'high' ? 'bg-red-50/30 dark:bg-red-950/20' : ''}
+                      ${result.status === 'low' ? 'bg-blue-50/30 dark:bg-blue-950/20' : ''}
+                      ${result.status === 'suboptimal' ? 'bg-amber-50/30 dark:bg-amber-950/20' : ''}
+                      ${isClickable && result.status === 'high' ? 'cursor-pointer hover:bg-red-100/40 dark:hover:bg-red-950/30' : ''}
+                      ${isClickable && result.status === 'low' ? 'cursor-pointer hover:bg-blue-100/40 dark:hover:bg-blue-950/30' : ''}
+                      ${isClickable && result.status === 'suboptimal' ? 'cursor-pointer hover:bg-amber-100/40 dark:hover:bg-amber-950/30' : ''}
+                    `}
+                  >
+                    {/* 
+                      ─────────────────────────────────────────────────
+                      TABLE ROW BACKGROUND COLORS (Status-Based Tinting)
+                      ─────────────────────────────────────────────────
+                      
+                      N/A Items (opacity-50):
+                      Entire row at 50% opacity
+                      
+                      OPTIMAL (Green):
+                      Light: bg-green-50/30 - rgba(240, 253, 244, 0.3)
+                      Dark: bg-green-950/20 - rgba(5, 46, 22, 0.2)
+                      Hover Light: bg-red-100/40 - rgba(220, 252, 231, 0.4)
+                      Hover Dark: bg-red-950/30 - rgba(5, 46, 22, 0.3)
+                      
+                      HIGH (Red):
+                      Light: bg-red-50/30 - rgba(254, 242, 242, 0.3)
+                      Dark: bg-red-950/20 - rgba(69, 10, 10, 0.2)
+                      Hover Light: bg-red-100/40 - rgba(254, 226, 226, 0.4)
+                      Hover Dark: bg-red-950/30 - rgba(69, 10, 10, 0.3)
+                      
+                      LOW (Blue):
+                      Light: bg-blue-50/30 - rgba(239, 246, 255, 0.3)
+                      Dark: bg-blue-950/20 - rgba(23, 37, 84, 0.2)
+                      Hover Light: bg-blue-100/40 - rgba(219, 234, 254, 0.4)
+                      Hover Dark: bg-blue-950/30 - rgba(23, 37, 84, 0.3)
+                      
+                      SUBOPTIMAL (Amber):
+                      Light: bg-amber-50/30 - rgba(255, 251, 235, 0.3)
+                      Dark: bg-amber-950/20 - rgba(69, 26, 3, 0.2)
+                      Hover Light: bg-amber-100/40 - rgba(254, 243, 199, 0.4)
+                      Hover Dark: bg-amber-950/30 - rgba(69, 26, 3, 0.3)
+                    */}
+                    
+                    {/* Column 1: Index Number */}
+                    <TableCell className="text-xs text-foreground/60">
+                      {index + 1}
+                    </TableCell>
+
+                    {/* Column 2: Biomarker Name with Status Icon */}
+                    <TableCell className="text-xs">
+                      <div className="flex items-center gap-2">
+                        {getStatusIcon(result.status)}
+                        <span className="text-foreground">{result.biomarkerName}</span>
+                        {/* Info icon for clickable items */}
+                        {isClickable && result.status === 'high' && (
+                          <Info className="w-3.5 h-3.5 text-red-600 dark:text-red-400 ml-1" />
+                        )}
+                        {isClickable && result.status === 'low' && (
+                          <Info className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400 ml-1" />
+                        )}
+                        {isClickable && result.status === 'suboptimal' && (
+                          <Info className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 ml-1" />
+                        )}
+                      </div>
+                    </TableCell>
+
+                    {/* Column 3: Category */}
+                    <TableCell className="text-xs text-foreground/60">
+                      {result.category || '-'}
+                    </TableCell>
+
+                    {/* Column 4: Patient Value */}
+                    <TableCell className="text-xs">
+                      {result.hisValue} {result.hisValue !== 'N/A' && result.unit}
+                    </TableCell>
+
+                    {/* Column 5: Optimal Range */}
+                    <TableCell className="text-xs text-foreground/60">
+                      {result.optimalRange}
+                    </TableCell>
+
+                    {/* Column 6: Status Badge */}
+                    <TableCell className="text-xs">
+                      {getStatusBadge(result.status)}
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </div>
+      </Card>
+
+      {/* 
+        ═══════════════════════════════════════════════════════════
+        DETAIL MODAL/DIALOG
+        Shows when clicking on a high/low/suboptimal biomarker
+        ═══════════════════════════════════════════════════════════
+        Dialog Background:
+        Light: #ffffff (--card)
+        Dark: #141414 (--card)
+      */}
+      <Dialog open={isReasonDialogOpen} onOpenChange={setIsReasonDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            {/* 
+              DIALOG TITLE
+              Includes status-colored icon
+            */}
+            <DialogTitle className="flex items-center gap-2">
+              {selectedBiomarker?.status === 'high' && (
+                <TrendingUp className="w-5 h-5 text-red-600 dark:text-red-400" />
+              )}
+              {selectedBiomarker?.status === 'low' && (
+                <TrendingDown className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+              )}
+              {selectedBiomarker?.status === 'suboptimal' && (
+                <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+              )}
+              {selectedBiomarker?.biomarkerName}
+            </DialogTitle>
+            <DialogDescription>
+              {selectedBiomarker && (
+                <>
+                  Patient value: {selectedBiomarker.hisValue} {selectedBiomarker.unit} • 
+                  Optimal range: {selectedBiomarker.optimalRange}
+                </>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedBiomarker && (
+            <div className="space-y-4 py-4">
+              
+              {/* 
+                ─────────────────────────────────────────────────────
+                HIGH STATUS INFO BOX (RED)
+                ─────────────────────────────────────────────────────
+                Background:
+                Light: bg-red-50 (#fef2f2)
+                Dark: bg-red-950/30 (rgba(69, 10, 10, 0.3))
+                
+                Border:
+                Light: border-red-200 (#fecaca)
+                Dark: border-red-900/50 (rgba(127, 29, 29, 0.5))
+                
+                Title Text:
+                Light: inherits foreground
+                Dark: text-red-300 (#fca5a5)
+                
+                Icon:
+                Light: text-red-600 (#dc2626)
+                Dark: text-red-400 (#f87171)
+                
+                Body Text:
+                Light: inherits foreground
+                Dark: text-red-200 (#fecaca)
+                
+                Bullet Points:
+                Light: text-red-600 (#dc2626)
+                Dark: text-red-400 (#f87171)
+              */}
+              {selectedBiomarker.status === 'high' && (
+                <div className="p-4 rounded-lg border bg-red-50 border-red-200 dark:bg-red-950/30 dark:border-red-900/50">
+                  <h4 className="flex items-center gap-2 mb-3 dark:text-red-300">
+                    <TrendingUp className="w-4 h-4 text-red-600 dark:text-red-400" />
+                    <span>Possible Reasons for High Values:</span>
+                  </h4>
+                  <div className="space-y-2 text-sm dark:text-red-200">
+                    <p className="flex items-start gap-2">
+                      <span className="text-red-600 dark:text-red-400 mt-0.5">•</span>
+                      <span>Example reason for high value</span>
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* 
+                ─────────────────────────────────────────────────────
+                LOW STATUS INFO BOX (BLUE)
+                ─────────────────────────────────────────────────────
+                Background:
+                Light: bg-blue-50 (#eff6ff)
+                Dark: bg-blue-950/30 (rgba(23, 37, 84, 0.3))
+                
+                Border:
+                Light: border-blue-200 (#bfdbfe)
+                Dark: border-blue-900/50 (rgba(30, 58, 138, 0.5))
+                
+                Title Text:
+                Light: inherits foreground
+                Dark: text-blue-300 (#93c5fd)
+                
+                Icon:
+                Light: text-blue-600 (#2563eb)
+                Dark: text-blue-400 (#60a5fa)
+                
+                Body Text:
+                Light: inherits foreground
+                Dark: text-blue-200 (#bfdbfe)
+                
+                Bullet Points:
+                Light: text-blue-600 (#2563eb)
+                Dark: text-blue-400 (#60a5fa)
+              */}
+              {selectedBiomarker.status === 'low' && (
+                <div className="p-4 rounded-lg border bg-blue-50 border-blue-200 dark:bg-blue-950/30 dark:border-blue-900/50">
+                  <h4 className="flex items-center gap-2 mb-3 dark:text-blue-300">
+                    <TrendingDown className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                    <span>Possible Reasons for Low Values:</span>
+                  </h4>
+                  <div className="space-y-2 text-sm dark:text-blue-200">
+                    <p className="flex items-start gap-2">
+                      <span className="text-blue-600 dark:text-blue-400 mt-0.5">•</span>
+                      <span>Example reason for low value</span>
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* 
+                ─────────────────────────────────────────────────────
+                SUBOPTIMAL STATUS INFO BOX (AMBER)
+                ─────────────────────────────────────────────────────
+                Background:
+                Light: bg-amber-50 (#fffbeb)
+                Dark: bg-amber-950/30 (rgba(69, 26, 3, 0.3))
+                
+                Border:
+                Light: border-amber-200 (#fde68a)
+                Dark: border-amber-900/50 (rgba(120, 53, 15, 0.5))
+                
+                Title Text:
+                Light: inherits foreground
+                Dark: text-amber-300 (#fcd34d)
+                
+                Icon:
+                Light: text-amber-600 (#d97706)
+                Dark: text-amber-400 (#fbbf24)
+                
+                Body Text:
+                Light: inherits foreground
+                Dark: text-amber-200 (#fde68a)
+                
+                Bullet Points:
+                Light: text-amber-600 (#d97706)
+                Dark: text-amber-400 (#fbbf24)
+              */}
+              {selectedBiomarker.status === 'suboptimal' && (
+                <div className="p-4 rounded-lg border bg-amber-50 border-amber-200 dark:bg-amber-950/30 dark:border-amber-900/50">
+                  <h4 className="flex items-center gap-2 mb-3 dark:text-amber-300">
+                    <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+                    <span>Possible Reasons:</span>
+                  </h4>
+                  <div className="space-y-2 text-sm dark:text-amber-200">
+                    <p className="flex items-start gap-2">
+                      <span className="text-amber-600 dark:text-amber-400 mt-0.5">•</span>
+                      <span>Example reason</span>
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* 
+                CLOSE BUTTON
+                Uses carbon-black gradient (Mito signature button)
+                from-gray-900 to-gray-700
+              */}
+              <Button
+                onClick={() => setIsReasonDialogOpen(false)}
+                className="w-full bg-gradient-to-r from-gray-900 to-gray-700 hover:from-gray-800 hover:to-gray-600"
+              >
+                Close
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+    </motion.div>
+  );
+}
+```
+
+---
+
+🎨 COLOR SUMMARY BY SECTION
+
+1. Header
+Title: `--foreground` (Light: #1a1a1a, Dark: #fafafa)
+Subtitle: `--foreground` with 70% opacity
+
+2. Alert Banner (Amber/Yellow)
+Background: `rgba(245, 158, 11, 0.1)` light, `rgba(245, 158, 11, 0.05)` dark
+Border: `rgba(245, 158, 11, 0.5)`
+Icon: `#d97706` light, `#fbbf24` dark
+Text: `#78350f` light, `#fbbf24` dark
+
+3. Summary Cards
+| Card | Light Gradient | Dark Gradient | Icon Light | Icon Dark |
+|------|---------------|---------------|------------|-----------|
+| Blue | `#eff6ff → #ffffff` | `rgba(23,37,84,0.3) → #141414` | `#2563eb` | `#60a5fa` |
+| Purple | `#faf5ff → #ffffff` | `rgba(59,7,100,0.3) → #141414` | `#9333ea` | `#c084fc` |
+| Green | `#f0fdf4 → #ffffff` | `rgba(5,46,22,0.3) → #141414` | `#16a34a` | `#4ade80` |
+| Amber | `#fffbeb → #ffffff` | `rgba(69,26,3,0.3) → #141414` | `#d97706` | `#fbbf24` |
+
+4. Table Rows (Status-Based)
+| Status | Light Row BG | Dark Row BG | Light Hover | Dark Hover |
+|--------|-------------|-------------|-------------|------------|
+| Optimal | `rgba(240,253,244,0.3)` | `rgba(5,46,22,0.2)` | - | - |
+| High | `rgba(254,242,242,0.3)` | `rgba(69,10,10,0.2)` | `rgba(254,226,226,0.4)` | `rgba(69,10,10,0.3)` |
+| Low | `rgba(239,246,255,0.3)` | `rgba(23,37,84,0.2)` | `rgba(219,234,254,0.4)` | `rgba(23,37,84,0.3)` |
+| Suboptimal | `rgba(255,251,235,0.3)` | `rgba(69,26,3,0.2)` | `rgba(254,243,199,0.4)` | `rgba(69,26,3,0.3)` |
+
+5. Status Icons & Badges
+| Status | Light Icon | Dark Icon | Badge BG | Badge Text |
+|--------|-----------|-----------|----------|------------|
+| Optimal | `#16a34a` | `#4ade80` | `rgba(34,197,94,0.1)` | `#16a34a` / `#4ade80` |
+| High | `#dc2626` | `#f87171` | `rgba(239,68,68,0.1)` | `#dc2626` / `#f87171` |
+| Low | `#2563eb` | `#60a5fa` | `rgba(59,130,246,0.1)` | `#2563eb` / `#60a5fa` |
+| Suboptimal | `#d97706` | `#fbbf24` | `rgba(245,158,11,0.1)` | `#d97706` / `#fbbf24` |
+
+---
+
+Every color is now documented! 🎨 Copy this entire component and all colors will work perfectly in both light and dark modes.

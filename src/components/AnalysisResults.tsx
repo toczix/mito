@@ -1,5 +1,4 @@
 import { useState, useEffect, useMemo } from 'react';
-import { useTheme } from '@/lib/theme-context';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -44,7 +43,6 @@ export function AnalysisResults({
   savedAnalysesCount = 0,
   patientInfoDiscrepancies = []
 }: AnalysisResultsProps) {
-  const { theme } = useTheme();
   const [copied, setCopied] = useState(false);
   const [clients, setClients] = useState<Client[]>([]);
   const [manualClientId, setManualClientId] = useState<string>('');
@@ -235,10 +233,7 @@ export function AnalysisResults({
       return (
         <>
           {parts[0]}
-          <span 
-            className="font-semibold px-1.5 py-0.5 rounded text-purple-600 dark:text-purple-400"
-            style={{ backgroundColor: theme === 'dark' ? 'rgba(147, 51, 234, 0.1)' : 'rgba(147, 51, 234, 0.15)' }}
-          >
+          <span className="font-semibold px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20">
             {parenthesesMatch[0]}
           </span>
           {parts[1]}
@@ -254,10 +249,7 @@ export function AnalysisResults({
       const parts = optimalRange.split(unitMatch[0]);
       return (
         <>
-          <span 
-            className="font-semibold px-1.5 py-0.5 rounded text-purple-600 dark:text-purple-400"
-            style={{ backgroundColor: theme === 'dark' ? 'rgba(147, 51, 234, 0.1)' : 'rgba(147, 51, 234, 0.15)' }}
-          >
+          <span className="font-semibold px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20">
             {unitMatch[0].trim()}
           </span>
           {parts[1]}
@@ -274,10 +266,7 @@ export function AnalysisResults({
       return (
         <>
           {parts[0]}
-          <span 
-            className="font-semibold px-1.5 py-0.5 rounded text-purple-600 dark:text-purple-400"
-            style={{ backgroundColor: theme === 'dark' ? 'rgba(147, 51, 234, 0.1)' : 'rgba(147, 51, 234, 0.15)' }}
-          >
+          <span className="font-semibold px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20">
             {operatorMatch[0]}
           </span>
           {parts[1]}
@@ -635,33 +624,16 @@ export function AnalysisResults({
                     }
                   }
 
-                  // Get row background color based on status and theme
-                  const getRowBackground = () => {
-                    const isDark = theme === 'dark';
-                    const opacity = isDark ? 0.08 : 0.1;
-                    
-                    if (status === 'in-range') {
-                      return `rgba(34, 197, 94, ${opacity})`; // green
-                    } else if (status === 'out-of-range' && valueDirection === 'high') {
-                      return `rgba(239, 68, 68, ${opacity})`; // red
-                    } else if (status === 'out-of-range' && valueDirection === 'low') {
-                      return `rgba(59, 130, 246, ${opacity})`; // blue
-                    } else if (status === 'out-of-range' && !valueDirection) {
-                      return `rgba(239, 68, 68, ${opacity})`; // red
-                    }
-                    return undefined;
-                  };
-
                   return (
                     <TableRow 
                       key={index} 
-                      style={{
-                        backgroundColor: getRowBackground()
-                      }}
                       className={`
-                        transition-all duration-200
+                        transition-all duration-300
                         ${isNA ? 'opacity-50' : ''}
-                        hover:bg-muted/50
+                        ${status === 'in-range' ? 'bg-green-50/30 dark:bg-green-950/20' : ''}
+                        ${status === 'out-of-range' && valueDirection === 'high' ? 'bg-red-50/30 dark:bg-red-950/20 hover:bg-red-100/40 dark:hover:bg-red-900/30' : ''}
+                        ${status === 'out-of-range' && valueDirection === 'low' ? 'bg-blue-50/30 dark:bg-blue-950/20 hover:bg-blue-100/40 dark:hover:bg-blue-900/30' : ''}
+                        ${status === 'out-of-range' && !valueDirection ? 'bg-red-50/30 dark:bg-red-950/20 hover:bg-red-100/40 dark:hover:bg-red-900/30' : ''}
                       `}
                     >
                       <TableCell className="font-medium text-muted-foreground text-center py-4">
