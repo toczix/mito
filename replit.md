@@ -7,14 +7,15 @@ A React-based web application that uses Claude AI to automatically analyze clini
 **Last Updated**: November 24, 2025
 
 ## Recent Changes
-- **November 24, 2025**: Complete Color Palette Implementation
+- **November 24, 2025**: Complete Color Palette Implementation ✅
   - Implemented official Mito color palette for both light and dark modes
-  - Light mode: #fafafa background, #0055FF primary blue, proper status colors
-  - Dark mode: #0a0a0a background, #5B8EFF lighter blue, enhanced contrast
+  - Light mode: #fafafa background, #0055FF primary blue, rgba(0,0,0,0.08) borders
+  - Dark mode: #0a0a0a background, #5B8EFF lighter blue, #27272a borders
   - Status badges use proper Tailwind classes: green-600/400, red-600/400, blue-600/400
   - Row highlighting: 10% opacity in light mode, 8% opacity in dark mode
+  - Border/input transparency preserved via hsla() in Tailwind config
   - Removed all inline style hacks, using semantic Tailwind utilities throughout
-  - Professional, consistent appearance across all themes
+  - Professional, consistent appearance matching design guide exactly
 - **November 24, 2025**: Critical Security Fix - Client Data Isolation
   - Fixed critical bug where all users could see ALL clients regardless of ownership
   - Implemented "fail-closed" security: queries return empty if user can't be authenticated
