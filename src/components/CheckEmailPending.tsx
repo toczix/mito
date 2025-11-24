@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Mail, ArrowRight, RefreshCw } from 'lucide-react';
+import { Mail, ArrowRight, CheckCircle2, RefreshCw } from 'lucide-react';
 import { Button } from './ui/button';
 import { useState } from 'react';
 import { toast } from 'sonner';
@@ -24,6 +24,12 @@ export function CheckEmailPending({ email, onBackToLogin }: CheckEmailPendingPro
     }
   };
 
+  const steps = [
+    { text: 'Check your inbox for an email from Mito', icon: Mail },
+    { text: 'Click the verification link in the email', icon: ArrowRight },
+    { text: "You'll be redirected to log in", icon: CheckCircle2 },
+  ];
+
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-background via-background to-muted">
       <motion.div
@@ -32,99 +38,140 @@ export function CheckEmailPending({ email, onBackToLogin }: CheckEmailPendingPro
         transition={{ duration: 0.5 }}
         className="w-full max-w-md"
       >
-        <div className="bg-card rounded-2xl shadow-2xl p-8 border border-border">
-          {/* Icon */}
-          <motion.div
-            initial={{ scale: 0.8 }}
-            animate={{ scale: 1 }}
-            transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
-            className="flex items-center justify-center mb-6"
-          >
-            <div className="bg-blue-500/20 p-4 rounded-full">
-              <Mail className="w-12 h-12 text-blue-400" />
-            </div>
-          </motion.div>
-
-          {/* Title */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.3 }}
-            className="text-center mb-6"
-          >
-            <h1 className="text-2xl font-bold mb-2">Check Your Email</h1>
-            <p className="text-sm text-muted-foreground">
-              We've sent a verification link to
-            </p>
-            <p className="text-sm font-medium text-foreground mt-1">
-              {email}
-            </p>
-          </motion.div>
-
-          {/* Instructions */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.4 }}
-            className="bg-blue-500/10 border border-blue-500/30 rounded-lg p-4 mb-6"
-          >
-            <div className="flex items-start gap-3">
-              <ArrowRight className="w-5 h-5 text-blue-400 flex-shrink-0 mt-0.5" />
-              <div className="text-xs text-blue-200 space-y-2">
-                <p>1. Check your inbox for an email from Mito</p>
-                <p>2. Click the verification link in the email</p>
-                <p>3. You'll be redirected to log in</p>
-                <p className="text-[10px] text-blue-300 mt-2">
-                  Don't see it? Check your spam or junk folder
-                </p>
+        <div className="bg-card rounded-2xl shadow-2xl border border-border overflow-hidden">
+          {/* Header Section */}
+          <div className="p-5 text-center border-b border-border bg-gradient-to-b from-primary/5 to-transparent">
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
+              className="inline-flex items-center justify-center mb-3"
+            >
+              <div className="relative">
+                <div className="absolute inset-0 bg-primary/20 blur-xl rounded-full"></div>
+                <div className="relative bg-gradient-to-br from-primary/20 to-primary/10 p-3 rounded-2xl border border-primary/20">
+                  <Mail className="w-8 h-8 text-primary" />
+                </div>
               </div>
-            </div>
-          </motion.div>
+            </motion.div>
 
-          {/* Actions */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.3 }}
+            >
+              <h1 className="text-xl mb-1.5">Check Your Email</h1>
+              <p className="text-xs text-muted-foreground mb-0.5">
+                We've sent a verification link to
+              </p>
+              <p className="text-xs font-medium text-primary">
+                {email}
+              </p>
+            </motion.div>
+          </div>
+
+          {/* Steps Section */}
+          <div className="p-5 space-y-3">
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4 }}
+              className="space-y-2"
+            >
+              {steps.map((step, index) => {
+                const Icon = step.icon;
+                return (
+                  <motion.div
+                    key={index}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.5 + index * 0.1 }}
+                    className="flex items-start gap-2.5 p-2.5 rounded-lg bg-muted/30 border border-border/50 hover:bg-muted/50 transition-colors"
+                  >
+                    <div className="flex-shrink-0 w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center mt-0.5">
+                      <span className="text-[10px] font-medium text-primary">{index + 1}</span>
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-xs text-foreground">{step.text}</p>
+                    </div>
+                    <Icon className="w-3.5 h-3.5 text-muted-foreground flex-shrink-0 mt-0.5" />
+                  </motion.div>
+                );
+              })}
+            </motion.div>
+
+            {/* Info Box */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.8 }}
+              className="bg-muted/30 border border-border/50 rounded-lg p-2.5"
+            >
+              <p className="text-[10px] text-muted-foreground text-center">
+                Don't see it? Check your spam or junk folder
+              </p>
+            </motion.div>
+
+            {/* Resend Button */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.9 }}
+              className="pt-1"
+            >
+              <Button
+                onClick={handleResendEmail}
+                disabled={isResending}
+                variant="outline"
+                className="w-full h-9 rounded-lg border-border hover:bg-muted/50 transition-all text-xs"
+              >
+                {isResending ? (
+                  <>
+                    <motion.div
+                      animate={{ rotate: 360 }}
+                      transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                      className="mr-2"
+                    >
+                      <RefreshCw className="w-3.5 h-3.5" />
+                    </motion.div>
+                    Checking...
+                  </>
+                ) : (
+                  <>
+                    <Mail className="w-3.5 h-3.5 mr-2" />
+                    Didn't receive it?
+                  </>
+                )}
+              </Button>
+            </motion.div>
+
+            {/* Back to Login */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 1.0 }}
+            >
+              <button
+                onClick={onBackToLogin}
+                className="w-full text-xs text-primary hover:text-primary/80 transition-colors py-2"
+              >
+                ← Back to Login
+              </button>
+            </motion.div>
+          </div>
+
+          {/* Footer */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ delay: 0.5 }}
-            className="space-y-3"
+            transition={{ delay: 1.1 }}
+            className="px-5 py-3 bg-muted/20 border-t border-border"
           >
-            <Button
-              onClick={handleResendEmail}
-              disabled={isResending}
-              variant="outline"
-              className="w-full"
-            >
-              {isResending ? (
-                <>
-                  <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                  Checking...
-                </>
-              ) : (
-                <>
-                  <Mail className="w-4 h-4 mr-2" />
-                  Didn't receive it?
-                </>
-              )}
-            </Button>
-
-            <button
-              onClick={onBackToLogin}
-              className="w-full text-sm text-primary hover:underline"
-            >
-              Back to Login
-            </button>
+            <p className="text-[10px] text-center text-muted-foreground">
+              After verifying your email, you can log in to access your dashboard
+            </p>
           </motion.div>
         </div>
-
-        {/* Helper text */}
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.6 }}
-          className="text-center text-xs text-muted-foreground mt-4"
-        >
-          After verifying your email, you can log in to access your dashboard
-        </motion.p>
       </motion.div>
     </div>
   );
