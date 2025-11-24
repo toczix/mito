@@ -233,7 +233,7 @@ export function AnalysisResults({
       return (
         <>
           {parts[0]}
-          <span className="font-semibold px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20">
+          <span className="font-semibold px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-600 dark:bg-purple-500/20 dark:text-purple-300 border border-purple-500/20 dark:border-purple-500/40">
             {parenthesesMatch[0]}
           </span>
           {parts[1]}
@@ -249,7 +249,7 @@ export function AnalysisResults({
       const parts = optimalRange.split(unitMatch[0]);
       return (
         <>
-          <span className="font-semibold px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20">
+          <span className="font-semibold px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-600 dark:bg-purple-500/20 dark:text-purple-300 border border-purple-500/20 dark:border-purple-500/40">
             {unitMatch[0].trim()}
           </span>
           {parts[1]}
@@ -266,7 +266,7 @@ export function AnalysisResults({
       return (
         <>
           {parts[0]}
-          <span className="font-semibold px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20">
+          <span className="font-semibold px-1.5 py-0.5 rounded bg-purple-500/10 text-purple-600 dark:bg-purple-500/20 dark:text-purple-300 border border-purple-500/20 dark:border-purple-500/40">
             {operatorMatch[0]}
           </span>
           {parts[1]}
