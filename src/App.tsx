@@ -186,15 +186,9 @@ function App() {
         <header className="border-b bg-card sticky top-0 z-50">
         <div className="container mx-auto px-4 py-6">
           <div className="flex items-center justify-between gap-8">
-            {/* Logo and Title */}
-            <div className="flex items-center gap-3">
+            {/* Logo */}
+            <div className="flex items-center">
               <img src="/mito-logo.png" alt="Mito" className="h-8 w-auto" />
-              <div>
-                <h1 className="text-3xl font-bold">Mito Analysis</h1>
-                <p className="text-sm text-muted-foreground">
-                  Clinical Pathology Analysis Portal
-                </p>
-              </div>
             </div>
 
             {/* Navigation and User Info */}
