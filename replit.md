@@ -7,6 +7,15 @@ A React-based web application that uses Claude AI to automatically analyze clini
 **Last Updated**: November 24, 2025
 
 ## Recent Changes
+- **November 24, 2025**: Critical Security Fix - Client Data Isolation
+  - Fixed critical bug where all users could see ALL clients regardless of ownership
+  - Implemented "fail-closed" security: queries return empty if user can't be authenticated
+  - Added user_id filtering to getAllClients, getActiveClients, getPastClients, searchClientsByName
+  - Each user now only sees their own clients (proper multi-tenant isolation)
+  - Backward compatible with auth-disabled mode for single-user deployments
+- **November 24, 2025**: UI Improvements
+  - Out-of-range biomarker rows now have a much lighter red background (bg-red-500/5)
+  - Removed footer disclaimer message for cleaner interface
 - **November 24, 2025**: Light/Dark Mode Toggle Implementation
   - Created comprehensive theme system with CSS variables for both light and dark themes
   - Implemented ThemeProvider with localStorage persistence and system preference detection
