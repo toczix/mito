@@ -586,11 +586,8 @@ export function AnalysisResults({
                       key={index} 
                       className={`
                         ${isNA ? 'bg-muted/30' : ''} 
-                        ${!isOutOfRange ? 'hover:bg-muted/50' : ''}
+                        ${isOutOfRange ? 'bg-red-500/5 hover:bg-red-500/10' : 'hover:bg-muted/50'}
                       `}
-                      style={isOutOfRange ? {
-                        backgroundColor: 'hsl(var(--status-error-bg))'
-                      } : undefined}
                     >
                       <TableCell className="font-medium text-muted-foreground text-center py-4">
                         {index + 1}

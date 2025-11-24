@@ -1,13 +1,43 @@
 import { supabase, isAuthDisabled, type Client } from './supabase';
 import { handleDatabaseError } from './error-handler';
 
+/**
+ * Get current user ID from session
+ * Returns null if auth is disabled or no session
+ */
+async function getCurrentUserId(): Promise<string | null> {
+  if (!supabase || isAuthDisabled) return null;
+  
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
+    return session?.user?.id || null;
+  } catch (error) {
+    console.error('Failed to get user ID:', error);
+    return null;
+  }
+}
+
 export async function getAllClients(): Promise<Client[]> {
   if (!supabase) return [];
 
-  const { data, error } = await supabase
+  const userId = await getCurrentUserId();
+  
+  // SECURITY: Fail closed - if auth is enabled but we can't get user ID, return empty
+  if (!isAuthDisabled && !userId) {
+    console.warn('⚠️ Auth enabled but no user ID - returning empty results');
+    return [];
+  }
+  
+  let query = supabase
     .from('clients')
-    .select('*')
-    .order('created_at', { ascending: false });
+    .select('*');
+  
+  // Filter by user_id if we have one
+  if (userId) {
+    query = query.eq('user_id', userId);
+  }
+  
+  const { data, error } = await query.order('created_at', { ascending: false });
 
   if (error) {
     handleDatabaseError(error, 'clients', 'select_all');
@@ -23,6 +53,14 @@ export async function getAllClients(): Promise<Client[]> {
  */
 export async function searchClientsByName(searchTerm: string, limit: number = 50): Promise<Client[]> {
   if (!supabase || !searchTerm) return [];
+
+  const userId = await getCurrentUserId();
+
+  // SECURITY: Fail closed - if auth is enabled but we can't get user ID, return empty
+  if (!isAuthDisabled && !userId) {
+    console.warn('⚠️ Auth enabled but no user ID - returning empty results');
+    return [];
+  }
 
   // Normalize search term: remove special chars, extra spaces
   const normalized = searchTerm
@@ -40,6 +78,11 @@ export async function searchClientsByName(searchTerm: string, limit: number = 50
   let query = supabase
     .from('clients')
     .select('*');
+
+  // Filter by user_id if we have one
+  if (userId) {
+    query = query.eq('user_id', userId);
+  }
 
   // Apply filters for each word (all must match)
   words.forEach(word => {
@@ -62,11 +105,25 @@ export async function searchClientsByName(searchTerm: string, limit: number = 50
 export async function getActiveClients(): Promise<Client[]> {
   if (!supabase) return [];
   
-  const { data, error } = await supabase
+  const userId = await getCurrentUserId();
+  
+  // SECURITY: Fail closed - if auth is enabled but we can't get user ID, return empty
+  if (!isAuthDisabled && !userId) {
+    console.warn('⚠️ Auth enabled but no user ID - returning empty results');
+    return [];
+  }
+  
+  let query = supabase
     .from('clients')
     .select('*')
-    .eq('status', 'active')
-    .order('full_name');
+    .eq('status', 'active');
+  
+  // Filter by user_id if we have one
+  if (userId) {
+    query = query.eq('user_id', userId);
+  }
+  
+  const { data, error } = await query.order('full_name');
   
   if (error) {
     handleDatabaseError(error, 'clients', 'select_active');
@@ -79,11 +136,25 @@ export async function getActiveClients(): Promise<Client[]> {
 export async function getPastClients(): Promise<Client[]> {
   if (!supabase) return [];
   
-  const { data, error } = await supabase
+  const userId = await getCurrentUserId();
+  
+  // SECURITY: Fail closed - if auth is enabled but we can't get user ID, return empty
+  if (!isAuthDisabled && !userId) {
+    console.warn('⚠️ Auth enabled but no user ID - returning empty results');
+    return [];
+  }
+  
+  let query = supabase
     .from('clients')
     .select('*')
-    .eq('status', 'past')
-    .order('full_name');
+    .eq('status', 'past');
+  
+  // Filter by user_id if we have one
+  if (userId) {
+    query = query.eq('user_id', userId);
+  }
+  
+  const { data, error } = await query.order('full_name');
   
   if (error) {
     handleDatabaseError(error, 'clients', 'select_past');
