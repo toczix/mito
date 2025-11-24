@@ -13,7 +13,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { generateSummary, getValueStatus } from '@/lib/analyzer';
 import type { AnalysisResult } from '@/lib/biomarkers';
 import { getBiomarkerFullName, getBiomarkerDisplayName } from '@/lib/biomarkers';
-import { Copy, Download, CheckCircle2, XCircle, AlertCircle, Save, Info } from 'lucide-react';
+import { Copy, Download, CheckCircle2, AlertCircle, Save, Info, TrendingUp, TrendingDown, FileText, RotateCcw, AlertTriangle, HelpCircle } from 'lucide-react';
 import { isSupabaseEnabled } from '@/lib/supabase';
 import { getActiveClients } from '@/lib/client-service';
 import { createAnalysis } from '@/lib/analysis-service';
@@ -193,41 +193,6 @@ export function AnalysisResults({
     }
   };
 
-  const getStatusBadge = (status: string) => {
-    switch (status) {
-      case 'in-range':
-        return (
-          <Badge 
-            variant="outline" 
-            className="border-[hsl(var(--status-success-border))] font-medium px-3 py-1 flex items-center gap-1.5 w-fit mx-auto"
-            style={{ 
-              backgroundColor: 'hsl(var(--status-success-bg))',
-              color: 'hsl(var(--status-success-text))'
-            }}
-          >
-            <CheckCircle2 className="h-3.5 w-3.5" />
-            In Range
-          </Badge>
-        );
-      case 'out-of-range':
-        return (
-          <Badge 
-            variant="outline" 
-            className="border-[hsl(var(--status-error-border))] font-semibold px-3 py-1 flex items-center gap-1.5 w-fit mx-auto"
-            style={{ 
-              backgroundColor: 'hsl(var(--status-error-bg))',
-              color: 'hsl(var(--status-error-text))'
-            }}
-          >
-            <XCircle className="h-3.5 w-3.5" />
-            Out of Range
-          </Badge>
-        );
-      default:
-        return null;
-    }
-  };
-
   const formatDate = (dateString?: string) => {
     if (!dateString) return null;
     try {
@@ -313,111 +278,201 @@ export function AnalysisResults({
     return optimalRange;
   };
 
+  // Status Badge Helper - returns colored badge based on status
+  const getStatusBadge = (status: string, valueDirection: 'high' | 'low' | null) => {
+    if (status === 'in-range') {
+      return (
+        <Badge className="bg-green-500/10 text-green-600 dark:text-green-500 border-green-500/30 text-[10px] font-medium">
+          <CheckCircle2 className="w-3 h-3 mr-1" />
+          In Range
+        </Badge>
+      );
+    } else if (status === 'out-of-range') {
+      if (valueDirection === 'high') {
+        return (
+          <Badge className="bg-red-500/10 text-red-600 dark:text-red-500 border-red-500/30 text-[10px] font-medium">
+            <TrendingUp className="w-3 h-3 mr-1" />
+            High
+          </Badge>
+        );
+      } else if (valueDirection === 'low') {
+        return (
+          <Badge className="bg-blue-500/10 text-blue-600 dark:text-blue-500 border-blue-500/30 text-[10px] font-medium">
+            <TrendingDown className="w-3 h-3 mr-1" />
+            Low
+          </Badge>
+        );
+      }
+    }
+    return (
+      <Badge variant="outline" className="text-[10px] text-muted-foreground">
+        N/A
+      </Badge>
+    );
+  };
+
+  // Status Icon Helper - returns icon based on status and direction
+  const getStatusIcon = (status: string, valueDirection: 'high' | 'low' | null) => {
+    if (status === 'in-range') {
+      return <CheckCircle2 className="w-4 h-4 text-green-600 dark:text-green-500 flex-shrink-0" />;
+    } else if (status === 'out-of-range') {
+      if (valueDirection === 'high') {
+        return <TrendingUp className="w-4 h-4 text-red-600 dark:text-red-500 flex-shrink-0" />;
+      } else if (valueDirection === 'low') {
+        return <TrendingDown className="w-4 h-4 text-blue-600 dark:text-blue-500 flex-shrink-0" />;
+      }
+    }
+    return <HelpCircle className="w-4 h-4 text-gray-400 flex-shrink-0" />;
+  };
+
   return (
     <TooltipProvider>
-    <div className="w-full max-w-7xl mx-auto space-y-4">
-      {/* Summary Card - Compact Version */}
-      <Card>
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
+    <div className="w-full max-w-7xl mx-auto space-y-6">
+      {/* Header Section */}
+      <div>
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h1 className="text-2xl font-bold mb-1">Analysis Complete</h1>
+            <p className="text-sm text-foreground/70">
+              {preSelectedClientName && `Biomarker analysis for ${preSelectedClientName} • `}
+              {documentCount > 0 && `${documentCount} ${documentCount === 1 ? 'document' : 'documents'} processed`}
+              {savedAnalysesCount > 0 && ` • ${savedAnalysesCount} ${savedAnalysesCount === 1 ? 'analysis' : 'analyses'} saved`}
+            </p>
+          </div>
+        </div>
+
+        {/* Patient Info Discrepancies Warning Banner */}
+        {patientInfoDiscrepancies && patientInfoDiscrepancies.length > 0 && (
+          <Alert className="border-amber-500/50 bg-amber-500/10 dark:bg-amber-500/5 mb-4">
+            <AlertTriangle className="h-4 w-4 text-amber-600 dark:text-amber-500" />
+            <AlertDescription>
+              <strong className="text-amber-900 dark:text-amber-400">Data discrepancies found</strong>
+              <ul className="text-sm mt-2 space-y-1">
+                {patientInfoDiscrepancies.map((discrepancy, idx) => (
+                  <li key={idx} className="text-amber-800 dark:text-amber-300">• {discrepancy}</li>
+                ))}
+              </ul>
+            </AlertDescription>
+          </Alert>
+        )}
+      </div>
+
+      {/* Summary Metric Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+        {/* Card 1 - Total Biomarkers (Gray/Neutral) */}
+        <Card className="p-4 bg-gradient-to-br from-gray-50 to-white dark:from-gray-950/30 dark:to-background border-gray-200 dark:border-gray-800">
+          <div className="flex items-center gap-3">
+            <div className="bg-gray-100 dark:bg-gray-900/50 p-2 rounded-lg">
+              <FileText className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+            </div>
             <div>
-              <CardTitle className="text-xl">Analysis Complete</CardTitle>
-              <CardDescription className="text-sm mt-1">
-                {preSelectedClientName ? `Biomarker analysis for ${preSelectedClientName}` : 'Biomarker analysis'}
-              </CardDescription>
-            </div>
-            {savedAnalysesCount > 0 && (
-              <div 
-                className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-full"
-                style={{ 
-                  backgroundColor: 'hsl(var(--status-success-bg))',
-                  color: 'hsl(var(--status-success-text))'
-                }}
-              >
-                <CheckCircle2 className="h-4 w-4" />
-                <span className="font-medium">Saved</span>
-              </div>
-            )}
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {/* Summary Stats - More Compact */}
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-            <div className="text-center p-3 bg-secondary rounded-lg">
-              <p className="text-2xl font-bold">{summary.totalBiomarkers}</p>
               <p className="text-xs text-muted-foreground">Total Biomarkers</p>
+              <p className="text-2xl font-bold">{summary.totalBiomarkers}</p>
             </div>
-            <div 
-              className="text-center p-3 rounded-lg"
-              style={{ backgroundColor: 'hsl(var(--status-info-bg))' }}
-            >
-              <p className="text-2xl font-bold" style={{ color: 'hsl(var(--status-info-text))' }}>{summary.measuredBiomarkers}</p>
-              <p className="text-xs" style={{ color: 'hsl(var(--status-info-text))' }}>Measured</p>
+          </div>
+        </Card>
+
+        {/* Card 2 - Measured (Blue) */}
+        <Card className="p-4 bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/30 dark:to-background border-blue-200 dark:border-blue-900/50">
+          <div className="flex items-center gap-3">
+            <div className="bg-blue-100 dark:bg-blue-900/50 p-2 rounded-lg">
+              <CheckCircle2 className="w-5 h-5 text-blue-600 dark:text-blue-400" />
             </div>
-            <div 
-              className="text-center p-3 rounded-lg"
-              style={{ backgroundColor: 'hsl(var(--status-success-bg))' }}
-            >
-              <p className="text-2xl font-bold" style={{ color: 'hsl(var(--status-success-text))' }}>{summary.inRangeCount}</p>
-              <p className="text-xs" style={{ color: 'hsl(var(--status-success-text))' }}>In Range</p>
+            <div>
+              <p className="text-xs text-muted-foreground">Measured</p>
+              <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{summary.measuredBiomarkers}</p>
             </div>
-            <div 
-              className="text-center p-3 rounded-lg"
-              style={{ backgroundColor: 'hsl(var(--status-error-bg))' }}
-            >
-              <p className="text-2xl font-bold" style={{ color: 'hsl(var(--status-error-text))' }}>{summary.outOfRangeCount}</p>
-              <p className="text-xs" style={{ color: 'hsl(var(--status-error-text))' }}>Out of Range</p>
+          </div>
+        </Card>
+
+        {/* Card 3 - In Range (Green) */}
+        <Card className="p-4 bg-gradient-to-br from-green-50 to-white dark:from-green-950/30 dark:to-background border-green-200 dark:border-green-900/50">
+          <div className="flex items-center gap-3">
+            <div className="bg-green-100 dark:bg-green-900/50 p-2 rounded-lg">
+              <CheckCircle2 className="w-5 h-5 text-green-600 dark:text-green-400" />
             </div>
-            <div className="text-center p-3 bg-muted rounded-lg">
-              <p className="text-2xl font-bold">{summary.missingBiomarkers}</p>
+            <div>
+              <p className="text-xs text-muted-foreground">In Range</p>
+              <p className="text-2xl font-bold text-green-600 dark:text-green-400">{summary.inRangeCount}</p>
+            </div>
+          </div>
+        </Card>
+
+        {/* Card 4 - Out of Range (Red) */}
+        <Card className="p-4 bg-gradient-to-br from-red-50 to-white dark:from-red-950/30 dark:to-background border-red-200 dark:border-red-900/50">
+          <div className="flex items-center gap-3">
+            <div className="bg-red-100 dark:bg-red-900/50 p-2 rounded-lg">
+              <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400" />
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Out of Range</p>
+              <p className="text-2xl font-bold text-red-600 dark:text-red-400">{summary.outOfRangeCount}</p>
+            </div>
+          </div>
+        </Card>
+
+        {/* Card 5 - Missing (Gray) */}
+        <Card className="p-4 bg-gradient-to-br from-gray-50 to-white dark:from-gray-950/30 dark:to-background border-gray-200 dark:border-gray-800">
+          <div className="flex items-center gap-3">
+            <div className="bg-gray-100 dark:bg-gray-900/50 p-2 rounded-lg">
+              <HelpCircle className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+            </div>
+            <div>
               <p className="text-xs text-muted-foreground">Missing</p>
+              <p className="text-2xl font-bold">{summary.missingBiomarkers}</p>
             </div>
           </div>
+        </Card>
+      </div>
 
-          {/* Diagnostic Info - Warning if data is missing - More Compact */}
-          {summary.missingBiomarkers > 0 && (
-            <Alert className="py-3 [&>svg]:top-3.5">
-              <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
-                <details className="text-sm">
-                  <summary className="cursor-pointer hover:underline font-medium">
-                    {summary.missingBiomarkers} biomarker(s) were not found in the uploaded reports
-                  </summary>
-                  <ul className="mt-2 ml-4 list-disc space-y-0.5 text-xs">
-                    {results.filter(r => r.hisValue === 'N/A').map(r => (
-                      <li key={r.biomarkerName}>{r.biomarkerName}</li>
-                    ))}
-                  </ul>
-                  <div className="text-xs text-muted-foreground mt-2">
-                    💡 Check the browser console (F12 → Console) for detailed extraction logs.
-                  </div>
-                </details>
-              </AlertDescription>
-            </Alert>
-          )}
+      {/* Missing Biomarkers Warning */}
+      {summary.missingBiomarkers > 0 && (
+        <Alert className="border-amber-500/50 bg-amber-500/10 dark:bg-amber-500/5">
+          <AlertCircle className="h-4 w-4 text-amber-600 dark:text-amber-500" />
+          <AlertDescription>
+            <details className="text-sm">
+              <summary className="cursor-pointer hover:underline font-medium text-amber-900 dark:text-amber-400">
+                {summary.missingBiomarkers} biomarker(s) were not found in the uploaded reports
+              </summary>
+              <ul className="mt-2 ml-4 list-disc space-y-0.5 text-xs text-amber-800 dark:text-amber-300">
+                {results.filter(r => r.hisValue === 'N/A').map(r => (
+                  <li key={r.biomarkerName}>{r.biomarkerName}</li>
+                ))}
+              </ul>
+              <div className="text-xs text-amber-700 dark:text-amber-400 mt-2">
+                💡 Check the browser console (F12 → Console) for detailed extraction logs.
+              </div>
+            </details>
+          </AlertDescription>
+        </Alert>
+      )}
 
-          {/* View Mode Filter */}
-          <div className="flex gap-1 p-1 bg-muted rounded-lg">
-            <Button
-              variant={viewMode === 'all' ? 'default' : 'ghost'}
-              size="sm"
-              onClick={() => setViewMode('all')}
-              className="text-xs"
-            >
-              All ({editableResults.length})
-            </Button>
-            <Button
-              variant={viewMode === 'out-of-range' ? 'default' : 'ghost'}
-              size="sm"
-              onClick={() => setViewMode('out-of-range')}
-              className="text-xs"
-            >
-              Out of Range ({summary.outOfRangeCount})
-            </Button>
-          </div>
+      {/* Action Buttons Card */}
+      <Card>
+        <CardContent className="pt-6">
+          <div className="space-y-4">
+            {/* View Mode Filter */}
+            <div className="flex gap-1 p-1 bg-muted rounded-lg w-fit">
+              <Button
+                variant={viewMode === 'all' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setViewMode('all')}
+                className="text-xs"
+              >
+                All ({editableResults.length})
+              </Button>
+              <Button
+                variant={viewMode === 'out-of-range' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setViewMode('out-of-range')}
+                className="text-xs"
+              >
+                Out of Range ({summary.outOfRangeCount})
+              </Button>
+            </div>
 
-          {/* Action Buttons */}
-          <div className="flex flex-wrap gap-2">
+            {/* Action Buttons */}
+            <div className="flex flex-wrap gap-2">
             {isSupabaseEnabled && !preSelectedClientId && (
               <Dialog open={saveDialogOpen} onOpenChange={setSaveDialogOpen}>
                 <DialogTrigger asChild>
@@ -509,10 +564,12 @@ export function AnalysisResults({
               {viewMode === 'out-of-range' ? 'Download Out of Range' : 'Download as Markdown'}
             </Button>
             {onReset && (
-              <Button onClick={onReset} variant="outline">
+              <Button onClick={onReset} size="sm">
+                <RotateCcw className="h-4 w-4 mr-2" />
                 Analyze New Reports
               </Button>
             )}
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -585,20 +642,21 @@ export function AnalysisResults({
                     <TableRow 
                       key={index} 
                       className={`
-                        ${isNA ? 'bg-muted/30' : ''} 
-                        ${!isOutOfRange ? 'hover:bg-muted/50' : ''}
+                        transition-all duration-300
+                        ${isNA ? 'opacity-50' : ''}
+                        cursor-pointer
                       `}
-                      style={isOutOfRange ? {
-                        backgroundColor: 'hsl(var(--out-of-range-bg))'
-                      } : undefined}
+                      style={{
+                        backgroundColor: isOutOfRange ? 'var(--out-of-range-bg)' : undefined,
+                      }}
                       onMouseEnter={(e) => {
                         if (isOutOfRange) {
-                          e.currentTarget.style.backgroundColor = 'hsl(var(--out-of-range-bg-hover))';
+                          e.currentTarget.style.backgroundColor = 'var(--out-of-range-bg-hover)';
                         }
                       }}
                       onMouseLeave={(e) => {
                         if (isOutOfRange) {
-                          e.currentTarget.style.backgroundColor = 'hsl(var(--out-of-range-bg))';
+                          e.currentTarget.style.backgroundColor = 'var(--out-of-range-bg)';
                         }
                       }}
                     >
@@ -607,16 +665,17 @@ export function AnalysisResults({
                       </TableCell>
                       <TableCell className="font-medium py-4">
                         <div className="flex items-start gap-2">
+                          {getStatusIcon(status, valueDirection)}
                           <div className="flex flex-col flex-1">
-                            <span className="font-semibold">{result.biomarkerName}</span>
+                            <span className="font-semibold text-sm">{result.biomarkerName}</span>
                             {getBiomarkerFullName(result.biomarkerName) && (
                               <span className="text-xs text-muted-foreground mt-0.5">
                                 {getBiomarkerFullName(result.biomarkerName)}
                               </span>
                             )}
                           </div>
-                          {hasInfo && isOutOfRange && valueDirection && (
-                            <div className="flex items-center gap-1.5">
+                          <div className="flex items-center gap-1.5">
+                            {hasInfo && (
                               <Tooltip>
                                 <TooltipTrigger asChild>
                                   <button
@@ -631,6 +690,8 @@ export function AnalysisResults({
                                   <p className="text-xs">Click for detailed information</p>
                                 </TooltipContent>
                               </Tooltip>
+                            )}
+                            {isOutOfRange && valueDirection && (
                               <span 
                                 className="text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded"
                                 style={{
@@ -644,8 +705,8 @@ export function AnalysisResults({
                               >
                                 {valueDirection}
                               </span>
-                            </div>
-                          )}
+                            )}
+                          </div>
                         </div>
                       </TableCell>
                       <TableCell 
@@ -715,8 +776,8 @@ export function AnalysisResults({
                       <TableCell className="text-sm py-4">
                         {highlightActiveRange(result.optimalRange, result.unit)}
                       </TableCell>
-                      <TableCell className="py-4">
-                        {!isNA && getStatusBadge(status)}
+                      <TableCell className="py-4 text-center">
+                        {getStatusBadge(status, valueDirection)}
                       </TableCell>
                     </TableRow>
                   );
