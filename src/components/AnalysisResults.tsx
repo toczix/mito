@@ -233,7 +233,7 @@ export function AnalysisResults({
       return (
         <>
           {parts[0]}
-          <span className="font-semibold px-1.5 py-0.5 rounded bg-purple-100/40 dark:bg-purple-950/30 text-purple-600 dark:text-purple-400">
+          <span className="font-semibold px-1.5 py-0.5 rounded bg-purple-100/40 dark:bg-purple-400/15 text-purple-600 dark:text-purple-400">
             {parenthesesMatch[0]}
           </span>
           {parts[1]}
@@ -249,7 +249,7 @@ export function AnalysisResults({
       const parts = optimalRange.split(unitMatch[0]);
       return (
         <>
-          <span className="font-semibold px-1.5 py-0.5 rounded bg-purple-100/40 dark:bg-purple-950/30 text-purple-600 dark:text-purple-400">
+          <span className="font-semibold px-1.5 py-0.5 rounded bg-purple-100/40 dark:bg-purple-400/15 text-purple-600 dark:text-purple-400">
             {unitMatch[0].trim()}
           </span>
           {parts[1]}
@@ -266,7 +266,7 @@ export function AnalysisResults({
       return (
         <>
           {parts[0]}
-          <span className="font-semibold px-1.5 py-0.5 rounded bg-purple-100/40 dark:bg-purple-950/30 text-purple-600 dark:text-purple-400">
+          <span className="font-semibold px-1.5 py-0.5 rounded bg-purple-100/40 dark:bg-purple-400/15 text-purple-600 dark:text-purple-400">
             {operatorMatch[0]}
           </span>
           {parts[1]}
@@ -630,10 +630,10 @@ export function AnalysisResults({
                       className={`
                         transition-all duration-200
                         ${isNA ? 'opacity-50' : ''}
-                        ${status === 'in-range' ? 'bg-green-50/30 dark:bg-green-950/20' : ''}
-                        ${status === 'out-of-range' && valueDirection === 'high' ? 'bg-red-50/30 dark:bg-red-950/20' : ''}
-                        ${status === 'out-of-range' && valueDirection === 'low' ? 'bg-blue-50/30 dark:bg-blue-950/20' : ''}
-                        ${status === 'out-of-range' && !valueDirection ? 'bg-red-50/30 dark:bg-red-950/20' : ''}
+                        ${status === 'in-range' ? 'bg-green-50/30 dark:bg-green-400/15' : ''}
+                        ${status === 'out-of-range' && valueDirection === 'high' ? 'bg-red-50/30 dark:bg-red-400/15' : ''}
+                        ${status === 'out-of-range' && valueDirection === 'low' ? 'bg-blue-50/30 dark:bg-blue-400/15' : ''}
+                        ${status === 'out-of-range' && !valueDirection ? 'bg-red-50/30 dark:bg-red-400/15' : ''}
                         hover:bg-muted/50
                       `}
                     >
