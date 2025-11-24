@@ -628,13 +628,13 @@ export function AnalysisResults({
                     <TableRow 
                       key={index} 
                       className={`
-                        transition-all duration-300 border
+                        transition-all duration-300
                         ${isNA ? 'opacity-50' : ''}
-                        ${status === 'in-range' ? 'bg-green-50/30 dark:bg-transparent border-transparent' : ''}
-                        ${status === 'out-of-range' && valueDirection === 'high' ? 'bg-red-50/30 dark:bg-red-500/10 hover:bg-red-100/40 dark:hover:bg-red-500/15 border-transparent dark:border-red-500/20' : ''}
-                        ${status === 'out-of-range' && valueDirection === 'low' ? 'bg-blue-50/30 dark:bg-blue-500/10 hover:bg-blue-100/40 dark:hover:bg-blue-500/15 border-transparent dark:border-blue-500/20' : ''}
-                        ${status === 'out-of-range' && !valueDirection ? 'bg-red-50/30 dark:bg-red-500/10 hover:bg-red-100/40 dark:hover:bg-red-500/15 border-transparent dark:border-red-500/20' : ''}
-                        ${!status || status === 'unknown' ? 'dark:hover:bg-white/5 border-transparent' : ''}
+                        ${status === 'in-range' ? 'bg-green-50/30 dark:bg-transparent' : ''}
+                        ${status === 'out-of-range' && valueDirection === 'high' ? 'bg-red-50/30 dark:bg-red-500/10 hover:bg-red-100/40 dark:hover:bg-red-500/15' : ''}
+                        ${status === 'out-of-range' && valueDirection === 'low' ? 'bg-blue-50/30 dark:bg-blue-500/10 hover:bg-blue-100/40 dark:hover:bg-blue-500/15' : ''}
+                        ${status === 'out-of-range' && !valueDirection ? 'bg-red-50/30 dark:bg-red-500/10 hover:bg-red-100/40 dark:hover:bg-red-500/15' : ''}
+                        ${!status || status === 'unknown' ? 'dark:hover:bg-white/5' : ''}
                       `}
                     >
                       <TableCell className="font-medium text-muted-foreground text-center py-4">
