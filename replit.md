@@ -7,6 +7,11 @@ A React-based web application that uses Claude AI to automatically analyze clini
 **Last Updated**: November 23, 2025
 
 ## Recent Changes
+- **November 24, 2025**: Removed OAuth Social Login Buttons
+  - Removed Google and Apple login buttons from Login and Signup pages
+  - Simplified authentication to email/password only
+  - OAuth infrastructure removed due to Google Cloud Console configuration complexity
+  - Clean, streamlined authentication experience
 - **November 23, 2025**: Permanent Dark Mode Theme
   - Pure black background (#000000) for OLED-friendly design
   - High contrast white text for readability
