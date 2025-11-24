@@ -184,11 +184,11 @@ function App() {
       <div className="min-h-screen bg-background">
         {/* Header */}
         <header className="border-b bg-card sticky top-0 z-50">
-        <div className="container mx-auto px-4 py-8">
+        <div className="container mx-auto px-4 py-3">
           <div className="flex items-center justify-between gap-8">
             {/* Logo */}
             <div className="flex items-center">
-              <img src="/mito-logo.png" alt="Mito" className="h-40 w-auto object-contain max-w-none" />
+              <img src="/mito-logo.png" alt="Mito" className="h-12 w-auto object-contain max-w-none" />
             </div>
 
             {/* Navigation and User Info */}
