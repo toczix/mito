@@ -14,7 +14,7 @@ import { CheckEmailPending } from '@/components/CheckEmailPending';
 import { isAuthDisabled } from '@/lib/supabase';
 import { AuthService, type AuthUser } from '@/lib/auth-service';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
-import { Activity, FileText, Users, Settings as SettingsIcon, LogOut, Loader2, Moon, Sun } from 'lucide-react';
+import { FileText, Users, Settings as SettingsIcon, LogOut, Loader2, Moon, Sun } from 'lucide-react';
 import { Toaster } from 'sonner';
 import { useTheme } from '@/lib/theme-context';
 
@@ -188,7 +188,7 @@ function App() {
           <div className="flex items-center justify-between gap-8">
             {/* Logo and Title */}
             <div className="flex items-center gap-3">
-              <Activity className="h-8 w-8 text-primary" />
+              <img src="/mito-logo.png" alt="Mito" className="h-8 w-auto" />
               <div>
                 <h1 className="text-3xl font-bold">Mito Analysis</h1>
                 <p className="text-sm text-muted-foreground">

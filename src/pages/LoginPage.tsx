@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { logAuditFailure } from '@/lib/audit-logger';
-import { Activity, Mail, Loader2 } from 'lucide-react';
+import { Mail, Loader2 } from 'lucide-react';
 
 export function LoginPage() {
   const [email, setEmail] = useState('');
@@ -59,7 +59,7 @@ export function LoginPage() {
         {/* Logo and Title */}
         <div className="text-center mb-8">
           <div className="flex items-center justify-center gap-3 mb-4">
-            <Activity className="h-12 w-12 text-primary" />
+            <img src="/mito-logo.png" alt="Mito" className="h-12 w-auto" />
           </div>
           <h1 className="text-4xl font-bold mb-2">Mito Analysis</h1>
           <p className="text-muted-foreground">Clinical Pathology Analysis Portal</p>
