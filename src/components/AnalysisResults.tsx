@@ -13,7 +13,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { generateSummary, getValueStatus } from '@/lib/analyzer';
 import type { AnalysisResult } from '@/lib/biomarkers';
 import { getBiomarkerFullName, getBiomarkerDisplayName } from '@/lib/biomarkers';
-import { Copy, Download, CheckCircle2, AlertCircle, Save, Info, TrendingUp, TrendingDown, FileText, RotateCcw, AlertTriangle, HelpCircle } from 'lucide-react';
+import { Copy, Download, CheckCircle2, AlertCircle, Save, Info, TrendingUp, TrendingDown, FileText, RotateCcw, AlertTriangle } from 'lucide-react';
 import { isSupabaseEnabled } from '@/lib/supabase';
 import { getActiveClients } from '@/lib/client-service';
 import { createAnalysis } from '@/lib/analysis-service';
@@ -282,7 +282,15 @@ export function AnalysisResults({
   const getStatusBadge = (status: string, valueDirection: 'high' | 'low' | null) => {
     if (status === 'in-range') {
       return (
-        <Badge className="bg-green-500/10 text-green-600 dark:text-green-500 border-green-500/30 text-[10px] font-medium">
+        <Badge 
+          variant="outline"
+          className="text-[10px] font-medium"
+          style={{
+            backgroundColor: 'hsl(var(--status-success-bg))',
+            borderColor: 'hsl(var(--status-success-border))',
+            color: 'hsl(var(--status-success-text))'
+          }}
+        >
           <CheckCircle2 className="w-3 h-3 mr-1" />
           In Range
         </Badge>
@@ -290,14 +298,30 @@ export function AnalysisResults({
     } else if (status === 'out-of-range') {
       if (valueDirection === 'high') {
         return (
-          <Badge className="bg-red-500/10 text-red-600 dark:text-red-500 border-red-500/30 text-[10px] font-medium">
+          <Badge 
+            variant="outline"
+            className="text-[10px] font-medium"
+            style={{
+              backgroundColor: 'hsl(var(--status-error-bg))',
+              borderColor: 'hsl(var(--status-error-border))',
+              color: 'hsl(var(--status-error-text))'
+            }}
+          >
             <TrendingUp className="w-3 h-3 mr-1" />
             High
           </Badge>
         );
       } else if (valueDirection === 'low') {
         return (
-          <Badge className="bg-blue-500/10 text-blue-600 dark:text-blue-500 border-blue-500/30 text-[10px] font-medium">
+          <Badge 
+            variant="outline"
+            className="text-[10px] font-medium"
+            style={{
+              backgroundColor: 'hsl(var(--status-info-bg))',
+              borderColor: 'hsl(var(--status-info-border))',
+              color: 'hsl(var(--status-info-text))'
+            }}
+          >
             <TrendingDown className="w-3 h-3 mr-1" />
             Low
           </Badge>
@@ -309,20 +333,6 @@ export function AnalysisResults({
         N/A
       </Badge>
     );
-  };
-
-  // Status Icon Helper - returns icon based on status and direction
-  const getStatusIcon = (status: string, valueDirection: 'high' | 'low' | null) => {
-    if (status === 'in-range') {
-      return <CheckCircle2 className="w-4 h-4 text-green-600 dark:text-green-500 flex-shrink-0" />;
-    } else if (status === 'out-of-range') {
-      if (valueDirection === 'high') {
-        return <TrendingUp className="w-4 h-4 text-red-600 dark:text-red-500 flex-shrink-0" />;
-      } else if (valueDirection === 'low') {
-        return <TrendingDown className="w-4 h-4 text-blue-600 dark:text-blue-500 flex-shrink-0" />;
-      }
-    }
-    return <HelpCircle className="w-4 h-4 text-gray-400 flex-shrink-0" />;
   };
 
   return (
@@ -415,7 +425,7 @@ export function AnalysisResults({
         <Card className="p-4 bg-gradient-to-br from-gray-50 to-white dark:from-gray-950/30 dark:to-background border-gray-200 dark:border-gray-800">
           <div className="flex items-center gap-3">
             <div className="bg-gray-100 dark:bg-gray-900/50 p-2 rounded-lg">
-              <HelpCircle className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+              <AlertCircle className="w-5 h-5 text-gray-600 dark:text-gray-400" />
             </div>
             <div>
               <p className="text-xs text-muted-foreground">Missing</p>
@@ -665,7 +675,6 @@ export function AnalysisResults({
                       </TableCell>
                       <TableCell className="font-medium py-4">
                         <div className="flex items-start gap-2">
-                          {getStatusIcon(status, valueDirection)}
                           <div className="flex flex-col flex-1">
                             <span className="font-semibold text-sm">{result.biomarkerName}</span>
                             {getBiomarkerFullName(result.biomarkerName) && (

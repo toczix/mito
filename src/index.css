@@ -56,43 +56,43 @@
   
   /* Dark theme */
   [data-theme="dark"] {
-    --background: 0 0% 0%;
-    --foreground: 0 0% 98%;
-    --card: 0 0% 6%;
-    --card-foreground: 0 0% 98%;
-    --popover: 0 0% 6%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 217 91% 60%;
+    --background: 0 0% 6%;
+    --foreground: 0 0% 95%;
+    --card: 0 0% 10%;
+    --card-foreground: 0 0% 95%;
+    --popover: 0 0% 10%;
+    --popover-foreground: 0 0% 95%;
+    --primary: 217 91% 65%;
     --primary-foreground: 0 0% 100%;
-    --secondary: 0 0% 12%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 0 0% 12%;
-    --muted-foreground: 0 0% 60%;
-    --accent: 217 91% 60%;
+    --secondary: 0 0% 16%;
+    --secondary-foreground: 0 0% 95%;
+    --muted: 0 0% 16%;
+    --muted-foreground: 0 0% 65%;
+    --accent: 217 91% 65%;
     --accent-foreground: 0 0% 100%;
-    --destructive: 0 62.8% 30.6%;
+    --destructive: 0 70% 50%;
     --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 15%;
-    --input: 0 0% 15%;
-    --ring: 217 91% 60%;
+    --border: 0 0% 20%;
+    --input: 0 0% 20%;
+    --ring: 217 91% 65%;
     
     /* Status colors for dark mode - improved contrast */
-    --status-success-bg: 142 76% 12%;
-    --status-success-border: 142 76% 25%;
-    --status-success-text: 142 76% 80%;
-    --status-warning-bg: 48 100% 12%;
-    --status-warning-border: 48 100% 25%;
-    --status-warning-text: 48 100% 80%;
-    --status-error-bg: 0 86% 12%;
-    --status-error-border: 0 86% 25%;
-    --status-error-text: 0 86% 85%;
-    --status-info-bg: 217 91% 12%;
-    --status-info-border: 217 91% 25%;
-    --status-info-text: 217 91% 80%;
+    --status-success-bg: 142 76% 15%;
+    --status-success-border: 142 76% 30%;
+    --status-success-text: 142 76% 85%;
+    --status-warning-bg: 38 92% 20%;
+    --status-warning-border: 38 92% 35%;
+    --status-warning-text: 38 92% 85%;
+    --status-error-bg: 0 70% 18%;
+    --status-error-border: 0 70% 35%;
+    --status-error-text: 0 70% 85%;
+    --status-info-bg: 217 80% 18%;
+    --status-info-border: 217 80% 35%;
+    --status-info-text: 217 80% 85%;
     
     /* Out-of-range biomarker row background (dark mode) */
-    --out-of-range-bg: 0 60% 12%;
-    --out-of-range-bg-hover: 0 60% 15%;
+    --out-of-range-bg: 0 40% 15%;
+    --out-of-range-bg-hover: 0 40% 18%;
   }
 }
 
