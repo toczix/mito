@@ -3,10 +3,18 @@
 ## Overview
 A React-based web application that uses Claude AI to automatically analyze clinical pathology lab reports and compare biomarker values against optimal reference ranges. The app supports multilingual processing, multiple file formats (PDF, DOCX, images), and optional Supabase integration for client management.
 
-**Current State**: 55 biomarkers tracked (added Transferrin), parallel processing for fast analysis, light/dark mode toggle
+**Current State**: 55 biomarkers tracked, parallel processing, professional light/dark mode with Mito color palette
 **Last Updated**: November 24, 2025
 
 ## Recent Changes
+- **November 24, 2025**: Complete Color Palette Implementation
+  - Implemented official Mito color palette for both light and dark modes
+  - Light mode: #fafafa background, #0055FF primary blue, proper status colors
+  - Dark mode: #0a0a0a background, #5B8EFF lighter blue, enhanced contrast
+  - Status badges use proper Tailwind classes: green-600/400, red-600/400, blue-600/400
+  - Row highlighting: 10% opacity in light mode, 8% opacity in dark mode
+  - Removed all inline style hacks, using semantic Tailwind utilities throughout
+  - Professional, consistent appearance across all themes
 - **November 24, 2025**: Critical Security Fix - Client Data Isolation
   - Fixed critical bug where all users could see ALL clients regardless of ownership
   - Implemented "fail-closed" security: queries return empty if user can't be authenticated

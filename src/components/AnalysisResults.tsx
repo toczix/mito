@@ -233,7 +233,7 @@ export function AnalysisResults({
       return (
         <>
           {parts[0]}
-          <span className="font-semibold px-1.5 py-0.5 rounded" style={{ backgroundColor: 'hsl(var(--status-info-bg))', color: 'hsl(var(--status-info-text))' }}>
+          <span className="font-semibold px-1.5 py-0.5 rounded bg-purple-100/40 dark:bg-purple-950/30 text-purple-600 dark:text-purple-400">
             {parenthesesMatch[0]}
           </span>
           {parts[1]}
@@ -249,7 +249,7 @@ export function AnalysisResults({
       const parts = optimalRange.split(unitMatch[0]);
       return (
         <>
-          <span className="font-semibold px-1.5 py-0.5 rounded" style={{ backgroundColor: 'hsl(var(--status-info-bg))', color: 'hsl(var(--status-info-text))' }}>
+          <span className="font-semibold px-1.5 py-0.5 rounded bg-purple-100/40 dark:bg-purple-950/30 text-purple-600 dark:text-purple-400">
             {unitMatch[0].trim()}
           </span>
           {parts[1]}
@@ -266,7 +266,7 @@ export function AnalysisResults({
       return (
         <>
           {parts[0]}
-          <span className="font-semibold px-1.5 py-0.5 rounded" style={{ backgroundColor: 'hsl(var(--status-info-bg))', color: 'hsl(var(--status-info-text))' }}>
+          <span className="font-semibold px-1.5 py-0.5 rounded bg-purple-100/40 dark:bg-purple-950/30 text-purple-600 dark:text-purple-400">
             {operatorMatch[0]}
           </span>
           {parts[1]}
@@ -282,15 +282,7 @@ export function AnalysisResults({
   const getStatusBadge = (status: string, valueDirection: 'high' | 'low' | null) => {
     if (status === 'in-range') {
       return (
-        <Badge 
-          variant="outline"
-          className="text-[10px] font-medium"
-          style={{
-            backgroundColor: 'hsl(var(--status-success-bg))',
-            borderColor: 'hsl(var(--status-success-border))',
-            color: 'hsl(var(--status-success-text))'
-          }}
-        >
+        <Badge className="bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/30 text-[10px] font-medium">
           <CheckCircle2 className="w-3 h-3 mr-1" />
           In Range
         </Badge>
@@ -298,30 +290,14 @@ export function AnalysisResults({
     } else if (status === 'out-of-range') {
       if (valueDirection === 'high') {
         return (
-          <Badge 
-            variant="outline"
-            className="text-[10px] font-medium"
-            style={{
-              backgroundColor: 'hsl(var(--status-error-bg))',
-              borderColor: 'hsl(var(--status-error-border))',
-              color: 'hsl(var(--status-error-text))'
-            }}
-          >
+          <Badge className="bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/30 text-[10px] font-medium">
             <TrendingUp className="w-3 h-3 mr-1" />
             High
           </Badge>
         );
       } else if (valueDirection === 'low') {
         return (
-          <Badge 
-            variant="outline"
-            className="text-[10px] font-medium"
-            style={{
-              backgroundColor: 'hsl(var(--status-info-bg))',
-              borderColor: 'hsl(var(--status-info-border))',
-              color: 'hsl(var(--status-info-text))'
-            }}
-          >
+          <Badge className="bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/30 text-[10px] font-medium">
             <TrendingDown className="w-3 h-3 mr-1" />
             Low
           </Badge>
@@ -652,23 +628,14 @@ export function AnalysisResults({
                     <TableRow 
                       key={index} 
                       className={`
-                        transition-all duration-300
+                        transition-all duration-200
                         ${isNA ? 'opacity-50' : ''}
-                        cursor-pointer
+                        ${status === 'in-range' ? 'bg-green-50/30 dark:bg-green-950/20' : ''}
+                        ${status === 'out-of-range' && valueDirection === 'high' ? 'bg-red-50/30 dark:bg-red-950/20' : ''}
+                        ${status === 'out-of-range' && valueDirection === 'low' ? 'bg-blue-50/30 dark:bg-blue-950/20' : ''}
+                        ${status === 'out-of-range' && !valueDirection ? 'bg-red-50/30 dark:bg-red-950/20' : ''}
+                        hover:bg-muted/50
                       `}
-                      style={{
-                        backgroundColor: isOutOfRange ? 'hsl(var(--out-of-range-bg))' : undefined,
-                      }}
-                      onMouseEnter={(e) => {
-                        if (isOutOfRange) {
-                          e.currentTarget.style.backgroundColor = 'hsl(var(--out-of-range-bg-hover))';
-                        }
-                      }}
-                      onMouseLeave={(e) => {
-                        if (isOutOfRange) {
-                          e.currentTarget.style.backgroundColor = 'hsl(var(--out-of-range-bg))';
-                        }
-                      }}
                     >
                       <TableCell className="font-medium text-muted-foreground text-center py-4">
                         {index + 1}
@@ -698,9 +665,8 @@ export function AnalysisResults({
                         className={`
                           font-mono text-right py-4
                           ${isNA ? 'text-muted-foreground' : ''} 
-                          ${isOutOfRange ? 'font-bold text-base' : 'font-semibold'}
+                          ${isOutOfRange && !isNA ? 'font-bold text-base text-red-600 dark:text-red-400' : 'font-semibold'}
                         `}
-                        style={isOutOfRange && !isNA ? { color: 'hsl(var(--status-error-text))' } : undefined}
                       >
                         {isEditingValue ? (
                           <Input

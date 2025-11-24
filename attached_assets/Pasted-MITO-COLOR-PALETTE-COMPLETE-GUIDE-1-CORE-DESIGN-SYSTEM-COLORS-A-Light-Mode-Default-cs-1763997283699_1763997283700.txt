@@ -1,0 +1,598 @@
+MITO COLOR PALETTE - COMPLETE GUIDE
+
+🎨 1. CORE DESIGN SYSTEM COLORS
+
+A. Light Mode (Default)
+
+```css
+:root {
+  /* Page Backgrounds */
+  --background: #fafafa;              /* Main app background - very light gray */
+  --card: #ffffff;                     /* Card/panel backgrounds - pure white */
+  
+  /* Text Colors */
+  --foreground: #1a1a1a;              /* Primary text - almost black */
+  --card-foreground: #1a1a1a;         /* Text on cards */
+  --muted-foreground: #86868b;        /* Secondary/muted text - medium gray */
+  
+  /* Primary Brand Color (Blue) */
+  --primary: #0055FF;                  /* Main blue - buttons, links, icons */
+  --primary-foreground: #ffffff;      /* Text on primary blue */
+  
+  /* Secondary Surfaces */
+  --secondary: #f5f5f7;               /* Light gray backgrounds */
+  --secondary-foreground: #1a1a1a;    /* Text on secondary */
+  --muted: #f5f5f7;                   /* Muted backgrounds */
+  --accent: #e8e8ed;                  /* Accent backgrounds - slightly darker gray */
+  --accent-foreground: #1a1a1a;       /* Text on accent */
+  
+  /* Borders & Inputs */
+  --border: rgba(0, 0, 0, 0.08);      /* Border color - subtle black alpha */
+  --input: rgba(0, 0, 0, 0.08);       /* Input borders */
+  --input-background: #f5f5f7;        /* Input fill */
+  
+  /* Status Colors */
+  --destructive: #ff3b30;             /* Red - errors, high values */
+  --destructive-foreground: #ffffff;  /* Text on red */
+  --success: #34c759;                 /* Green - success, optimal */
+  --success-foreground: #ffffff;      /* Text on green */
+  
+  /* Focus Ring */
+  --ring: #0055FF;                    /* Focus outline color */
+  
+  /* Sidebar (Desktop) */
+  --sidebar: #ffffff;
+  --sidebar-foreground: #1a1a1a;
+  --sidebar-border: rgba(0, 0, 0, 0.08);
+}
+```
+
+B. Dark Mode
+
+```css
+.dark {
+  /* Page Backgrounds */
+  --background: #0a0a0a;              /* Main app background - near black */
+  --card: #141414;                     /* Card backgrounds - dark gray */
+  
+  /* Text Colors */
+  --foreground: #fafafa;              /* Primary text - near white */
+  --card-foreground: #fafafa;         /* Text on cards */
+  --muted-foreground: #a1a1aa;        /* Secondary text - light gray */
+  
+  /* Primary Brand Color (Blue) - Lighter in dark mode */
+  --primary: #5B8EFF;                  /* Lighter blue for dark mode */
+  --primary-foreground: #ffffff;      /* Text on primary */
+  
+  /* Secondary Surfaces */
+  --secondary: #1f1f1f;               /* Dark gray backgrounds */
+  --secondary-foreground: #fafafa;    /* Text on secondary */
+  --muted: #1f1f1f;                   /* Muted backgrounds */
+  --accent: #27272a;                  /* Accent backgrounds */
+  --accent-foreground: #fafafa;       /* Text on accent */
+  
+  /* Borders & Inputs */
+  --border: #27272a;                  /* Border color */
+  --input: #27272a;                   /* Input borders */
+  --input-background: #1f1f1f;        /* Input fill */
+  
+  /* Status Colors - Same in dark mode */
+  --destructive: #ff3b30;             /* Red */
+  --destructive-foreground: #ffffff;
+  --success: #34c759;                 /* Green */
+  --success-foreground: #ffffff;
+  
+  /* Focus Ring */
+  --ring: #5B8EFF;                    /* Lighter blue ring */
+  
+  /* Sidebar - Inverted for dark mode */
+  --sidebar: #f5f5f7;                 /* Light sidebar in dark mode */
+  --sidebar-foreground: #1a1a1a;
+  --sidebar-border: #e8e8ed;
+}
+```
+
+---
+
+🎯 2. ANALYSIS PAGE STATUS COLORS
+
+Light Mode Status Colors
+
+```css
+/* GREEN - Optimal/Success */
+.status-optimal-light {
+  /* Gradient backgrounds for cards */
+  background: linear-gradient(to bottom right, #f0fdf4, #ffffff);
+  border-color: #bbf7d0;  /* green-200 */
+  
+  /* Row background in table */
+  background: rgba(34, 197, 94, 0.1);  /* green-500 with 10% opacity */
+  
+  /* Badge */
+  background: rgba(34, 197, 94, 0.1);
+  color: #16a34a;  /* green-600 */
+  border-color: rgba(34, 197, 94, 0.3);
+  
+  /* Icon color */
+  color: #16a34a;  /* green-600 */
+}
+
+/* RED - High/Error */
+.status-high-light {
+  /* Gradient backgrounds for cards */
+  background: linear-gradient(to bottom right, #fef2f2, #ffffff);
+  border-color: #fecaca;  /* red-200 */
+  
+  /* Row background */
+  background: rgba(239, 68, 68, 0.1);  /* red-500 with 10% opacity */
+  
+  /* Badge */
+  background: rgba(239, 68, 68, 0.1);
+  color: #dc2626;  /* red-600 */
+  border-color: rgba(239, 68, 68, 0.3);
+  
+  /* Icon color */
+  color: #dc2626;  /* red-600 */
+}
+
+/* BLUE - Low/Warning */
+.status-low-light {
+  /* Gradient backgrounds for cards */
+  background: linear-gradient(to bottom right, #eff6ff, #ffffff);
+  border-color: #bfdbfe;  /* blue-200 */
+  
+  /* Row background */
+  background: rgba(59, 130, 246, 0.1);  /* blue-500 with 10% opacity */
+  
+  /* Badge */
+  background: rgba(59, 130, 246, 0.1);
+  color: #2563eb;  /* blue-600 */
+  border-color: rgba(59, 130, 246, 0.3);
+  
+  /* Icon color */
+  color: #2563eb;  /* blue-600 */
+}
+
+/* AMBER - Suboptimal/Needs Attention */
+.status-suboptimal-light {
+  /* Gradient backgrounds for cards */
+  background: linear-gradient(to bottom right, #fffbeb, #ffffff);
+  border-color: #fde68a;  /* amber-200 */
+  
+  /* Row background */
+  background: rgba(245, 158, 11, 0.1);  /* amber-500 with 10% opacity */
+  
+  /* Badge */
+  background: rgba(245, 158, 11, 0.1);
+  color: #d97706;  /* amber-600 */
+  border-color: rgba(245, 158, 11, 0.3);
+  
+  /* Icon color */
+  color: #d97706;  /* amber-600 */
+}
+
+/* PURPLE - Info/Processed */
+.status-info-light {
+  /* Gradient backgrounds for cards */
+  background: linear-gradient(to bottom right, #faf5ff, #ffffff);
+  border-color: #e9d5ff;  /* purple-200 */
+  
+  /* Icon color */
+  color: #9333ea;  /* purple-600 */
+}
+
+/* GRAY - N/A / Not Found */
+.status-na-light {
+  /* Row appearance */
+  opacity: 0.5;
+  
+  /* Badge */
+  background: transparent;
+  border-color: #e5e7eb;  /* gray-200 */
+  color: #6b7280;  /* gray-500 */
+}
+```
+
+Dark Mode Status Colors
+
+```css
+/* GREEN - Optimal/Success (Dark) */
+.status-optimal-dark {
+  /* Gradient backgrounds for cards */
+  background: linear-gradient(to bottom right, rgba(34, 197, 94, 0.1), #141414);
+  border-color: rgba(34, 197, 94, 0.2);
+  
+  /* Row background */
+  background: rgba(34, 197, 94, 0.08);
+  
+  /* Badge */
+  background: rgba(34, 197, 94, 0.1);
+  color: #4ade80;  /* green-400 */
+  border-color: rgba(34, 197, 94, 0.3);
+  
+  /* Icon color */
+  color: #4ade80;  /* green-400 */
+}
+
+/* RED - High/Error (Dark) */
+.status-high-dark {
+  /* Gradient backgrounds for cards */
+  background: linear-gradient(to bottom right, rgba(239, 68, 68, 0.1), #141414);
+  border-color: rgba(239, 68, 68, 0.2);
+  
+  /* Row background */
+  background: rgba(239, 68, 68, 0.08);
+  
+  /* Badge */
+  background: rgba(239, 68, 68, 0.1);
+  color: #f87171;  /* red-400 */
+  border-color: rgba(239, 68, 68, 0.3);
+  
+  /* Icon color */
+  color: #f87171;  /* red-400 */
+}
+
+/* BLUE - Low/Warning (Dark) */
+.status-low-dark {
+  /* Gradient backgrounds for cards */
+  background: linear-gradient(to bottom right, rgba(59, 130, 246, 0.1), #141414);
+  border-color: rgba(59, 130, 246, 0.2);
+  
+  /* Row background */
+  background: rgba(59, 130, 246, 0.08);
+  
+  /* Badge */
+  background: rgba(59, 130, 246, 0.1);
+  color: #60a5fa;  /* blue-400 */
+  border-color: rgba(59, 130, 246, 0.3);
+  
+  /* Icon color */
+  color: #60a5fa;  /* blue-400 */
+}
+
+/* AMBER - Suboptimal (Dark) */
+.status-suboptimal-dark {
+  /* Gradient backgrounds for cards */
+  background: linear-gradient(to bottom right, rgba(245, 158, 11, 0.1), #141414);
+  border-color: rgba(245, 158, 11, 0.2);
+  
+  /* Row background */
+  background: rgba(245, 158, 11, 0.08);
+  
+  /* Badge */
+  background: rgba(245, 158, 11, 0.1);
+  color: #fbbf24;  /* amber-400 */
+  border-color: rgba(245, 158, 11, 0.3);
+  
+  /* Icon color */
+  color: #fbbf24;  /* amber-400 */
+}
+
+/* PURPLE - Info (Dark) */
+.status-info-dark {
+  /* Gradient backgrounds for cards */
+  background: linear-gradient(to bottom right, rgba(147, 51, 234, 0.1), #141414);
+  border-color: rgba(147, 51, 234, 0.2);
+  
+  /* Icon color */
+  color: #c084fc;  /* purple-400 */
+}
+```
+
+---
+
+🔷 3. BLUE VARIANTS (Complete Palette)
+
+```css
+/* Blue Shades Used in Mito */
+:root {
+  /* Main Primary Blues */
+  --blue-primary-light: #0055FF;      /* Light mode primary */
+  --blue-primary-dark: #5B8EFF;       /* Dark mode primary */
+  
+  /* Chart Blues */
+  --chart-blue-1: #0055FF;            /* Primary chart color */
+  --chart-blue-2: #5B8EFF;            /* Secondary chart color */
+  --chart-blue-3: #00033D;            /* Dark blue (light mode) */
+  --chart-blue-3-dark: #00d4ff;       /* Cyan (dark mode) */
+  
+  /* Status Blue (Low Values) */
+  --status-blue-600: #2563eb;         /* Light mode icons/text */
+  --status-blue-400: #60a5fa;         /* Dark mode icons/text */
+  --status-blue-500: #3b82f6;         /* Base for opacity */
+  
+  /* Blue Backgrounds */
+  --blue-50: #eff6ff;                 /* Lightest blue background */
+  --blue-100: #dbeafe;                /* Very light blue */
+  --blue-200: #bfdbfe;                /* Light blue borders */
+  --blue-900: rgba(30, 64, 175, 0.2); /* Dark mode blue background */
+  --blue-950: rgba(23, 37, 84, 0.08); /* Dark mode subtle blue */
+}
+```
+
+---
+
+📋 4. COMPLETE HEX REFERENCE
+
+Light Mode Full Palette
+
+```
+Background:         #fafafa
+Card:               #ffffff
+Foreground:         #1a1a1a
+Muted Foreground:   #86868b
+Primary Blue:       #0055FF
+Secondary Gray:     #f5f5f7
+Accent Gray:        #e8e8ed
+Border:             rgba(0, 0, 0, 0.08)
+
+Status Colors:
+Green (Optimal):    #16a34a (#34c759 for success)
+Red (High):         #dc2626 (#ff3b30 for destructive)
+Blue (Low):         #2563eb
+Amber (Suboptimal): #d97706
+Purple (Info):      #9333ea
+Gray (N/A):         #6b7280
+
+Tailwind Equivalents:
+green-600:          #16a34a
+red-600:            #dc2626
+blue-600:           #2563eb
+amber-600:          #d97706
+purple-600:         #9333ea
+gray-500:           #6b7280
+```
+
+Dark Mode Full Palette
+
+```
+Background:         #0a0a0a
+Card:               #141414
+Foreground:         #fafafa
+Muted Foreground:   #a1a1aa
+Primary Blue:       #5B8EFF
+Secondary Gray:     #1f1f1f
+Accent Gray:        #27272a
+Border:             #27272a
+
+Status Colors:
+Green (Optimal):    #4ade80
+Red (High):         #f87171
+Blue (Low):         #60a5fa
+Amber (Suboptimal): #fbbf24
+Purple (Info):      #c084fc
+Gray (N/A):         #9ca3af
+
+Tailwind Equivalents:
+green-400:          #4ade80
+red-400:            #f87171
+blue-400:           #60a5fa
+amber-400:          #fbbf24
+purple-400:         #c084fc
+gray-400:           #9ca3af
+```
+
+---
+
+💡 5. TAILWIND CLASS REFERENCE
+
+For Light Mode
+
+```tsx
+// Background & Cards
+bg-[#fafafa]           // Page background
+bg-white               // Cards
+bg-[#f5f5f7]           // Secondary surfaces
+
+// Text
+text-[#1a1a1a]         // Primary text
+text-[#86868b]         // Muted text
+text-foreground        // Using CSS variable
+text-foreground/70     // 70% opacity
+
+// Primary Brand
+bg-[#0055FF]           // Primary blue
+text-[#0055FF]         // Blue text
+border-[#0055FF]       // Blue borders
+
+// Status - Optimal (Green)
+bg-green-50/30         // Row tint
+bg-green-100           // Icon background
+text-green-600         // Text/icons
+border-green-200       // Borders
+
+// Status - High (Red)
+bg-red-50/30           // Row tint
+bg-red-100             // Icon background
+text-red-600           // Text/icons
+border-red-200         // Borders
+
+// Status - Low (Blue)
+bg-blue-50/30          // Row tint
+bg-blue-100            // Icon background
+text-blue-600          // Text/icons
+border-blue-200        // Borders
+
+// Status - Suboptimal (Amber)
+bg-amber-50/30         // Row tint
+bg-amber-100           // Icon background
+text-amber-600         // Text/icons
+border-amber-200       // Borders
+
+// Status - Info (Purple)
+bg-purple-50           // Card gradient start
+bg-purple-100          // Icon background
+text-purple-600        // Text/icons
+border-purple-200      // Borders
+
+// Borders
+border-border          // Using CSS variable
+border-[rgba(0,0,0,0.08)]
+```
+
+For Dark Mode (with dark: prefix)
+
+```tsx
+// Background & Cards
+dark:bg-[#0a0a0a]      // Page background
+dark:bg-[#141414]      // Cards
+dark:bg-[#1f1f1f]      // Secondary surfaces
+
+// Text
+dark:text-[#fafafa]    // Primary text
+dark:text-[#a1a1aa]    // Muted text
+dark:text-foreground   // Using CSS variable
+
+// Primary Brand
+dark:bg-[#5B8EFF]      // Primary blue (lighter)
+dark:text-[#5B8EFF]    // Blue text
+dark:border-[#5B8EFF]  // Blue borders
+
+// Status - Optimal (Green)
+dark:bg-green-950/20   // Row tint
+dark:bg-green-900/50   // Icon background
+dark:text-green-400    // Text/icons
+dark:border-green-900/50
+
+// Status - High (Red)
+dark:bg-red-950/20     // Row tint
+dark:bg-red-900/50     // Icon background
+dark:text-red-400      // Text/icons
+dark:border-red-900/50
+
+// Status - Low (Blue)
+dark:bg-blue-950/20    // Row tint
+dark:bg-blue-900/50    // Icon background
+dark:text-blue-400     // Text/icons
+dark:border-blue-900/50
+
+// Status - Suboptimal (Amber)
+dark:bg-amber-950/20   // Row tint
+dark:bg-amber-900/50   // Icon background
+dark:text-amber-400    // Text/icons
+dark:border-amber-900/50
+
+// Status - Info (Purple)
+dark:bg-purple-950/30  // Card background
+dark:bg-purple-900/50  // Icon background
+dark:text-purple-400   // Text/icons
+dark:border-purple-900/50
+
+// Borders
+dark:border-[#27272a]
+```
+
+---
+
+⚙️ 6. IMPLEMENTATION INSTRUCTIONS
+
+Step 1: Add CSS Variables
+
+Create or update your `globals.css`:
+
+```css
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #fafafa;
+  --foreground: #1a1a1a;
+  --card: #ffffff;
+  --primary: #0055FF;
+  --muted-foreground: #86868b;
+  --border: rgba(0, 0, 0, 0.08);
+  --destructive: #ff3b30;
+  --success: #34c759;
+}
+
+.dark {
+  --background: #0a0a0a;
+  --foreground: #fafafa;
+  --card: #141414;
+  --primary: #5B8EFF;
+  --muted-foreground: #a1a1aa;
+  --border: #27272a;
+}
+
+@layer base {
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+```
+
+Step 2: Configure Tailwind
+
+Update `tailwind.config.js`:
+
+```js
+module.exports = {
+  darkMode: 'class',
+  theme: {
+    extend: {
+      colors: {
+        background: 'var(--background)',
+        foreground: 'var(--foreground)',
+        card: 'var(--card)',
+        primary: 'var(--primary)',
+        border: 'var(--border)',
+      }
+    }
+  }
+}
+```
+
+Step 3: Use in Components
+
+```tsx
+// Light and dark mode automatically work
+<div className="bg-background text-foreground">
+  <div className="bg-card border border-border">
+    <span className="text-primary">Blue text</span>
+  </div>
+</div>
+
+// Status colors
+<div className="bg-green-50/30 dark:bg-green-950/20">
+  <span className="text-green-600 dark:text-green-400">Optimal</span>
+</div>
+```
+
+---
+
+📱 7. QUICK COPY-PASTE TEMPLATES
+
+Status Row Background
+
+```tsx
+className={`
+  ${status === 'optimal' ? 'bg-green-50/30 dark:bg-green-950/20' : ''}
+  ${status === 'high' ? 'bg-red-50/30 dark:bg-red-950/20' : ''}
+  ${status === 'low' ? 'bg-blue-50/30 dark:bg-blue-950/20' : ''}
+  ${status === 'suboptimal' ? 'bg-amber-50/30 dark:bg-amber-950/20' : ''}
+`}
+```
+
+Status Icon Color
+
+```tsx
+className={`
+  ${status === 'optimal' ? 'text-green-600 dark:text-green-400' : ''}
+  ${status === 'high' ? 'text-red-600 dark:text-red-400' : ''}
+  ${status === 'low' ? 'text-blue-600 dark:text-blue-400' : ''}
+  ${status === 'suboptimal' ? 'text-amber-600 dark:text-amber-400' : ''}
+`}
+```
+
+Gradient Card Background
+
+```tsx
+className="bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/30 dark:to-background border-blue-200 dark:border-blue-900/50"
+```
+
+---
+
+That's every single color in the Mito design system! 🎨✨
+
+Copy any section you need. All colors are production-ready with full light/dark mode support.

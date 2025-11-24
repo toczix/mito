@@ -7,112 +7,78 @@
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
   }
   
-  /* Light theme */
+  /* Light theme - Mito Color Palette */
   :root {
-    --background: 0 0% 100%;
-    --foreground: 0 0% 3.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 0 0% 3.9%;
+    --background: 0 0% 98%;              /* #fafafa */
+    --foreground: 0 0% 10%;              /* #1a1a1a */
+    --card: 0 0% 100%;                    /* #ffffff */
+    --card-foreground: 0 0% 10%;         /* #1a1a1a */
     --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 3.9%;
-    --primary: 217 91% 60%;
+    --popover-foreground: 0 0% 10%;
+    --primary: 221 100% 50%;              /* #0055FF */
     --primary-foreground: 0 0% 100%;
-    --secondary: 0 0% 96.1%;
-    --secondary-foreground: 0 0% 9%;
-    --muted: 0 0% 96.1%;
-    --muted-foreground: 0 0% 45.1%;
-    --accent: 0 0% 96.1%;
-    --accent-foreground: 0 0% 9%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 89.8%;
-    --input: 0 0% 89.8%;
-    --ring: 217 91% 60%;
+    --secondary: 0 0% 96%;                /* #f5f5f7 */
+    --secondary-foreground: 0 0% 10%;
+    --muted: 0 0% 96%;                    /* #f5f5f7 */
+    --muted-foreground: 0 0% 53%;         /* #86868b */
+    --accent: 240 11% 91%;                /* #e8e8ed */
+    --accent-foreground: 0 0% 10%;
+    --destructive: 4 90% 58%;             /* #ff3b30 */
+    --destructive-foreground: 0 0% 100%;
+    --success: 145 63% 49%;               /* #34c759 */
+    --success-foreground: 0 0% 100%;
+    --border: 0 0% 0% / 0.08;             /* rgba(0,0,0,0.08) */
+    --input: 0 0% 0% / 0.08;
+    --ring: 221 100% 50%;
     --radius: 0.75rem;
-    --chart-1: 220 70% 50%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
     
-    /* Status colors for light mode */
-    --status-success-bg: 142 76% 96%;
-    --status-success-border: 142 76% 85%;
-    --status-success-text: 142 76% 25%;
-    --status-warning-bg: 48 100% 96%;
-    --status-warning-border: 48 100% 85%;
-    --status-warning-text: 32 95% 44%;
-    --status-error-bg: 0 86% 97%;
-    --status-error-border: 0 86% 90%;
-    --status-error-text: 0 72% 51%;
-    --status-info-bg: 217 91% 97%;
-    --status-info-border: 217 91% 88%;
-    --status-info-text: 217 91% 40%;
-    
-    /* Out-of-range biomarker row background (light mode) */
-    --out-of-range-bg: 0 90% 97%;
-    --out-of-range-bg-hover: 0 90% 95%;
+    --sidebar: 0 0% 100%;
+    --sidebar-foreground: 0 0% 10%;
+    --sidebar-border: 0 0% 0% / 0.08;     /* rgba(0,0,0,0.08) */
   }
   
-  /* Dark theme */
+  /* Dark theme - Mito Color Palette */
   [data-theme="dark"] {
-    --background: 0 0% 12%;
-    --foreground: 0 0% 88%;
-    --card: 0 0% 18%;
-    --card-foreground: 0 0% 88%;
-    --popover: 0 0% 18%;
-    --popover-foreground: 0 0% 88%;
-    --primary: 217 91% 65%;
+    --background: 0 0% 4%;                /* #0a0a0a */
+    --foreground: 0 0% 98%;               /* #fafafa */
+    --card: 0 0% 8%;                      /* #141414 */
+    --card-foreground: 0 0% 98%;
+    --popover: 0 0% 8%;
+    --popover-foreground: 0 0% 98%;
+    --primary: 221 100% 68%;              /* #5B8EFF */
     --primary-foreground: 0 0% 100%;
-    --secondary: 0 0% 22%;
-    --secondary-foreground: 0 0% 88%;
-    --muted: 0 0% 22%;
-    --muted-foreground: 0 0% 75%;
-    --accent: 0 0% 24%;
-    --accent-foreground: 0 0% 88%;
-    --destructive: 0 70% 50%;
-    --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 28%;
-    --input: 0 0% 24%;
-    --ring: 217 91% 65%;
+    --secondary: 0 0% 12%;                /* #1f1f1f */
+    --secondary-foreground: 0 0% 98%;
+    --muted: 0 0% 12%;                    /* #1f1f1f */
+    --muted-foreground: 240 5% 66%;       /* #a1a1aa */
+    --accent: 240 6% 15%;                 /* #27272a */
+    --accent-foreground: 0 0% 98%;
+    --destructive: 4 90% 58%;             /* #ff3b30 */
+    --destructive-foreground: 0 0% 100%;
+    --success: 145 63% 49%;               /* #34c759 */
+    --success-foreground: 0 0% 100%;
+    --border: 240 6% 15%;                 /* #27272a */
+    --input: 240 6% 15%;
+    --ring: 221 100% 68%;
     
-    /* Status colors for dark mode - higher contrast with reduced saturation */
-    --status-success-bg: 142 50% 25%;
-    --status-success-border: 142 50% 35%;
-    --status-success-text: 142 50% 90%;
-    --status-warning-bg: 38 60% 30%;
-    --status-warning-border: 38 60% 40%;
-    --status-warning-text: 38 60% 95%;
-    --status-error-bg: 0 50% 28%;
-    --status-error-border: 0 50% 38%;
-    --status-error-text: 0 50% 92%;
-    --status-info-bg: 217 50% 28%;
-    --status-info-border: 217 50% 38%;
-    --status-info-text: 217 50% 90%;
-    
-    /* Out-of-range biomarker row background (dark mode) */
-    --out-of-range-bg: 0 30% 20%;
-    --out-of-range-bg-hover: 0 30% 24%;
+    --sidebar: 0 0% 96%;                  /* #f5f5f7 - Light in dark mode */
+    --sidebar-foreground: 0 0% 10%;
+    --sidebar-border: 240 11% 91%;
   }
 }
 
 @layer base {
   * {
-    border-color: hsl(var(--border));
-  }
-  body {
-    background-color: hsl(var(--background));
-    color: hsl(var(--foreground));
-  }
-}
-
-
-
-@layer base {
-  * {
-    @apply border-border;
+    border-color: hsla(var(--border));
   }
   body {
     @apply bg-background text-foreground;
+  }
+}
+
+/* Override Tailwind's border-border utility to preserve alpha channel */
+@layer utilities {
+  .border-border {
+    border-color: hsla(var(--border));
   }
 }
