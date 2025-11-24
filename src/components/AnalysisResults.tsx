@@ -586,7 +586,7 @@ export function AnalysisResults({
                       key={index} 
                       className={`
                         ${isNA ? 'bg-muted/30' : ''} 
-                        ${isOutOfRange ? 'bg-red-500/5 hover:bg-red-500/10' : 'hover:bg-muted/50'}
+                        ${isOutOfRange ? 'bg-red-950/30 hover:bg-red-950/40' : 'hover:bg-muted/50'}
                       `}
                     >
                       <TableCell className="font-medium text-muted-foreground text-center py-4">

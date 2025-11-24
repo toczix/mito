@@ -14,7 +14,7 @@ A React-based web application that uses Claude AI to automatically analyze clini
   - Each user now only sees their own clients (proper multi-tenant isolation)
   - Backward compatible with auth-disabled mode for single-user deployments
 - **November 24, 2025**: UI Improvements
-  - Out-of-range biomarker rows now have a much lighter red background (bg-red-500/5)
+  - Out-of-range biomarker rows now have a darker, richer red background (bg-red-950/30) matching reference design
   - Removed footer disclaimer message for cleaner interface
 - **November 24, 2025**: Light/Dark Mode Toggle Implementation
   - Created comprehensive theme system with CSS variables for both light and dark themes
