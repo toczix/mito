@@ -38,7 +38,7 @@
   }
   
   /* Dark theme - Mito Color Palette */
-  [data-theme="dark"] {
+  .dark {
     --background: 0 0% 4%;                /* #0a0a0a */
     --foreground: 0 0% 98%;               /* #fafafa */
     --card: 0 0% 8%;                      /* #141414 */
