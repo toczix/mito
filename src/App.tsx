@@ -188,7 +188,7 @@ function App() {
           <div className="flex items-center justify-between gap-8">
             {/* Logo */}
             <div className="flex items-center">
-              <img src="/mito-logo.png" alt="Mito" className="h-12 w-auto" />
+              <img src="/mito-logo.png" alt="Mito" className="h-24 w-auto" />
             </div>
 
             {/* Navigation and User Info */}
