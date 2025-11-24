@@ -2,6 +2,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Badge } from '@/components/ui/badge';
 import { Info, TrendingUp, TrendingDown } from 'lucide-react';
 import type { BiomarkerInfo } from '@/lib/biomarker-info';
+import { getBiomarkerFullName } from '@/lib/biomarkers';
 
 interface BiomarkerInfoDialogProps {
   open: boolean;
@@ -58,6 +59,11 @@ export function BiomarkerInfoDialog({
             <Info className="h-5 w-5 text-blue-500" />
             {biomarkerInfo.name}
           </DialogTitle>
+          {getBiomarkerFullName(biomarkerInfo.name) && (
+            <p className="text-sm text-muted-foreground mt-1">
+              {getBiomarkerFullName(biomarkerInfo.name)}
+            </p>
+          )}
         </DialogHeader>
 
         <div className="space-y-4 py-2">

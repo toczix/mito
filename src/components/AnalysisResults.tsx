@@ -12,7 +12,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { generateSummary, getValueStatus } from '@/lib/analyzer';
 import type { AnalysisResult } from '@/lib/biomarkers';
-import { getBiomarkerFullName, getBiomarkerDisplayName } from '@/lib/biomarkers';
+import { getBiomarkerDisplayName } from '@/lib/biomarkers';
 import { Copy, Download, CheckCircle2, AlertCircle, Save, Info, TrendingUp, TrendingDown, FileText, RotateCcw, AlertTriangle } from 'lucide-react';
 import { isSupabaseEnabled } from '@/lib/supabase';
 import { getActiveClients } from '@/lib/client-service';
@@ -369,11 +369,11 @@ export function AnalysisResults({
 
       {/* Summary Metric Cards */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-        {/* Card 1 - Total Biomarkers (Gray/Neutral) */}
-        <Card className="p-4 bg-gradient-to-br from-gray-50 to-white dark:from-gray-950/30 dark:to-background border-gray-200 dark:border-gray-800">
+        {/* Card 1 - Total Biomarkers */}
+        <Card className="p-4">
           <div className="flex items-center gap-3">
-            <div className="bg-gray-100 dark:bg-gray-900/50 p-2 rounded-lg">
-              <FileText className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+            <div className="bg-primary/10 p-2 rounded-lg">
+              <FileText className="w-5 h-5 text-primary" />
             </div>
             <div>
               <p className="text-xs text-muted-foreground">Total Biomarkers</p>
@@ -382,50 +382,50 @@ export function AnalysisResults({
           </div>
         </Card>
 
-        {/* Card 2 - Measured (Blue) */}
-        <Card className="p-4 bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/30 dark:to-background border-blue-200 dark:border-blue-900/50">
+        {/* Card 2 - Measured */}
+        <Card className="p-4">
           <div className="flex items-center gap-3">
-            <div className="bg-blue-100 dark:bg-blue-900/50 p-2 rounded-lg">
-              <CheckCircle2 className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+            <div className="bg-primary/10 p-2 rounded-lg">
+              <CheckCircle2 className="w-5 h-5 text-primary" />
             </div>
             <div>
               <p className="text-xs text-muted-foreground">Measured</p>
-              <p className="text-2xl font-bold text-blue-600 dark:text-blue-400">{summary.measuredBiomarkers}</p>
+              <p className="text-2xl font-bold">{summary.measuredBiomarkers}</p>
             </div>
           </div>
         </Card>
 
-        {/* Card 3 - In Range (Green) */}
-        <Card className="p-4 bg-gradient-to-br from-green-50 to-white dark:from-green-950/30 dark:to-background border-green-200 dark:border-green-900/50">
+        {/* Card 3 - In Range */}
+        <Card className="p-4">
           <div className="flex items-center gap-3">
-            <div className="bg-green-100 dark:bg-green-900/50 p-2 rounded-lg">
-              <CheckCircle2 className="w-5 h-5 text-green-600 dark:text-green-400" />
+            <div className="bg-green-500/10 p-2 rounded-lg">
+              <CheckCircle2 className="w-5 h-5 text-green-600 dark:text-green-500" />
             </div>
             <div>
               <p className="text-xs text-muted-foreground">In Range</p>
-              <p className="text-2xl font-bold text-green-600 dark:text-green-400">{summary.inRangeCount}</p>
+              <p className="text-2xl font-bold text-green-600 dark:text-green-500">{summary.inRangeCount}</p>
             </div>
           </div>
         </Card>
 
-        {/* Card 4 - Out of Range (Red) */}
-        <Card className="p-4 bg-gradient-to-br from-red-50 to-white dark:from-red-950/30 dark:to-background border-red-200 dark:border-red-900/50">
+        {/* Card 4 - Out of Range */}
+        <Card className="p-4">
           <div className="flex items-center gap-3">
-            <div className="bg-red-100 dark:bg-red-900/50 p-2 rounded-lg">
-              <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400" />
+            <div className="bg-red-500/10 p-2 rounded-lg">
+              <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-500" />
             </div>
             <div>
               <p className="text-xs text-muted-foreground">Out of Range</p>
-              <p className="text-2xl font-bold text-red-600 dark:text-red-400">{summary.outOfRangeCount}</p>
+              <p className="text-2xl font-bold text-red-600 dark:text-red-500">{summary.outOfRangeCount}</p>
             </div>
           </div>
         </Card>
 
-        {/* Card 5 - Missing (Gray) */}
-        <Card className="p-4 bg-gradient-to-br from-gray-50 to-white dark:from-gray-950/30 dark:to-background border-gray-200 dark:border-gray-800">
+        {/* Card 5 - Missing */}
+        <Card className="p-4">
           <div className="flex items-center gap-3">
-            <div className="bg-gray-100 dark:bg-gray-900/50 p-2 rounded-lg">
-              <AlertCircle className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+            <div className="bg-muted p-2 rounded-lg">
+              <AlertCircle className="w-5 h-5 text-muted-foreground" />
             </div>
             <div>
               <p className="text-xs text-muted-foreground">Missing</p>
@@ -657,16 +657,16 @@ export function AnalysisResults({
                         cursor-pointer
                       `}
                       style={{
-                        backgroundColor: isOutOfRange ? 'var(--out-of-range-bg)' : undefined,
+                        backgroundColor: isOutOfRange ? 'hsl(var(--out-of-range-bg))' : undefined,
                       }}
                       onMouseEnter={(e) => {
                         if (isOutOfRange) {
-                          e.currentTarget.style.backgroundColor = 'var(--out-of-range-bg-hover)';
+                          e.currentTarget.style.backgroundColor = 'hsl(var(--out-of-range-bg-hover))';
                         }
                       }}
                       onMouseLeave={(e) => {
                         if (isOutOfRange) {
-                          e.currentTarget.style.backgroundColor = 'var(--out-of-range-bg)';
+                          e.currentTarget.style.backgroundColor = 'hsl(var(--out-of-range-bg))';
                         }
                       }}
                     >
@@ -674,48 +674,24 @@ export function AnalysisResults({
                         {index + 1}
                       </TableCell>
                       <TableCell className="font-medium py-4">
-                        <div className="flex items-start gap-2">
-                          <div className="flex flex-col flex-1">
-                            <span className="font-semibold text-sm">{result.biomarkerName}</span>
-                            {getBiomarkerFullName(result.biomarkerName) && (
-                              <span className="text-xs text-muted-foreground mt-0.5">
-                                {getBiomarkerFullName(result.biomarkerName)}
-                              </span>
-                            )}
-                          </div>
-                          <div className="flex items-center gap-1.5">
-                            {hasInfo && (
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <button
-                                    onClick={() => handleBiomarkerClick(result)}
-                                    className="flex-shrink-0 p-1 rounded-full hover:bg-accent text-primary transition-colors"
-                                    aria-label={`View information about ${result.biomarkerName}`}
-                                  >
-                                    <Info className="h-4 w-4" />
-                                  </button>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <p className="text-xs">Click for detailed information</p>
-                                </TooltipContent>
-                              </Tooltip>
-                            )}
-                            {isOutOfRange && valueDirection && (
-                              <span 
-                                className="text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded"
-                                style={{
-                                  backgroundColor: valueDirection === 'high' 
-                                    ? 'hsl(var(--status-warning-bg))' 
-                                    : 'hsl(var(--status-info-bg))',
-                                  color: valueDirection === 'high'
-                                    ? 'hsl(var(--status-warning-text))'
-                                    : 'hsl(var(--status-info-text))'
-                                }}
-                              >
-                                {valueDirection}
-                              </span>
-                            )}
-                          </div>
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="font-semibold text-sm">{result.biomarkerName}</span>
+                          {hasInfo && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <button
+                                  onClick={() => handleBiomarkerClick(result)}
+                                  className="flex-shrink-0 p-1 rounded-full hover:bg-accent text-primary transition-colors"
+                                  aria-label={`View information about ${result.biomarkerName}`}
+                                >
+                                  <Info className="h-4 w-4" />
+                                </button>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p className="text-xs">Click for detailed information</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          )}
                         </div>
                       </TableCell>
                       <TableCell 
