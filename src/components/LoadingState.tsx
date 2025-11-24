@@ -58,41 +58,45 @@ export function LoadingState({ message = 'Processing...', progress, fileProgress
                   key={index}
                   className={`
                     flex items-center gap-3 p-3 rounded-lg border transition-all duration-300
-                    ${file.status === 'completed' ? 'bg-green-50 border-green-200 dark:bg-green-950/20 dark:border-green-900' : ''}
-                    ${file.status === 'processing' ? 'bg-blue-50 border-blue-200 dark:bg-blue-950/20 dark:border-blue-900' : ''}
-                    ${file.status === 'error' ? 'bg-red-50 border-red-200 dark:bg-red-950/20 dark:border-red-900' : ''}
+                    ${file.status === 'completed' ? 'border-[hsl(var(--status-success-border))]' : ''}
+                    ${file.status === 'processing' ? 'border-[hsl(var(--status-info-border))]' : ''}
+                    ${file.status === 'error' ? 'border-[hsl(var(--status-error-border))]' : ''}
                     ${file.status === 'pending' ? 'bg-muted/30 border-border' : ''}
                   `}
+                  style={{
+                    backgroundColor: file.status === 'completed' ? 'hsl(var(--status-success-bg))' :
+                                   file.status === 'processing' ? 'hsl(var(--status-info-bg))' :
+                                   file.status === 'error' ? 'hsl(var(--status-error-bg))' : undefined
+                  }}
                 >
                   {/* Icon */}
                   <div className="flex-shrink-0">
                     {file.status === 'completed' && (
-                      <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400" />
+                      <CheckCircle2 className="h-5 w-5" style={{ color: 'hsl(var(--status-success-text))' }} />
                     )}
                     {file.status === 'processing' && (
-                      <Loader2 className="h-5 w-5 text-blue-600 dark:text-blue-400 animate-spin" />
+                      <Loader2 className="h-5 w-5 animate-spin" style={{ color: 'hsl(var(--status-info-text))' }} />
                     )}
                     {file.status === 'pending' && (
                       <Clock className="h-5 w-5 text-muted-foreground" />
                     )}
                     {file.status === 'error' && (
-                      <FileText className="h-5 w-5 text-red-600 dark:text-red-400" />
+                      <FileText className="h-5 w-5" style={{ color: 'hsl(var(--status-error-text))' }} />
                     )}
                   </div>
 
                   {/* File name */}
                   <div className="flex-1 min-w-0">
-                    <p className={`
-                      text-sm font-medium truncate
-                      ${file.status === 'completed' ? 'text-green-900 dark:text-green-100' : ''}
-                      ${file.status === 'processing' ? 'text-blue-900 dark:text-blue-100' : ''}
-                      ${file.status === 'error' ? 'text-red-900 dark:text-red-100' : ''}
-                      ${file.status === 'pending' ? 'text-muted-foreground' : ''}
-                    `}>
+                    <p className={`text-sm font-medium truncate ${file.status === 'pending' ? 'text-muted-foreground' : ''}`}
+                       style={file.status !== 'pending' ? {
+                         color: file.status === 'completed' ? 'hsl(var(--status-success-text))' :
+                                file.status === 'processing' ? 'hsl(var(--status-info-text))' :
+                                file.status === 'error' ? 'hsl(var(--status-error-text))' : undefined
+                       } : undefined}>
                       {file.fileName}
                     </p>
                     {file.error && (
-                      <p className="text-xs text-red-600 dark:text-red-400 truncate">
+                      <p className="text-xs truncate" style={{ color: 'hsl(var(--status-error-text))' }}>
                         {file.error}
                       </p>
                     )}
@@ -100,13 +104,12 @@ export function LoadingState({ message = 'Processing...', progress, fileProgress
 
                   {/* Status text */}
                   <div className="flex-shrink-0">
-                    <span className={`
-                      text-xs font-medium
-                      ${file.status === 'completed' ? 'text-green-700 dark:text-green-300' : ''}
-                      ${file.status === 'processing' ? 'text-blue-700 dark:text-blue-300' : ''}
-                      ${file.status === 'error' ? 'text-red-700 dark:text-red-300' : ''}
-                      ${file.status === 'pending' ? 'text-muted-foreground' : ''}
-                    `}>
+                    <span className={`text-xs font-medium ${file.status === 'pending' ? 'text-muted-foreground' : ''}`}
+                          style={file.status !== 'pending' ? {
+                            color: file.status === 'completed' ? 'hsl(var(--status-success-text))' :
+                                   file.status === 'processing' ? 'hsl(var(--status-info-text))' :
+                                   file.status === 'error' ? 'hsl(var(--status-error-text))' : undefined
+                          } : undefined}>
                       {file.status === 'completed' && 'Done'}
                       {file.status === 'processing' && 'Processing...'}
                       {file.status === 'pending' && 'Waiting'}

@@ -14,8 +14,9 @@ import { CheckEmailPending } from '@/components/CheckEmailPending';
 import { isAuthDisabled } from '@/lib/supabase';
 import { AuthService, type AuthUser } from '@/lib/auth-service';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
-import { Activity, FileText, Users, Settings as SettingsIcon, LogOut, Loader2 } from 'lucide-react';
+import { Activity, FileText, Users, Settings as SettingsIcon, LogOut, Loader2, Moon, Sun } from 'lucide-react';
 import { Toaster } from 'sonner';
+import { useTheme } from '@/lib/theme-context';
 
 // Wrapper components that call useNavigate themselves (inside Router context)
 // Note: onLogin/onSignup handlers are empty - navigation happens via useEffect when user state updates
@@ -86,6 +87,7 @@ function CheckEmailWrapper() {
 function App() {
   const location = useLocation();
   const navigate = useNavigate();
+  const { theme, toggleTheme } = useTheme();
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -223,7 +225,20 @@ function App() {
 
               {/* User Info & Logout */}
               {user && (
-                <div className="flex items-center gap-3 pl-4 border-l">
+                <>
+                  {/* Theme Toggle */}
+                  <button
+                    onClick={toggleTheme}
+                    className="flex items-center gap-2 px-3 py-2 text-sm rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
+                    title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+                  >
+                    {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+                  </button>
+                </>
+              )}
+
+              {user && (
+                <div className="flex items-center gap-3 pl-2 border-l">
                   <div className="text-sm text-right">
                     <p className="text-muted-foreground">Signed in as</p>
                     <p className="font-medium">{user.email}</p>

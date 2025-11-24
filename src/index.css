@@ -7,8 +7,51 @@
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
   }
   
-  /* Permanently force dark mode - pure black theme */
+  /* Light theme */
   :root {
+    --background: 0 0% 100%;
+    --foreground: 0 0% 3.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 3.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 3.9%;
+    --primary: 217 91% 60%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 96.1%;
+    --secondary-foreground: 0 0% 9%;
+    --muted: 0 0% 96.1%;
+    --muted-foreground: 0 0% 45.1%;
+    --accent: 0 0% 96.1%;
+    --accent-foreground: 0 0% 9%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 0 0% 89.8%;
+    --input: 0 0% 89.8%;
+    --ring: 217 91% 60%;
+    --radius: 0.75rem;
+    --chart-1: 220 70% 50%;
+    --chart-2: 160 60% 45%;
+    --chart-3: 30 80% 55%;
+    --chart-4: 280 65% 60%;
+    --chart-5: 340 75% 55%;
+    
+    /* Status colors for light mode */
+    --status-success-bg: 142 76% 96%;
+    --status-success-border: 142 76% 85%;
+    --status-success-text: 142 76% 25%;
+    --status-warning-bg: 48 100% 96%;
+    --status-warning-border: 48 100% 85%;
+    --status-warning-text: 32 95% 44%;
+    --status-error-bg: 0 86% 97%;
+    --status-error-border: 0 86% 90%;
+    --status-error-text: 0 72% 51%;
+    --status-info-bg: 217 91% 97%;
+    --status-info-border: 217 91% 88%;
+    --status-info-text: 217 91% 40%;
+  }
+  
+  /* Dark theme */
+  [data-theme="dark"] {
     --background: 0 0% 0%;
     --foreground: 0 0% 98%;
     --card: 0 0% 6%;
@@ -28,12 +71,20 @@
     --border: 0 0% 15%;
     --input: 0 0% 15%;
     --ring: 217 91% 60%;
-    --radius: 0.75rem;
-    --chart-1: 220 70% 50%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
-    --chart-5: 340 75% 55%;
+    
+    /* Status colors for dark mode - improved contrast */
+    --status-success-bg: 142 76% 12%;
+    --status-success-border: 142 76% 25%;
+    --status-success-text: 142 76% 80%;
+    --status-warning-bg: 48 100% 12%;
+    --status-warning-border: 48 100% 25%;
+    --status-warning-text: 48 100% 80%;
+    --status-error-bg: 0 86% 12%;
+    --status-error-border: 0 86% 25%;
+    --status-error-text: 0 86% 85%;
+    --status-info-bg: 217 91% 12%;
+    --status-info-border: 217 91% 25%;
+    --status-info-text: 217 91% 80%;
   }
 }
 

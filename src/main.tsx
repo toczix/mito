@@ -4,6 +4,7 @@ import { BrowserRouter } from 'react-router-dom'
 import './index.css'
 import App from './App.tsx'
 import { biomarkerNormalizer } from './lib/biomarker-normalizer'
+import { ThemeProvider } from './lib/theme-context'
 
 // ✅ Initialize biomarker normalizer on app startup (non-blocking)
 console.log('🚀 Initializing Mito app...')
@@ -17,8 +18,10 @@ biomarkerNormalizer.initialize().then(() => {
 // Bootstrap app immediately
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <BrowserRouter>
-      <App />
-    </BrowserRouter>
+    <ThemeProvider>
+      <BrowserRouter>
+        <App />
+      </BrowserRouter>
+    </ThemeProvider>
   </StrictMode>,
 )

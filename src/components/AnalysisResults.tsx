@@ -197,14 +197,28 @@ export function AnalysisResults({
     switch (status) {
       case 'in-range':
         return (
-          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-300 font-medium px-3 py-1 flex items-center gap-1.5 w-fit mx-auto">
+          <Badge 
+            variant="outline" 
+            className="border-[hsl(var(--status-success-border))] font-medium px-3 py-1 flex items-center gap-1.5 w-fit mx-auto"
+            style={{ 
+              backgroundColor: 'hsl(var(--status-success-bg))',
+              color: 'hsl(var(--status-success-text))'
+            }}
+          >
             <CheckCircle2 className="h-3.5 w-3.5" />
             In Range
           </Badge>
         );
       case 'out-of-range':
         return (
-          <Badge variant="outline" className="bg-red-100 text-red-800 border-red-400 font-semibold px-3 py-1 flex items-center gap-1.5 w-fit mx-auto">
+          <Badge 
+            variant="outline" 
+            className="border-[hsl(var(--status-error-border))] font-semibold px-3 py-1 flex items-center gap-1.5 w-fit mx-auto"
+            style={{ 
+              backgroundColor: 'hsl(var(--status-error-bg))',
+              color: 'hsl(var(--status-error-text))'
+            }}
+          >
             <XCircle className="h-3.5 w-3.5" />
             Out of Range
           </Badge>
@@ -254,7 +268,7 @@ export function AnalysisResults({
       return (
         <>
           {parts[0]}
-          <span className="font-semibold text-gray-900 bg-blue-50 px-1.5 py-0.5 rounded">
+          <span className="font-semibold px-1.5 py-0.5 rounded" style={{ backgroundColor: 'hsl(var(--status-info-bg))', color: 'hsl(var(--status-info-text))' }}>
             {parenthesesMatch[0]}
           </span>
           {parts[1]}
@@ -270,7 +284,7 @@ export function AnalysisResults({
       const parts = optimalRange.split(unitMatch[0]);
       return (
         <>
-          <span className="font-semibold text-gray-900 bg-blue-50 px-1.5 py-0.5 rounded">
+          <span className="font-semibold px-1.5 py-0.5 rounded" style={{ backgroundColor: 'hsl(var(--status-info-bg))', color: 'hsl(var(--status-info-text))' }}>
             {unitMatch[0].trim()}
           </span>
           {parts[1]}
@@ -287,7 +301,7 @@ export function AnalysisResults({
       return (
         <>
           {parts[0]}
-          <span className="font-semibold text-gray-900 bg-blue-50 px-1.5 py-0.5 rounded">
+          <span className="font-semibold px-1.5 py-0.5 rounded" style={{ backgroundColor: 'hsl(var(--status-info-bg))', color: 'hsl(var(--status-info-text))' }}>
             {operatorMatch[0]}
           </span>
           {parts[1]}
@@ -313,7 +327,13 @@ export function AnalysisResults({
               </CardDescription>
             </div>
             {savedAnalysesCount > 0 && (
-              <div className="flex items-center gap-1.5 text-sm text-green-600 bg-green-50 px-3 py-1.5 rounded-full">
+              <div 
+                className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded-full"
+                style={{ 
+                  backgroundColor: 'hsl(var(--status-success-bg))',
+                  color: 'hsl(var(--status-success-text))'
+                }}
+              >
                 <CheckCircle2 className="h-4 w-4" />
                 <span className="font-medium">Saved</span>
               </div>
@@ -327,21 +347,30 @@ export function AnalysisResults({
               <p className="text-2xl font-bold">{summary.totalBiomarkers}</p>
               <p className="text-xs text-muted-foreground">Total Biomarkers</p>
             </div>
-            <div className="text-center p-3 bg-blue-50 rounded-lg">
-              <p className="text-2xl font-bold text-blue-700">{summary.measuredBiomarkers}</p>
-              <p className="text-xs text-blue-600">Measured</p>
+            <div 
+              className="text-center p-3 rounded-lg"
+              style={{ backgroundColor: 'hsl(var(--status-info-bg))' }}
+            >
+              <p className="text-2xl font-bold" style={{ color: 'hsl(var(--status-info-text))' }}>{summary.measuredBiomarkers}</p>
+              <p className="text-xs" style={{ color: 'hsl(var(--status-info-text))' }}>Measured</p>
             </div>
-            <div className="text-center p-3 bg-green-50 rounded-lg">
-              <p className="text-2xl font-bold text-green-700">{summary.inRangeCount}</p>
-              <p className="text-xs text-green-600">In Range</p>
+            <div 
+              className="text-center p-3 rounded-lg"
+              style={{ backgroundColor: 'hsl(var(--status-success-bg))' }}
+            >
+              <p className="text-2xl font-bold" style={{ color: 'hsl(var(--status-success-text))' }}>{summary.inRangeCount}</p>
+              <p className="text-xs" style={{ color: 'hsl(var(--status-success-text))' }}>In Range</p>
             </div>
-            <div className="text-center p-3 bg-red-50 rounded-lg">
-              <p className="text-2xl font-bold text-red-700">{summary.outOfRangeCount}</p>
-              <p className="text-xs text-red-600">Out of Range</p>
+            <div 
+              className="text-center p-3 rounded-lg"
+              style={{ backgroundColor: 'hsl(var(--status-error-bg))' }}
+            >
+              <p className="text-2xl font-bold" style={{ color: 'hsl(var(--status-error-text))' }}>{summary.outOfRangeCount}</p>
+              <p className="text-xs" style={{ color: 'hsl(var(--status-error-text))' }}>Out of Range</p>
             </div>
-            <div className="text-center p-3 bg-gray-50 rounded-lg">
-              <p className="text-2xl font-bold text-gray-700">{summary.missingBiomarkers}</p>
-              <p className="text-xs text-gray-600">Missing</p>
+            <div className="text-center p-3 bg-muted rounded-lg">
+              <p className="text-2xl font-bold">{summary.missingBiomarkers}</p>
+              <p className="text-xs text-muted-foreground">Missing</p>
             </div>
           </div>
 
@@ -557,13 +586,16 @@ export function AnalysisResults({
                       key={index} 
                       className={`
                         ${isNA ? 'bg-muted/30' : ''} 
-                        ${isOutOfRange ? 'bg-red-50/50 hover:bg-red-50/70' : 'hover:bg-muted/50'}
+                        ${!isOutOfRange ? 'hover:bg-muted/50' : ''}
                       `}
+                      style={isOutOfRange ? {
+                        backgroundColor: 'hsl(var(--status-error-bg))'
+                      } : undefined}
                     >
                       <TableCell className="font-medium text-muted-foreground text-center py-4">
                         {index + 1}
                       </TableCell>
-                      <TableCell className={`font-medium py-4 ${isOutOfRange ? 'text-gray-900' : ''}`}>
+                      <TableCell className="font-medium py-4">
                         <div className="flex items-start gap-2">
                           <div className="flex flex-col flex-1">
                             <span className="font-semibold">{result.biomarkerName}</span>
@@ -579,7 +611,7 @@ export function AnalysisResults({
                                 <TooltipTrigger asChild>
                                   <button
                                     onClick={() => handleBiomarkerClick(result)}
-                                    className="flex-shrink-0 p-1 rounded-full hover:bg-blue-100 text-blue-600 transition-colors"
+                                    className="flex-shrink-0 p-1 rounded-full hover:bg-accent text-primary transition-colors"
                                     aria-label={`View information about ${result.biomarkerName}`}
                                   >
                                     <Info className="h-4 w-4" />
@@ -589,22 +621,31 @@ export function AnalysisResults({
                                   <p className="text-xs">Click for detailed information</p>
                                 </TooltipContent>
                               </Tooltip>
-                              <span className={`text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded ${
-                                valueDirection === 'high'
-                                  ? 'bg-orange-100 text-orange-700'
-                                  : 'bg-blue-100 text-blue-700'
-                              }`}>
+                              <span 
+                                className="text-[10px] font-semibold uppercase px-1.5 py-0.5 rounded"
+                                style={{
+                                  backgroundColor: valueDirection === 'high' 
+                                    ? 'hsl(var(--status-warning-bg))' 
+                                    : 'hsl(var(--status-info-bg))',
+                                  color: valueDirection === 'high'
+                                    ? 'hsl(var(--status-warning-text))'
+                                    : 'hsl(var(--status-info-text))'
+                                }}
+                              >
                                 {valueDirection}
                               </span>
                             </div>
                           )}
                         </div>
                       </TableCell>
-                      <TableCell className={`
-                        font-mono text-right py-4
-                        ${isNA ? 'text-muted-foreground' : ''} 
-                        ${isOutOfRange ? 'font-bold text-red-700 text-base' : 'font-semibold'}
-                      `}>
+                      <TableCell 
+                        className={`
+                          font-mono text-right py-4
+                          ${isNA ? 'text-muted-foreground' : ''} 
+                          ${isOutOfRange ? 'font-bold text-base' : 'font-semibold'}
+                        `}
+                        style={isOutOfRange && !isNA ? { color: 'hsl(var(--status-error-text))' } : undefined}
+                      >
                         {isEditingValue ? (
                           <Input
                             type="text"
@@ -618,13 +659,13 @@ export function AnalysisResults({
                         ) : (
                           <span
                             onClick={() => startEditing(index, 'value', result.hisValue)}
-                            className="cursor-pointer hover:bg-blue-50 px-2 py-1 rounded transition-colors"
+                            className="cursor-pointer hover:bg-accent px-2 py-1 rounded transition-colors"
                             title="Click to edit"
                           >
                             {!isNA && result.testDate ? (
                               <Tooltip>
                                 <TooltipTrigger asChild>
-                                  <span className="border-b border-dashed border-gray-400 hover:border-gray-600">
+                                  <span className="border-b border-dashed border-muted-foreground/40 hover:border-muted-foreground/60">
                                     {result.hisValue}
                                   </span>
                                 </TooltipTrigger>
@@ -654,14 +695,14 @@ export function AnalysisResults({
                         ) : (
                           <span
                             onClick={() => startEditing(index, 'unit', result.unit)}
-                            className="cursor-pointer hover:bg-blue-50 px-2 py-1 rounded transition-colors"
+                            className="cursor-pointer hover:bg-accent px-2 py-1 rounded transition-colors"
                             title="Click to edit"
                           >
                             {result.unit}
                           </span>
                         )}
                       </TableCell>
-                      <TableCell className="text-sm text-gray-700 py-4">
+                      <TableCell className="text-sm py-4">
                         {highlightActiveRange(result.optimalRange, result.unit)}
                       </TableCell>
                       <TableCell className="py-4">

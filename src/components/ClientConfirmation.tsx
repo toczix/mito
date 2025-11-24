@@ -76,7 +76,10 @@ export function ClientConfirmation({
 
     return (
       <div className="space-y-4">
-        <Alert className={matchResult.confidence === 'high' ? 'border-green-500 bg-green-50' : ''}>
+        <Alert 
+          className={matchResult.confidence === 'high' ? 'border-[hsl(var(--status-success-border))]' : ''}
+          style={matchResult.confidence === 'high' ? { backgroundColor: 'hsl(var(--status-success-bg))' } : undefined}
+        >
           <Users className="h-4 w-4" />
           <AlertDescription className="ml-2">
             <div className="flex items-center justify-between mb-2">

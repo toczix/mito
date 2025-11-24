@@ -3,21 +3,23 @@
 ## Overview
 A React-based web application that uses Claude AI to automatically analyze clinical pathology lab reports and compare biomarker values against optimal reference ranges. The app supports multilingual processing, multiple file formats (PDF, DOCX, images), and optional Supabase integration for client management.
 
-**Current State**: 55 biomarkers tracked (added Transferrin), parallel processing for fast analysis, permanent dark mode
-**Last Updated**: November 23, 2025
+**Current State**: 55 biomarkers tracked (added Transferrin), parallel processing for fast analysis, light/dark mode toggle
+**Last Updated**: November 24, 2025
 
 ## Recent Changes
+- **November 24, 2025**: Light/Dark Mode Toggle Implementation
+  - Created comprehensive theme system with CSS variables for both light and dark themes
+  - Implemented ThemeProvider with localStorage persistence and system preference detection
+  - Added theme toggle button to dashboard header (visible only when logged in)
+  - Fixed all hardcoded light colors in LoadingState, AnalysisResults, and ClientConfirmation
+  - Improved status color contrast for WCAG compliance in both themes
+  - Semantic color tokens for success, error, warning, and info states
+  - Smooth theme switching without page reload
 - **November 24, 2025**: Removed OAuth Social Login Buttons
   - Removed Google and Apple login buttons from Login and Signup pages
   - Simplified authentication to email/password only
   - OAuth infrastructure removed due to Google Cloud Console configuration complexity
   - Clean, streamlined authentication experience
-- **November 23, 2025**: Permanent Dark Mode Theme
-  - Pure black background (#000000) for OLED-friendly design
-  - High contrast white text for readability
-  - Blue accent colors for interactive elements
-  - Dark cards and components for consistent aesthetic
-  - Removed light mode - app is permanently dark themed
 - **November 23, 2025**: Email/Password Authentication Implemented
   - Replaced magic link authentication with email/password login
   - Added role-based authentication (practitioner, admin, client)
