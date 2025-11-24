@@ -124,11 +124,6 @@ export function LoginPage() {
             <p className="mt-1">No password required.</p>
           </div>
         </div>
-
-        {/* Footer */}
-        <p className="text-center text-xs text-muted-foreground mt-8">
-          For informational purposes only. Always consult with healthcare professionals.
-        </p>
       </div>
     </div>
   );

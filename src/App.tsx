@@ -266,18 +266,6 @@ function App() {
           <Route path="/settings" element={<SettingsPage />} />
         </Routes>
       </main>
-
-      {/* Footer */}
-      <footer className="border-t mt-16">
-        <div className="container mx-auto px-4 py-6 text-center text-sm text-muted-foreground">
-          <p>
-            Mito Clinical Pathology Analysis Portal | Powered by Claude AI
-          </p>
-          <p className="mt-2">
-            For informational purposes only. Always consult with healthcare professionals.
-          </p>
-        </div>
-      </footer>
       </div>
       <Toaster />
     </ErrorBoundary>
