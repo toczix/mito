@@ -157,13 +157,20 @@ export class AuthService {
 
   /**
    * Social login (Google)
+   * Note: This handles both signup and signin automatically.
+   * If the email doesn't exist, Supabase creates a new account.
+   * If the email exists, Supabase logs them in.
    */
   static async signInWithGoogle() {
     const client = this.ensureSupabase();
     const { error } = await client.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/dashboard`,
+        redirectTo: `${window.location.origin}/`,
+        queryParams: {
+          access_type: 'offline',
+          prompt: 'consent',
+        },
       },
     });
 
@@ -172,13 +179,16 @@ export class AuthService {
 
   /**
    * Social login (Apple)
+   * Note: This handles both signup and signin automatically.
+   * If the email doesn't exist, Supabase creates a new account.
+   * If the email exists, Supabase logs them in.
    */
   static async signInWithApple() {
     const client = this.ensureSupabase();
     const { error } = await client.auth.signInWithOAuth({
       provider: 'apple',
       options: {
-        redirectTo: `${window.location.origin}/dashboard`,
+        redirectTo: `${window.location.origin}/`,
       },
     });
 
@@ -190,12 +200,27 @@ export class AuthService {
    */
   static onAuthStateChange(callback: (user: AuthUser | null) => void) {
     const client = this.ensureSupabase();
-    return client.auth.onAuthStateChange((_event, session) => {
+    return client.auth.onAuthStateChange(async (event, session) => {
       const user = session?.user;
       if (user) {
+        let role = user.user_metadata?.role as UserRole;
+        
+        // If user signed up via OAuth and doesn't have a role, set default to 'practitioner'
+        if (!role && (event === 'SIGNED_IN' || event === 'USER_UPDATED')) {
+          role = 'practitioner';
+          // Update user metadata with default role
+          try {
+            await client.auth.updateUser({
+              data: { role: 'practitioner' }
+            });
+          } catch (error) {
+            console.error('Failed to set default role:', error);
+          }
+        }
+        
         callback({
           ...user,
-          role: user.user_metadata?.role as UserRole,
+          role: role || 'practitioner',
         });
       } else {
         callback(null);
