@@ -48,6 +48,10 @@
     --status-info-bg: 217 91% 97%;
     --status-info-border: 217 91% 88%;
     --status-info-text: 217 91% 40%;
+    
+    /* Out-of-range biomarker row background (light mode) */
+    --out-of-range-bg: 0 90% 97%;
+    --out-of-range-bg-hover: 0 90% 95%;
   }
   
   /* Dark theme */
@@ -85,6 +89,10 @@
     --status-info-bg: 217 91% 12%;
     --status-info-border: 217 91% 25%;
     --status-info-text: 217 91% 80%;
+    
+    /* Out-of-range biomarker row background (dark mode) */
+    --out-of-range-bg: 0 60% 12%;
+    --out-of-range-bg-hover: 0 60% 15%;
   }
 }
 

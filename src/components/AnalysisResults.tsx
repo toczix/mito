@@ -586,8 +586,21 @@ export function AnalysisResults({
                       key={index} 
                       className={`
                         ${isNA ? 'bg-muted/30' : ''} 
-                        ${isOutOfRange ? 'bg-red-950/30 hover:bg-red-950/40' : 'hover:bg-muted/50'}
+                        ${!isOutOfRange ? 'hover:bg-muted/50' : ''}
                       `}
+                      style={isOutOfRange ? {
+                        backgroundColor: 'hsl(var(--out-of-range-bg))'
+                      } : undefined}
+                      onMouseEnter={(e) => {
+                        if (isOutOfRange) {
+                          e.currentTarget.style.backgroundColor = 'hsl(var(--out-of-range-bg-hover))';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (isOutOfRange) {
+                          e.currentTarget.style.backgroundColor = 'hsl(var(--out-of-range-bg))';
+                        }
+                      }}
                     >
                       <TableCell className="font-medium text-muted-foreground text-center py-4">
                         {index + 1}
