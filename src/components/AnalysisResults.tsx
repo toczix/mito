@@ -630,10 +630,11 @@ export function AnalysisResults({
                       className={`
                         transition-all duration-300
                         ${isNA ? 'opacity-50' : ''}
-                        ${status === 'in-range' ? 'bg-green-50/30 dark:bg-green-950/20' : ''}
-                        ${status === 'out-of-range' && valueDirection === 'high' ? 'bg-red-50/30 dark:bg-red-950/20 hover:bg-red-100/40 dark:hover:bg-red-900/30' : ''}
-                        ${status === 'out-of-range' && valueDirection === 'low' ? 'bg-blue-50/30 dark:bg-blue-950/20 hover:bg-blue-100/40 dark:hover:bg-blue-900/30' : ''}
-                        ${status === 'out-of-range' && !valueDirection ? 'bg-red-50/30 dark:bg-red-950/20 hover:bg-red-100/40 dark:hover:bg-red-900/30' : ''}
+                        ${status === 'in-range' ? 'bg-green-50/30' : ''}
+                        ${status === 'out-of-range' && valueDirection === 'high' ? 'bg-red-50/30 hover:bg-red-100/40' : ''}
+                        ${status === 'out-of-range' && valueDirection === 'low' ? 'bg-blue-50/30 hover:bg-blue-100/40' : ''}
+                        ${status === 'out-of-range' && !valueDirection ? 'bg-red-50/30 hover:bg-red-100/40' : ''}
+                        dark:hover:bg-white/5
                       `}
                     >
                       <TableCell className="font-medium text-muted-foreground text-center py-4">

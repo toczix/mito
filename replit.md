@@ -13,8 +13,9 @@ A React-based web application that uses Claude AI to automatically analyze clini
   - Dark mode: #0a0a0a background, #5B8EFF lighter blue, #27272a borders
   - **Table Row Highlights** (clean, professional):
     - Light: Colored status backgrounds (-50 colors with 30% opacity: bg-green-50/30, bg-red-50/30, bg-blue-50/30)
-    - Dark: Neutral surfaces only (NO colored backgrounds - status shown via badges/icons)
-    - Hover states: 40% opacity in light mode, subtle white/5 in dark mode
+    - Dark: Neutral surfaces only (NO colored backgrounds - status shown via badges/icons only)
+    - Hover states: Light mode 40% opacity, dark mode subtle white/5 overlay
+    - **DESIGN DECISION**: Dark mode uses neutral surfaces to avoid muddy color appearance
   - **Status Badges**: bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/30
   - **Purple Optimal Range Highlights**: bg-purple-500/10 with 20% border opacity
   - Removed ALL inline styles and theme detection logic - pure Tailwind opacity classes
