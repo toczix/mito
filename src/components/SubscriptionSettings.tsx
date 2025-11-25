@@ -65,7 +65,7 @@ export function SubscriptionSettings() {
     }
   };
 
-  const handleSyncSubscription = async () => {
+  const handleForceProUpdate = async () => {
     try {
       const client = supabase;
       if (!client) return;
@@ -76,7 +76,7 @@ export function SubscriptionSettings() {
         return;
       }
 
-      const response = await fetch('/api/sync-subscription', {
+      const response = await fetch('/api/admin/force-pro', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
@@ -86,14 +86,14 @@ export function SubscriptionSettings() {
       const data = await response.json();
       
       if (response.ok) {
-        alert(`Subscription synced! Plan: ${data.plan}, Status: ${data.status}`);
+        alert('Subscription updated to Pro! Refreshing...');
         window.location.reload();
       } else {
-        alert(data.error || 'Failed to sync subscription');
+        alert(data.error || 'Failed to update subscription');
       }
     } catch (error) {
-      console.error('Error syncing subscription:', error);
-      alert('Failed to sync subscription');
+      console.error('Error updating to Pro:', error);
+      alert('Failed to update subscription');
     }
   };
 
@@ -248,6 +248,23 @@ export function SubscriptionSettings() {
         {subscription?.plan === 'free' && (
           <div className="text-xs text-muted-foreground text-center">
             Cancel anytime. Secure payment powered by Stripe.
+          </div>
+        )}
+
+        {/* TESTING ONLY: Force Pro Update */}
+        {subscription?.plan === 'free' && (
+          <div className="pt-4 border-t border-dashed border-amber-500/50">
+            <div className="text-xs text-amber-600 dark:text-amber-500 mb-2 text-center">
+              ⚠️ Testing Tool - Remove Before Production
+            </div>
+            <Button
+              onClick={handleForceProUpdate}
+              variant="outline"
+              size="sm"
+              className="w-full border-amber-500/50 hover:bg-amber-500/10"
+            >
+              🔧 Force Update to Pro (Testing Only)
+            </Button>
           </div>
         )}
       </CardContent>
