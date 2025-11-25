@@ -1,4 +1,4 @@
-modules = ["nodejs-20", "web", "postgresql-16", "python-3.11"]
+modules = ["nodejs-20", "web", "python-3.11", "postgresql-16"]
 [agent]
 expertMode = true
 integrations = ["stripe:1.0.0"]
@@ -61,10 +61,6 @@ externalPort = 3001
 [[ports]]
 localPort = 34877
 externalPort = 3000
-
-[[ports]]
-localPort = 40877
-externalPort = 3002
 
 [deployment]
 deploymentTarget = "static"
