@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:backend": "tsx src/server/index.ts",
+    "dev:all": "npm run dev:backend",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
@@ -12,7 +14,11 @@
     "check-db": "tsx scripts/setup-database.ts",
     "assign-clients": "tsx scripts/assign-clients.ts",
     "assign-clients:dry-run": "tsx scripts/assign-clients.ts --dry-run",
-    "verify-deployment": "tsx scripts/verify-deployment-readiness.ts"
+    "verify-deployment": "tsx scripts/verify-deployment-readiness.ts",
+    "seed-stripe": "tsx scripts/seed-stripe-products.ts",
+    "backfill-subscriptions": "tsx scripts/backfill-subscriptions.ts",
+    "backfill-subscriptions:dry-run": "tsx scripts/backfill-subscriptions.ts --dry-run",
+    "backfill-subscriptions:grandfather": "tsx scripts/backfill-subscriptions.ts --grandfather-pro"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.65.0",

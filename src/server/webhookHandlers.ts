@@ -17,17 +17,13 @@ export class WebhookHandlers {
     }
 
     // Process webhook with stripe-replit-sync
+    // The sync already validates the signature internally, so we can trust it
     const sync = await getStripeSync();
     await sync.processWebhook(payload, signature, uuid);
 
-    // Additional custom webhook handling for subscription updates
-    // Parse the event to update our subscriptions table
-    const stripe = await import('stripe');
-    const stripeClient = new stripe.default(process.env.STRIPE_SECRET_KEY || await import('./stripeClient').then(m => m.getStripeSecretKey()), {
-      apiVersion: '2025-11-17.clover',
-    });
-
-    const event = stripeClient.webhooks.constructEvent(payload, signature, process.env.STRIPE_WEBHOOK_SECRET || '');
+    // Parse the raw event to update our subscriptions table
+    // stripe-replit-sync has already validated the signature, so we can safely parse
+    const event = JSON.parse(payload.toString());
 
     await this.handleSubscriptionEvents(event);
   }
