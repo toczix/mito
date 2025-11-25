@@ -45,14 +45,19 @@ async function initStripe() {
       ? `https://${replitDomains.split(',')[0]}` 
       : 'http://localhost:3001';
     
-    const { webhook, uuid } = await stripeSync.findOrCreateManagedWebhook(
+    const webhookResult = await stripeSync.findOrCreateManagedWebhook(
       `${webhookBaseUrl}/api/stripe/webhook`,
       {
         enabled_events: ['*'],
         description: 'Managed webhook for Mito subscription sync',
       }
     );
-    console.log(`✅ Webhook configured: ${webhook.url} (UUID: ${uuid})`);
+    
+    if (webhookResult && webhookResult.webhook) {
+      console.log(`✅ Webhook configured: ${webhookResult.webhook.url} (UUID: ${webhookResult.uuid})`);
+    } else {
+      console.log('⚠️ Webhook configuration returned unexpected result:', webhookResult);
+    }
 
     // Sync all existing Stripe data in the background
     console.log('🔄 Starting Stripe data sync...');
