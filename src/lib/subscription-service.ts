@@ -1,7 +1,9 @@
 import { supabase } from './supabase';
 
 const FREE_TRIAL_LIMIT = 3;
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3001';
+// In production, use same origin (frontend and backend on same domain)
+// In development, backend runs on port 3001 but proxied through Vite
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || '';
 
 export interface AnalysisLimit {
   allowed: boolean;

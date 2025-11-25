@@ -13,6 +13,12 @@ export default defineConfig({
       protocol: 'wss',
       host: process.env.REPLIT_DEV_DOMAIN,
     },
+    proxy: {
+      '/api': {
+        target: 'http://localhost:3001',
+        changeOrigin: true,
+      },
+    },
   },
   resolve: {
     alias: {
