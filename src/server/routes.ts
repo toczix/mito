@@ -205,4 +205,62 @@ router.post('/api/can-analyze', requireAuth, async (req: any, res) => {
   }
 });
 
+// Manual subscription sync from Stripe
+router.post('/api/sync-subscription', requireAuth, async (req: any, res) => {
+  try {
+    const userId = req.user.id;
+
+    // Get current subscription from database
+    const currentSub = await storage.getUserSubscription(userId);
+
+    if (!currentSub) {
+      return res.status(404).json({ error: 'No subscription found' });
+    }
+
+    // If they have a Stripe customer ID, fetch from Stripe
+    if (currentSub.stripe_customer_id) {
+      const stripe = getStripe();
+      const customer = await stripe.customers.retrieve(currentSub.stripe_customer_id, {
+        expand: ['subscriptions'],
+      });
+
+      if ('deleted' in customer) {
+        return res.status(404).json({ error: 'Customer deleted' });
+      }
+
+      const subscriptions = customer.subscriptions?.data || [];
+      
+      if (subscriptions.length > 0) {
+        const stripeSub = subscriptions[0];
+        
+        // Update via Supabase
+        const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+        await supabase
+          .from('subscriptions')
+          .update({
+            stripe_subscription_id: stripeSub.id,
+            status: stripeSub.status === 'active' ? 'active' : stripeSub.status,
+            plan: stripeSub.status === 'active' ? 'pro' : 'free',
+            current_period_start: new Date(stripeSub.current_period_start * 1000).toISOString(),
+            current_period_end: new Date(stripeSub.current_period_end * 1000).toISOString(),
+            cancel_at_period_end: stripeSub.cancel_at_period_end || false,
+            updated_at: new Date().toISOString(),
+          })
+          .eq('user_id', userId);
+
+        return res.json({ 
+          message: 'Subscription synced successfully', 
+          plan: stripeSub.status === 'active' ? 'pro' : 'free',
+          status: stripeSub.status,
+        });
+      }
+    }
+
+    res.json({ message: 'No active Stripe subscription found', currentSub });
+  } catch (error: any) {
+    console.error('Error syncing subscription:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
 export default router;

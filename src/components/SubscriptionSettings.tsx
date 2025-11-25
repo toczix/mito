@@ -65,6 +65,38 @@ export function SubscriptionSettings() {
     }
   };
 
+  const handleSyncSubscription = async () => {
+    try {
+      const client = supabase;
+      if (!client) return;
+
+      const { data: { session } } = await client.auth.getSession();
+      if (!session) {
+        alert('Not authenticated');
+        return;
+      }
+
+      const response = await fetch('/api/sync-subscription', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+      });
+
+      const data = await response.json();
+      
+      if (response.ok) {
+        alert(`Subscription synced! Plan: ${data.plan}, Status: ${data.status}`);
+        window.location.reload();
+      } else {
+        alert(data.error || 'Failed to sync subscription');
+      }
+    } catch (error) {
+      console.error('Error syncing subscription:', error);
+      alert('Failed to sync subscription');
+    }
+  };
+
   if (loading) {
     return (
       <Card>
@@ -218,6 +250,21 @@ export function SubscriptionSettings() {
             Cancel anytime. Secure payment powered by Stripe.
           </div>
         )}
+
+        {/* Debug: Manual Sync Button (temporary) */}
+        <div className="pt-4 border-t">
+          <Button
+            onClick={handleSyncSubscription}
+            variant="outline"
+            size="sm"
+            className="w-full"
+          >
+            🔄 Sync Subscription Status
+          </Button>
+          <div className="text-xs text-muted-foreground text-center mt-2">
+            Click if your subscription status isn't updating
+          </div>
+        </div>
       </CardContent>
     </Card>
   );
