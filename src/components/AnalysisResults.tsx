@@ -168,6 +168,7 @@ export function AnalysisResults({
     const blob = new Blob([markdown], { type: 'text/markdown' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
+    a.href = url;
     const suffix = viewMode === 'out-of-range' ? '-out-of-range' : '';
     a.download = `biomarker-analysis${suffix}-${new Date().toISOString().split('T')[0]}.md`;
     document.body.appendChild(a);

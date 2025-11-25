@@ -38,8 +38,9 @@ export function ClientConfirmation({
     setUseExisting(matchResult.matched);
   }, [patientInfo, matchResult]);
 
-  const handleConfirm = () => {
-    onConfirm(editedInfo, useExisting && matchResult.client !== null);
+  const handleConfirm = (overrideUseExisting?: boolean) => {
+    const shouldUseExisting = overrideUseExisting !== undefined ? overrideUseExisting : useExisting;
+    onConfirm(editedInfo, shouldUseExisting && matchResult.client !== null);
   };
 
   const renderMatchInfo = () => {
@@ -110,8 +111,9 @@ export function ClientConfirmation({
               onClick={() => {
                 setUseExisting(true);
                 // Auto-proceed if data is valid
+                // Pass true directly to avoid React state batching race condition
                 if (editedInfo.name && editedInfo.gender) {
-                  handleConfirm();
+                  handleConfirm(true);
                 }
               }}
             >
@@ -205,7 +207,7 @@ export function ClientConfirmation({
             Cancel
           </Button>
           <Button 
-            onClick={handleConfirm} 
+            onClick={() => handleConfirm()} 
             className="flex-1 gap-2"
             disabled={!editedInfo.name || !editedInfo.gender}
           >

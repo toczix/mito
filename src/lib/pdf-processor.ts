@@ -201,7 +201,8 @@ export async function processPdfFile(
     const context = canvas.getContext('2d');
     
     if (context) {
-      for (let pageNum = 1; pageNum <= Math.min(pageCount, 20); pageNum++) {
+      // Process ALL pages (no limit) to prevent data loss on long lab reports
+      for (let pageNum = 1; pageNum <= pageCount; pageNum++) {
         const page = await pdf.getPage(pageNum);
         const viewport = page.getViewport({ scale: 2.0 });
         

@@ -69,11 +69,36 @@ export class AuthService {
 
     if (error) throw error;
 
-    const userRole = data.user?.user_metadata?.role as UserRole;
+    let userRole = data.user?.user_metadata?.role as UserRole;
+    
+    // If role is missing (e.g., after invitation or OAuth before metadata populates),
+    // ONLY default to 'practitioner' if they're using the practitioner portal
+    // For admin/client portals, missing role should fail for security
+    if (!userRole) {
+      console.warn('User role metadata missing');
+      
+      if (expectedRole === 'practitioner') {
+        // Default to practitioner for the practitioner portal only
+        console.log('Defaulting to practitioner role');
+        try {
+          await client.auth.updateUser({
+            data: { role: 'practitioner' }
+          });
+          userRole = 'practitioner'; // Update local variable
+        } catch (updateError) {
+          console.error('Failed to set default role:', updateError);
+          await this.signOut();
+          throw new Error('Unable to set user role. Please contact support.');
+        }
+      } else {
+        // For admin/client portals, require explicit role assignment
+        await this.signOut();
+        throw new Error(`This account does not have a ${expectedRole} role assigned. Please use the correct login portal or contact support.`);
+      }
+    }
     
     // Validate role matches expected
     if (userRole !== expectedRole) {
-      // Sign out the user since they used the wrong portal
       await this.signOut();
       throw new Error(`This account is not registered as a ${expectedRole}. Please use the correct login portal.`);
     }
