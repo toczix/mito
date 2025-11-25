@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { storage } from './storage';
 import { stripeService } from './stripeService';
-import { getStripePublishableKey } from './stripeClient';
+import { getStripePublishableKey, getUncachableStripeClient } from './stripeClient';
 import { createClient } from '@supabase/supabase-js';
 
 const router = Router();
@@ -219,7 +219,7 @@ router.post('/api/sync-subscription', requireAuth, async (req: any, res) => {
 
     // If they have a Stripe customer ID, fetch from Stripe
     if (currentSub.stripe_customer_id) {
-      const stripe = getStripe();
+      const stripe = await getUncachableStripeClient();
       const customer = await stripe.customers.retrieve(currentSub.stripe_customer_id, {
         expand: ['subscriptions'],
       });
