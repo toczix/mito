@@ -4,6 +4,7 @@ import { LoadingState, type FileProgress } from '@/components/LoadingState';
 import { AnalysisResults } from '@/components/AnalysisResults';
 import { ClientConfirmation } from '@/components/ClientConfirmation';
 import { VerificationBanner } from '@/components/VerificationBanner';
+import { UpgradeModal } from '@/components/UpgradeModal';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { processMultiplePdfs } from '@/lib/pdf-processor';
 import { extractBiomarkersFromPdfs, type PatientInfo, consolidatePatientInfo, type ClaudeResponseBatch } from '@/lib/claude-service';
@@ -14,6 +15,7 @@ import type { AnalysisResult, ExtractedBiomarker } from '@/lib/biomarkers';
 import { AlertCircle } from 'lucide-react';
 import { isSupabaseEnabled } from '@/lib/supabase';
 import { AuthService, type AuthUser } from '@/lib/auth-service';
+import { canAnalyzeClient } from '@/lib/subscription-service';
 
 type AppState = 'upload' | 'processing' | 'confirmation' | 'analyzing' | 'results' | 'error';
 
@@ -53,6 +55,13 @@ export function HomePage() {
   }>>([]);
   const [savedAnalysesCount, setSavedAnalysesCount] = useState<number>(0);
   const [patientInfoDiscrepancies, setPatientInfoDiscrepancies] = useState<string[]>([]);
+  
+  // Subscription & paywall state
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [analysisLimitInfo, setAnalysisLimitInfo] = useState<{
+    currentCount: number;
+    patientName: string;
+  } | null>(null);
 
   const handleFilesSelected = (selectedFiles: File[]) => {
     setFiles(selectedFiles);
@@ -489,6 +498,28 @@ export function HomePage() {
       setSelectedClientName(clientName);
       setSelectedGender(finalGender);
 
+      // Check subscription limits before proceeding (only if we have a clientId)
+      if (isSupabaseEnabled && clientId) {
+        setProcessingMessage('Checking subscription limits...');
+        setProcessingProgress(35);
+
+        const limitCheck = await canAnalyzeClient(clientId);
+
+        if (!limitCheck.allowed) {
+          // User has exceeded their limit - show upgrade modal
+          console.log(`❌ Analysis limit exceeded for client ${clientId}:`, limitCheck);
+          setAnalysisLimitInfo({
+            currentCount: limitCheck.currentCount,
+            patientName: clientName,
+          });
+          setShowUpgradeModal(true);
+          setState('upload'); // Return to upload state
+          return; // Stop here - don't proceed with analysis
+        }
+
+        console.log(`✅ Subscription check passed:`, limitCheck);
+      }
+
       setProcessingProgress(40);
       setProcessingMessage('Grouping biomarkers by test date...');
 
@@ -754,6 +785,16 @@ export function HomePage() {
             patientInfoDiscrepancies={patientInfoDiscrepancies}
           />
         </div>
+      )}
+
+      {/* Upgrade Modal (Paywall) */}
+      {showUpgradeModal && analysisLimitInfo && (
+        <UpgradeModal
+          open={showUpgradeModal}
+          onOpenChange={setShowUpgradeModal}
+          currentCount={analysisLimitInfo.currentCount}
+          patientName={analysisLimitInfo.patientName}
+        />
       )}
     </div>
   );

@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { User, Mail, CheckCircle2, AlertCircle } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { SubscriptionSettings } from './SubscriptionSettings';
 
 export function Settings() {
   const [currentEmail, setCurrentEmail] = useState<string>('');
@@ -98,7 +99,11 @@ export function Settings() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
+    <div className="max-w-2xl mx-auto space-y-6 py-8">
+      {/* Subscription Card */}
+      <SubscriptionSettings />
+
+      {/* Account Settings Card */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
