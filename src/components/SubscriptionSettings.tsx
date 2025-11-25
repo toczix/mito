@@ -250,21 +250,6 @@ export function SubscriptionSettings() {
             Cancel anytime. Secure payment powered by Stripe.
           </div>
         )}
-
-        {/* Debug: Manual Sync Button (temporary) */}
-        <div className="pt-4 border-t">
-          <Button
-            onClick={handleSyncSubscription}
-            variant="outline"
-            size="sm"
-            className="w-full"
-          >
-            🔄 Sync Subscription Status
-          </Button>
-          <div className="text-xs text-muted-foreground text-center mt-2">
-            Click if your subscription status isn't updating
-          </div>
-        </div>
       </CardContent>
     </Card>
   );
