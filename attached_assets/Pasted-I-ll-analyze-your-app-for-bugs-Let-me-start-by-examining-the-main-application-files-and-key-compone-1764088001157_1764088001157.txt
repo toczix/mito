@@ -1,0 +1,124 @@
+I'll analyze your app for bugs. Let me start by examining the main application files and key components.
+
+[21 tools called]
+
+Now I have a comprehensive view of your codebase. I've found several bugs. Let me summarize them:
+
+---
+
+## 🐛 Bug Report
+
+### 1. **Critical: Missing types module** - `src/lib/pdf-cache.ts`
+
+```13:13:src/lib/pdf-cache.ts
+import type { ClaudeResponse } from './types';
+```
+
+The file imports from `./types` which **doesn't exist**. `ClaudeResponse` is defined in `./claude-service`.
+
+**Fix:**
+
+[1 tool called]
+
+### 2. **Missing `href` assignment in download function** - `src/components/AnalysisResults.tsx`
+
+```166:177:src/components/AnalysisResults.tsx
+  const downloadAsMarkdown = () => {
+    const markdown = generateMarkdownTable(filteredResults, preSelectedClientName, gender, viewMode);
+    const blob = new Blob([markdown], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const suffix = viewMode === 'out-of-range' ? '-out-of-range' : '';
+    a.download = `biomarker-analysis${suffix}-${new Date().toISOString().split('T')[0]}.md`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+```
+
+The anchor element `a` is created with a `download` attribute but **`a.href = url` is missing**, so clicking it won't download anything.
+
+**Fix:**
+
+[1 tool called]
+
+### 3. **Missing dependency in useEffect** - `src/pages/HomePage.tsx`
+
+```124:129:src/pages/HomePage.tsx
+  // Handle completion trigger
+  useEffect(() => {
+    if (completionTrigger > 0) {
+      handleAllJobsComplete();
+    }
+  }, [completionTrigger]);
+```
+
+The `handleAllJobsComplete` function is called inside the effect but is not in the dependency array. This can cause stale closure bugs. However, since `handleAllJobsComplete` accesses state like `fileStatuses`, we need to be careful here.
+
+**Fix:**
+
+[1 tool called]
+
+### 4. **Dead code removal** - `src/pages/HomePage.tsx`
+
+The functions `updateFileStatus` and `updateProgress` (lines 278-335) are defined but never used. The `handleJobUpdate` callback (lines 76-109) handles the same logic.
+
+**Fix:**
+
+[1 tool called]
+
+### 5. **Race condition in ClientConfirmation** - `src/components/ClientConfirmation.tsx`
+
+```104:113:src/components/ClientConfirmation.tsx
+            <Button
+              variant={useExisting ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => {
+                setUseExisting(true);
+                // Auto-proceed if data is valid
+                if (editedInfo.name && editedInfo.gender) {
+                  handleConfirm();
+                }
+              }}
+```
+
+The code calls `setUseExisting(true)` and then immediately calls `handleConfirm()`. Due to React's state batching, `handleConfirm()` will use the **old** value of `useExisting` (possibly `false`), not the new value (`true`).
+
+**Fix:**
+
+[2 tools called]
+
+Now let me verify there are no linter errors in the files I modified:
+
+[1 tool called]
+
+All bugs have been fixed. Let me also check for one more potential issue in the `useQueueStatus` hook:
+
+[2 tools called]
+
+### 6. **Missing dependency in useCallback** - `src/hooks/useQueueStatus.ts`
+
+The `fetchJobs` callback (line 158) is missing `checkAllComplete` in its dependency array but calls it inside the function:
+
+[2 tools called]
+
+---
+
+## ✅ Summary of Bugs Fixed
+
+| # | File | Bug | Severity |
+|---|------|-----|----------|
+| 1 | `src/lib/pdf-cache.ts` | Import from non-existent `./types` module | **Critical** |
+| 2 | `src/components/AnalysisResults.tsx` | Missing `a.href = url` in download function - downloads would fail | **High** |
+| 3 | `src/pages/HomePage.tsx` | Missing dependency in useEffect with `completionTrigger` | **Medium** |
+| 4 | `src/pages/HomePage.tsx` | Dead code (`updateFileStatus`, `updateProgress`) never called | **Low** |
+| 5 | `src/components/ClientConfirmation.tsx` | Race condition with React state batching in "Use Existing" button | **Medium** |
+| 6 | `src/hooks/useQueueStatus.ts` | Missing `checkAllComplete` in `fetchJobs` dependency array | **Medium** |
+
+All bugs have been fixed and there are no linter errors. The app should now work correctly for:
+- PDF caching (import error fixed)
+- Downloading markdown files (href assignment added)
+- Queue processing completion handling (stale closure prevention)
+- Client matching flow (race condition fixed)
+- Real-time queue updates (proper dependencies)
