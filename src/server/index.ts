@@ -77,49 +77,61 @@ async function initStripe() {
 // Initialize Stripe on startup
 await initStripe();
 
+// Webhook handler function
+const webhookHandler = async (req: express.Request, res: express.Response) => {
+  console.log('🔔 Webhook received:', {
+    path: req.path,
+    uuid: (req as any).params.uuid || 'default',
+    hasSignature: !!req.headers['stripe-signature'],
+    bodyType: Buffer.isBuffer(req.body) ? 'Buffer' : typeof req.body,
+  });
+
+  const signature = req.headers['stripe-signature'];
+
+  if (!signature) {
+    console.error('❌ Missing stripe-signature header');
+    return res.status(400).json({ error: 'Missing stripe-signature' });
+  }
+
+  try {
+    const sig = Array.isArray(signature) ? signature[0] : signature;
+
+    // Validate that req.body is a Buffer (not parsed JSON)
+    if (!Buffer.isBuffer(req.body)) {
+      const errorMsg = 'STRIPE WEBHOOK ERROR: req.body is not a Buffer. ' +
+        'This means express.json() ran before this webhook route. ' +
+        'FIX: Move this webhook route registration BEFORE app.use(express.json()) in your code.';
+      console.error(errorMsg);
+      return res.status(500).json({ error: 'Webhook processing error' });
+    }
+
+    const uuid = (req as any).params.uuid || 'default';
+    console.log('✅ Processing webhook with UUID:', uuid);
+    
+    await WebhookHandlers.processWebhook(req.body as Buffer, sig, uuid);
+
+    console.log('✅ Webhook processed successfully');
+    res.status(200).json({ received: true });
+  } catch (error: any) {
+    console.error('❌ Webhook error:', error.message);
+
+    // Log helpful error message if it's the common "payload must be Buffer" error
+    if (error.message && error.message.includes('payload must be provided as a string or a Buffer')) {
+      const helpfulMsg = 'STRIPE WEBHOOK ERROR: Payload is not a Buffer. ' +
+        'This usually means express.json() parsed the body before the webhook handler. ' +
+        'FIX: Ensure the webhook route is registered BEFORE app.use(express.json()).';
+      console.error(helpfulMsg);
+    }
+
+    res.status(400).json({ error: 'Webhook processing error' });
+  }
+};
+
 // Register Stripe webhook route BEFORE express.json()
 // This is critical - webhook needs raw Buffer, not parsed JSON
-app.post(
-  '/api/stripe/webhook/:uuid',
-  express.raw({ type: 'application/json' }),
-  async (req, res) => {
-    const signature = req.headers['stripe-signature'];
-
-    if (!signature) {
-      return res.status(400).json({ error: 'Missing stripe-signature' });
-    }
-
-    try {
-      const sig = Array.isArray(signature) ? signature[0] : signature;
-
-      // Validate that req.body is a Buffer (not parsed JSON)
-      if (!Buffer.isBuffer(req.body)) {
-        const errorMsg = 'STRIPE WEBHOOK ERROR: req.body is not a Buffer. ' +
-          'This means express.json() ran before this webhook route. ' +
-          'FIX: Move this webhook route registration BEFORE app.use(express.json()) in your code.';
-        console.error(errorMsg);
-        return res.status(500).json({ error: 'Webhook processing error' });
-      }
-
-      const { uuid } = req.params;
-      await WebhookHandlers.processWebhook(req.body as Buffer, sig, uuid);
-
-      res.status(200).json({ received: true });
-    } catch (error: any) {
-      console.error('❌ Webhook error:', error.message);
-
-      // Log helpful error message if it's the common "payload must be Buffer" error
-      if (error.message && error.message.includes('payload must be provided as a string or a Buffer')) {
-        const helpfulMsg = 'STRIPE WEBHOOK ERROR: Payload is not a Buffer. ' +
-          'This usually means express.json() parsed the body before the webhook handler. ' +
-          'FIX: Ensure the webhook route is registered BEFORE app.use(express.json()).';
-        console.error(helpfulMsg);
-      }
-
-      res.status(400).json({ error: 'Webhook processing error' });
-    }
-  }
-);
+// Support both /api/stripe/webhook and /api/stripe/webhook/:uuid
+app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), webhookHandler);
+app.post('/api/stripe/webhook/:uuid', express.raw({ type: 'application/json' }), webhookHandler);
 
 // Now apply JSON middleware for all other routes
 app.use(express.json());

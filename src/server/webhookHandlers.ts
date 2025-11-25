@@ -29,18 +29,24 @@ export class WebhookHandlers {
   }
 
   private static async handleSubscriptionEvents(event: any): Promise<void> {
+    console.log('📨 Handling subscription event:', event.type);
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
     try {
       switch (event.type) {
         case 'checkout.session.completed': {
+          console.log('💳 Checkout completed:', {
+            session_id: event.data.object.id,
+            customer: event.data.object.customer,
+            user_id: event.data.object.client_reference_id || event.data.object.metadata?.user_id,
+          });
           const session = event.data.object;
           const userId = session.client_reference_id || session.metadata?.user_id;
           const customerId = session.customer as string;
 
           if (userId && customerId) {
             // Update subscription with customer ID and subscription ID
-            await supabase
+            const { data, error } = await supabase
               .from('subscriptions')
               .update({
                 stripe_customer_id: customerId,
@@ -49,7 +55,16 @@ export class WebhookHandlers {
                 plan: 'pro',
                 updated_at: new Date().toISOString(),
               })
-              .eq('user_id', userId);
+              .eq('user_id', userId)
+              .select();
+            
+            if (error) {
+              console.error('❌ Failed to update subscription:', error);
+            } else {
+              console.log('✅ Subscription updated to Pro:', data);
+            }
+          } else {
+            console.warn('⚠️ Missing userId or customerId in checkout session');
           }
           break;
         }
