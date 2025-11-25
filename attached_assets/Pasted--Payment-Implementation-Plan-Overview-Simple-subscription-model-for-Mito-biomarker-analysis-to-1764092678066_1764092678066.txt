@@ -1,0 +1,927 @@
+# Payment Implementation Plan
+
+## Overview
+
+Simple subscription model for Mito biomarker analysis tool.
+
+| Plan | Price | Limits |
+|------|-------|--------|
+| **Free Trial** | $0 | 3 analyses per patient, then upgrade prompt |
+| **Pro** | $29/month | Unlimited analyses |
+
+---
+
+## Architecture Summary
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                           PAYMENT FLOW                                       │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                              │
+│  User Signs Up                                                               │
+│       │                                                                      │
+│       ▼                                                                      │
+│  ┌─────────────┐                                                            │
+│  │ FREE TRIAL  │◄─── Default state for all new users                        │
+│  │ 3 analyses  │     (No credit card required)                              │
+│  │ per patient │                                                            │
+│  └──────┬──────┘                                                            │
+│         │                                                                    │
+│         │ Hits limit on any patient                                         │
+│         ▼                                                                    │
+│  ┌─────────────┐     ┌──────────────────┐     ┌─────────────────┐          │
+│  │  PAYWALL    │────►│ Stripe Checkout  │────►│ Webhook updates │          │
+│  │  MODAL      │     │ ($29/month)      │     │ subscription    │          │
+│  └─────────────┘     └──────────────────┘     └────────┬────────┘          │
+│                                                         │                    │
+│                                                         ▼                    │
+│                                               ┌─────────────────┐           │
+│                                               │   PRO PLAN      │           │
+│                                               │   Unlimited     │           │
+│                                               └─────────────────┘           │
+│                                                                              │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Implementation Tasks
+
+### Phase 1: Database Schema
+
+Add subscription tracking to Supabase:
+
+```sql
+-- Create subscriptions table
+CREATE TABLE subscriptions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE UNIQUE,
+  stripe_customer_id TEXT UNIQUE,
+  stripe_subscription_id TEXT UNIQUE,
+  status TEXT NOT NULL DEFAULT 'trialing',  -- 'trialing', 'active', 'canceled', 'past_due'
+  plan TEXT NOT NULL DEFAULT 'free',        -- 'free', 'pro'
+  current_period_start TIMESTAMPTZ,
+  current_period_end TIMESTAMPTZ,
+  cancel_at_period_end BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Enable RLS
+ALTER TABLE subscriptions ENABLE ROW LEVEL SECURITY;
+
+-- Users can only read their own subscription
+CREATE POLICY "Users can view own subscription"
+  ON subscriptions FOR SELECT
+  USING (auth.uid() = user_id);
+
+-- Only service role can modify (via webhooks)
+CREATE POLICY "Service role can manage subscriptions"
+  ON subscriptions FOR ALL
+  USING (auth.role() = 'service_role');
+
+-- Index for fast lookups
+CREATE INDEX idx_subscriptions_user_id ON subscriptions(user_id);
+CREATE INDEX idx_subscriptions_stripe_customer ON subscriptions(stripe_customer_id);
+
+-- Auto-create subscription record when user signs up
+CREATE OR REPLACE FUNCTION handle_new_user_subscription()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO public.subscriptions (user_id, status, plan)
+  VALUES (NEW.id, 'trialing', 'free');
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE TRIGGER on_auth_user_created_subscription
+  AFTER INSERT ON auth.users
+  FOR EACH ROW EXECUTE FUNCTION handle_new_user_subscription();
+```
+
+### Phase 2: Track Analysis Count Per Patient
+
+We need to count analyses per client (patient) for the current user:
+
+```sql
+-- Add a view for easy analysis counting
+CREATE OR REPLACE VIEW client_analysis_counts AS
+SELECT 
+  c.id as client_id,
+  c.user_id,
+  COUNT(a.id) as analysis_count
+FROM clients c
+LEFT JOIN analyses a ON a.client_id = c.id
+GROUP BY c.id, c.user_id;
+
+-- Function to check if user can analyze a client
+CREATE OR REPLACE FUNCTION can_analyze_client(p_client_id UUID)
+RETURNS BOOLEAN AS $$
+DECLARE
+  v_user_id UUID;
+  v_plan TEXT;
+  v_count INT;
+BEGIN
+  v_user_id := auth.uid();
+  
+  -- Get user's plan
+  SELECT plan INTO v_plan 
+  FROM subscriptions 
+  WHERE user_id = v_user_id;
+  
+  -- Pro users have unlimited
+  IF v_plan = 'pro' THEN
+    RETURN TRUE;
+  END IF;
+  
+  -- Count analyses for this client
+  SELECT COUNT(*) INTO v_count
+  FROM analyses
+  WHERE client_id = p_client_id;
+  
+  -- Free trial: 3 analyses per patient
+  RETURN v_count < 3;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+```
+
+---
+
+### Phase 3: Stripe Setup
+
+#### 3.1 Stripe Dashboard Configuration
+
+1. **Create Product & Price**
+   - Product: "Mito Pro"
+   - Price: $29/month, recurring
+   - Save the `price_id` (e.g., `price_1ABC123...`)
+
+2. **Set up Webhooks**
+   - Endpoint: `https://your-project.supabase.co/functions/v1/stripe-webhook`
+   - Events to listen for:
+     - `checkout.session.completed`
+     - `customer.subscription.created`
+     - `customer.subscription.updated`
+     - `customer.subscription.deleted`
+     - `invoice.payment_succeeded`
+     - `invoice.payment_failed`
+
+3. **Get API Keys**
+   - Publishable key → Frontend env var
+   - Secret key → Supabase Edge Function secret
+
+#### 3.2 Environment Variables
+
+```bash
+# Frontend (.env.local)
+VITE_STRIPE_PUBLISHABLE_KEY=pk_live_...
+
+# Supabase Edge Function Secrets (via Supabase Dashboard)
+STRIPE_SECRET_KEY=sk_live_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+STRIPE_PRICE_ID=price_...
+```
+
+---
+
+### Phase 4: Supabase Edge Functions
+
+#### 4.1 Create Checkout Session
+
+`supabase/functions/create-checkout/index.ts`
+
+```typescript
+import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import Stripe from 'https://esm.sh/stripe@14.21.0'
+
+const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY')!, {
+  apiVersion: '2023-10-16',
+})
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
+
+serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders })
+  }
+
+  try {
+    // Get user from auth header
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_ANON_KEY')!,
+      { global: { headers: { Authorization: req.headers.get('Authorization')! } } }
+    )
+    
+    const { data: { user }, error: userError } = await supabase.auth.getUser()
+    if (userError || !user) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
+    // Check if user already has a Stripe customer
+    const { data: subscription } = await supabase
+      .from('subscriptions')
+      .select('stripe_customer_id')
+      .eq('user_id', user.id)
+      .single()
+
+    let customerId = subscription?.stripe_customer_id
+
+    // Create Stripe customer if doesn't exist
+    if (!customerId) {
+      const customer = await stripe.customers.create({
+        email: user.email,
+        metadata: { supabase_user_id: user.id },
+      })
+      customerId = customer.id
+
+      // Save customer ID
+      await supabase
+        .from('subscriptions')
+        .update({ stripe_customer_id: customerId })
+        .eq('user_id', user.id)
+    }
+
+    // Create checkout session
+    const session = await stripe.checkout.sessions.create({
+      customer: customerId,
+      mode: 'subscription',
+      payment_method_types: ['card'],
+      line_items: [{
+        price: Deno.env.get('STRIPE_PRICE_ID'),
+        quantity: 1,
+      }],
+      success_url: `${req.headers.get('origin')}/?success=true`,
+      cancel_url: `${req.headers.get('origin')}/?canceled=true`,
+      subscription_data: {
+        metadata: { supabase_user_id: user.id },
+      },
+    })
+
+    return new Response(JSON.stringify({ url: session.url }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    })
+  } catch (error) {
+    console.error('Error:', error)
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    })
+  }
+})
+```
+
+#### 4.2 Stripe Webhook Handler
+
+`supabase/functions/stripe-webhook/index.ts`
+
+```typescript
+import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import Stripe from 'https://esm.sh/stripe@14.21.0'
+
+const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY')!, {
+  apiVersion: '2023-10-16',
+})
+
+serve(async (req) => {
+  const signature = req.headers.get('stripe-signature')!
+  const body = await req.text()
+
+  let event: Stripe.Event
+
+  try {
+    event = stripe.webhooks.constructEvent(
+      body,
+      signature,
+      Deno.env.get('STRIPE_WEBHOOK_SECRET')!
+    )
+  } catch (err) {
+    console.error('Webhook signature verification failed:', err.message)
+    return new Response(JSON.stringify({ error: 'Invalid signature' }), { status: 400 })
+  }
+
+  const supabase = createClient(
+    Deno.env.get('SUPABASE_URL')!,
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+  )
+
+  try {
+    switch (event.type) {
+      case 'checkout.session.completed': {
+        const session = event.data.object as Stripe.Checkout.Session
+        const userId = session.subscription_data?.metadata?.supabase_user_id 
+          || session.metadata?.supabase_user_id
+
+        if (userId) {
+          await supabase
+            .from('subscriptions')
+            .update({
+              stripe_subscription_id: session.subscription as string,
+              status: 'active',
+              plan: 'pro',
+              updated_at: new Date().toISOString(),
+            })
+            .eq('user_id', userId)
+        }
+        break
+      }
+
+      case 'customer.subscription.updated':
+      case 'customer.subscription.created': {
+        const subscription = event.data.object as Stripe.Subscription
+        const userId = subscription.metadata?.supabase_user_id
+
+        if (userId) {
+          await supabase
+            .from('subscriptions')
+            .update({
+              status: subscription.status === 'active' ? 'active' : subscription.status,
+              plan: subscription.status === 'active' ? 'pro' : 'free',
+              current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
+              current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+              cancel_at_period_end: subscription.cancel_at_period_end,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('user_id', userId)
+        }
+        break
+      }
+
+      case 'customer.subscription.deleted': {
+        const subscription = event.data.object as Stripe.Subscription
+        const userId = subscription.metadata?.supabase_user_id
+
+        if (userId) {
+          await supabase
+            .from('subscriptions')
+            .update({
+              status: 'canceled',
+              plan: 'free',
+              updated_at: new Date().toISOString(),
+            })
+            .eq('user_id', userId)
+        }
+        break
+      }
+
+      case 'invoice.payment_failed': {
+        const invoice = event.data.object as Stripe.Invoice
+        const subscriptionId = invoice.subscription as string
+
+        await supabase
+          .from('subscriptions')
+          .update({
+            status: 'past_due',
+            updated_at: new Date().toISOString(),
+          })
+          .eq('stripe_subscription_id', subscriptionId)
+        break
+      }
+    }
+
+    return new Response(JSON.stringify({ received: true }), { status: 200 })
+  } catch (error) {
+    console.error('Webhook handler error:', error)
+    return new Response(JSON.stringify({ error: error.message }), { status: 500 })
+  }
+})
+```
+
+#### 4.3 Customer Portal (Manage Subscription)
+
+`supabase/functions/create-portal/index.ts`
+
+```typescript
+import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import Stripe from 'https://esm.sh/stripe@14.21.0'
+
+const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY')!, {
+  apiVersion: '2023-10-16',
+})
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
+
+serve(async (req) => {
+  if (req.method === 'OPTIONS') {
+    return new Response('ok', { headers: corsHeaders })
+  }
+
+  try {
+    const supabase = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_ANON_KEY')!,
+      { global: { headers: { Authorization: req.headers.get('Authorization')! } } }
+    )
+
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
+    const { data: subscription } = await supabase
+      .from('subscriptions')
+      .select('stripe_customer_id')
+      .eq('user_id', user.id)
+      .single()
+
+    if (!subscription?.stripe_customer_id) {
+      return new Response(JSON.stringify({ error: 'No subscription found' }), {
+        status: 404,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+
+    const session = await stripe.billingPortal.sessions.create({
+      customer: subscription.stripe_customer_id,
+      return_url: `${req.headers.get('origin')}/settings`,
+    })
+
+    return new Response(JSON.stringify({ url: session.url }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    })
+  } catch (error) {
+    return new Response(JSON.stringify({ error: error.message }), {
+      status: 500,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    })
+  }
+})
+```
+
+---
+
+### Phase 5: Frontend Implementation
+
+#### 5.1 Subscription Hook
+
+`src/hooks/useSubscription.ts`
+
+```typescript
+import { useState, useEffect } from 'react'
+import { supabase } from '@/lib/supabase'
+
+interface Subscription {
+  plan: 'free' | 'pro'
+  status: 'trialing' | 'active' | 'canceled' | 'past_due'
+  currentPeriodEnd?: Date
+  cancelAtPeriodEnd?: boolean
+}
+
+export function useSubscription() {
+  const [subscription, setSubscription] = useState<Subscription | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    if (!supabase) {
+      setLoading(false)
+      return
+    }
+
+    async function fetchSubscription() {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        setLoading(false)
+        return
+      }
+
+      const { data } = await supabase
+        .from('subscriptions')
+        .select('*')
+        .eq('user_id', user.id)
+        .single()
+
+      if (data) {
+        setSubscription({
+          plan: data.plan,
+          status: data.status,
+          currentPeriodEnd: data.current_period_end ? new Date(data.current_period_end) : undefined,
+          cancelAtPeriodEnd: data.cancel_at_period_end,
+        })
+      }
+      setLoading(false)
+    }
+
+    fetchSubscription()
+
+    // Subscribe to realtime updates
+    const channel = supabase
+      .channel('subscription-changes')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'subscriptions',
+      }, () => {
+        fetchSubscription()
+      })
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [])
+
+  const isPro = subscription?.plan === 'pro' && subscription?.status === 'active'
+  const isTrialing = subscription?.status === 'trialing' || subscription?.plan === 'free'
+
+  return { subscription, loading, isPro, isTrialing }
+}
+```
+
+#### 5.2 Analysis Limit Check
+
+`src/lib/subscription-service.ts`
+
+```typescript
+import { supabase } from './supabase'
+
+const FREE_TRIAL_LIMIT = 3
+
+export async function getClientAnalysisCount(clientId: string): Promise<number> {
+  if (!supabase) return 0
+
+  const { count } = await supabase
+    .from('analyses')
+    .select('*', { count: 'exact', head: true })
+    .eq('client_id', clientId)
+
+  return count || 0
+}
+
+export async function canAnalyzeClient(clientId: string): Promise<{
+  allowed: boolean
+  currentCount: number
+  limit: number
+  isPro: boolean
+}> {
+  if (!supabase) {
+    return { allowed: true, currentCount: 0, limit: Infinity, isPro: true }
+  }
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) {
+    return { allowed: false, currentCount: 0, limit: 0, isPro: false }
+  }
+
+  // Get subscription
+  const { data: subscription } = await supabase
+    .from('subscriptions')
+    .select('plan, status')
+    .eq('user_id', user.id)
+    .single()
+
+  const isPro = subscription?.plan === 'pro' && subscription?.status === 'active'
+
+  if (isPro) {
+    return { allowed: true, currentCount: 0, limit: Infinity, isPro: true }
+  }
+
+  // Count analyses for this client
+  const currentCount = await getClientAnalysisCount(clientId)
+
+  return {
+    allowed: currentCount < FREE_TRIAL_LIMIT,
+    currentCount,
+    limit: FREE_TRIAL_LIMIT,
+    isPro: false,
+  }
+}
+
+export async function createCheckoutSession(): Promise<string | null> {
+  if (!supabase) return null
+
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session) return null
+
+  const response = await supabase.functions.invoke('create-checkout', {
+    headers: { Authorization: `Bearer ${session.access_token}` },
+  })
+
+  return response.data?.url || null
+}
+
+export async function createPortalSession(): Promise<string | null> {
+  if (!supabase) return null
+
+  const { data: { session } } = await supabase.auth.getSession()
+  if (!session) return null
+
+  const response = await supabase.functions.invoke('create-portal', {
+    headers: { Authorization: `Bearer ${session.access_token}` },
+  })
+
+  return response.data?.url || null
+}
+```
+
+#### 5.3 Upgrade Modal Component
+
+`src/components/UpgradeModal.tsx`
+
+```tsx
+import { useState } from 'react'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
+import { Sparkles, Check, Loader2 } from 'lucide-react'
+import { createCheckoutSession } from '@/lib/subscription-service'
+
+interface UpgradeModalProps {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  currentCount: number
+  patientName?: string
+}
+
+export function UpgradeModal({ open, onOpenChange, currentCount, patientName }: UpgradeModalProps) {
+  const [loading, setLoading] = useState(false)
+
+  const handleUpgrade = async () => {
+    setLoading(true)
+    try {
+      const url = await createCheckoutSession()
+      if (url) {
+        window.location.href = url
+      }
+    } catch (error) {
+      console.error('Failed to create checkout session:', error)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Sparkles className="h-5 w-5 text-yellow-500" />
+            Upgrade to Pro
+          </DialogTitle>
+          <DialogDescription>
+            {patientName 
+              ? `You've used all ${currentCount} free analyses for ${patientName}.`
+              : `You've reached the free trial limit of ${currentCount} analyses per patient.`
+            }
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-4 py-4">
+          <div className="bg-gradient-to-r from-violet-500/10 to-purple-500/10 rounded-lg p-4 border border-violet-500/20">
+            <div className="flex items-baseline gap-2 mb-3">
+              <span className="text-3xl font-bold">$29</span>
+              <span className="text-muted-foreground">/month</span>
+            </div>
+            
+            <ul className="space-y-2">
+              {[
+                'Unlimited analyses per patient',
+                'Full biomarker history & trends',
+                'Priority processing',
+                'Cancel anytime',
+              ].map((feature) => (
+                <li key={feature} className="flex items-center gap-2 text-sm">
+                  <Check className="h-4 w-4 text-green-500 flex-shrink-0" />
+                  {feature}
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <Button 
+            onClick={handleUpgrade} 
+            className="w-full" 
+            size="lg"
+            disabled={loading}
+          >
+            {loading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Redirecting to checkout...
+              </>
+            ) : (
+              <>
+                <Sparkles className="mr-2 h-4 w-4" />
+                Upgrade Now
+              </>
+            )}
+          </Button>
+
+          <p className="text-xs text-center text-muted-foreground">
+            Secure payment powered by Stripe. Cancel anytime.
+          </p>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}
+```
+
+#### 5.4 Integration Point (HomePage Analysis Flow)
+
+Add check before creating analysis:
+
+```tsx
+// In HomePage.tsx or wherever analysis is triggered
+
+import { canAnalyzeClient } from '@/lib/subscription-service'
+import { UpgradeModal } from '@/components/UpgradeModal'
+
+// Add state
+const [showUpgrade, setShowUpgrade] = useState(false)
+const [upgradeInfo, setUpgradeInfo] = useState({ count: 0, name: '' })
+
+// Before running analysis on a client:
+const handleAnalyze = async (clientId: string, clientName: string) => {
+  // Check subscription limit
+  const { allowed, currentCount, isPro } = await canAnalyzeClient(clientId)
+  
+  if (!allowed && !isPro) {
+    setUpgradeInfo({ count: currentCount, name: clientName })
+    setShowUpgrade(true)
+    return
+  }
+
+  // Proceed with normal analysis flow...
+}
+
+// Add modal to JSX
+<UpgradeModal
+  open={showUpgrade}
+  onOpenChange={setShowUpgrade}
+  currentCount={upgradeInfo.count}
+  patientName={upgradeInfo.name}
+/>
+```
+
+#### 5.5 Settings Page - Manage Subscription
+
+Add to Settings page:
+
+```tsx
+import { useSubscription } from '@/hooks/useSubscription'
+import { createPortalSession } from '@/lib/subscription-service'
+
+function SubscriptionSection() {
+  const { subscription, loading, isPro } = useSubscription()
+  const [portalLoading, setPortalLoading] = useState(false)
+
+  const handleManageSubscription = async () => {
+    setPortalLoading(true)
+    try {
+      const url = await createPortalSession()
+      if (url) window.location.href = url
+    } finally {
+      setPortalLoading(false)
+    }
+  }
+
+  if (loading) return <div>Loading...</div>
+
+  return (
+    <div className="border rounded-lg p-4">
+      <h3 className="font-semibold mb-2">Subscription</h3>
+      
+      {isPro ? (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <span className="bg-green-500/20 text-green-600 text-xs font-medium px-2 py-1 rounded">
+              Pro
+            </span>
+            <span className="text-sm text-muted-foreground">
+              Active subscription
+            </span>
+          </div>
+          <Button variant="outline" onClick={handleManageSubscription} disabled={portalLoading}>
+            {portalLoading ? 'Loading...' : 'Manage Subscription'}
+          </Button>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <span className="bg-yellow-500/20 text-yellow-600 text-xs font-medium px-2 py-1 rounded">
+              Free Trial
+            </span>
+            <span className="text-sm text-muted-foreground">
+              3 analyses per patient
+            </span>
+          </div>
+          <Button onClick={() => setShowUpgrade(true)}>
+            Upgrade to Pro - $29/mo
+          </Button>
+        </div>
+      )}
+    </div>
+  )
+}
+```
+
+---
+
+## Implementation Checklist
+
+### Database
+- [ ] Create `subscriptions` table migration
+- [ ] Set up RLS policies
+- [ ] Create trigger for new user subscription creation
+- [ ] Test subscription creation on signup
+
+### Stripe Dashboard
+- [ ] Create "Mito Pro" product
+- [ ] Create $29/month price
+- [ ] Configure customer portal settings
+- [ ] Set up webhook endpoint
+- [ ] Test in Stripe test mode
+
+### Edge Functions
+- [ ] Deploy `create-checkout` function
+- [ ] Deploy `stripe-webhook` function  
+- [ ] Deploy `create-portal` function
+- [ ] Set Stripe secrets in Supabase
+- [ ] Test checkout flow end-to-end
+
+### Frontend
+- [ ] Add `VITE_STRIPE_PUBLISHABLE_KEY` to env
+- [ ] Create `useSubscription` hook
+- [ ] Create `subscription-service.ts`
+- [ ] Create `UpgradeModal` component
+- [ ] Integrate limit check in analysis flow
+- [ ] Add subscription management to Settings
+- [ ] Handle success/cancel URL params
+
+### Testing
+- [ ] Test new user gets free trial
+- [ ] Test limit enforcement (4th analysis blocked)
+- [ ] Test upgrade flow with Stripe test cards
+- [ ] Test subscription appears in settings
+- [ ] Test cancellation flow
+- [ ] Test resubscription after cancel
+
+---
+
+## File Structure
+
+```
+├── src/
+│   ├── components/
+│   │   └── UpgradeModal.tsx          # NEW
+│   ├── hooks/
+│   │   └── useSubscription.ts        # NEW
+│   ├── lib/
+│   │   └── subscription-service.ts   # NEW
+│   └── pages/
+│       └── SettingsPage.tsx          # MODIFY
+├── supabase/
+│   ├── functions/
+│   │   ├── create-checkout/
+│   │   │   └── index.ts              # NEW
+│   │   ├── create-portal/
+│   │   │   └── index.ts              # NEW
+│   │   └── stripe-webhook/
+│   │       └── index.ts              # NEW
+│   └── migrations/
+│       └── 20251125_create_subscriptions.sql  # NEW
+```
+
+---
+
+## Security Considerations
+
+1. **Webhook Verification**: Always verify Stripe webhook signatures
+2. **Service Role**: Only use service role key in webhooks, never in frontend
+3. **RLS**: Users can only read their own subscription
+4. **Metadata**: Store `supabase_user_id` in Stripe metadata for reliable linking
+5. **Rate Limiting**: Supabase Edge Functions have built-in rate limiting
+
+---
+
+## Cost Estimation
+
+| Item | Cost |
+|------|------|
+| Stripe fees | 2.9% + $0.30 per transaction |
+| Per $29 subscription | ~$1.14 fee |
+| Net per subscriber | ~$27.86 |
+
+---
+
+## Future Enhancements (Not Now)
+
+- Annual plan discount ($290/year = 2 months free)
+- Team/practice plans
+- Usage-based pricing tier
+- Grandfathering early adopters
+
