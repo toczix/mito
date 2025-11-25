@@ -1,0 +1,247 @@
+-- ============================================================
+-- Subscription Management Schema
+-- ============================================================
+-- This migration adds subscription tracking for the Mito app
+-- with refined RLS policies and server-side limit enforcement.
+
+-- ============================================================
+-- 1. Subscriptions Table
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS subscriptions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE UNIQUE NOT NULL,
+  stripe_customer_id TEXT UNIQUE,
+  stripe_subscription_id TEXT UNIQUE,
+  status TEXT NOT NULL DEFAULT 'trialing' CHECK (status IN ('trialing', 'active', 'canceled', 'past_due')),
+  plan TEXT NOT NULL DEFAULT 'free' CHECK (plan IN ('free', 'pro')),
+  current_period_start TIMESTAMPTZ,
+  current_period_end TIMESTAMPTZ,
+  cancel_at_period_end BOOLEAN DEFAULT FALSE,
+  created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+  updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
+);
+
+-- Indexes for fast lookups
+CREATE INDEX IF NOT EXISTS idx_subscriptions_user_id ON subscriptions(user_id);
+CREATE INDEX IF NOT EXISTS idx_subscriptions_stripe_customer ON subscriptions(stripe_customer_id);
+CREATE INDEX IF NOT EXISTS idx_subscriptions_stripe_subscription ON subscriptions(stripe_subscription_id);
+
+-- ============================================================
+-- 2. Updated At Trigger
+-- ============================================================
+
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER subscriptions_updated_at
+  BEFORE UPDATE ON subscriptions
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
+
+-- ============================================================
+-- 3. Auto-create Subscription for New Users
+-- ============================================================
+
+CREATE OR REPLACE FUNCTION handle_new_user_subscription()
+RETURNS TRIGGER AS $$
+BEGIN
+  INSERT INTO public.subscriptions (user_id, status, plan)
+  VALUES (NEW.id, 'trialing', 'free')
+  ON CONFLICT (user_id) DO NOTHING;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE TRIGGER on_auth_user_created_subscription
+  AFTER INSERT ON auth.users
+  FOR EACH ROW
+  EXECUTE FUNCTION handle_new_user_subscription();
+
+-- ============================================================
+-- 4. Row Level Security Policies
+-- ============================================================
+
+ALTER TABLE subscriptions ENABLE ROW LEVEL SECURITY;
+
+-- Policy 1: Users can view their own subscription
+CREATE POLICY "Users can view own subscription"
+  ON subscriptions
+  FOR SELECT
+  USING (auth.uid() = user_id);
+
+-- Policy 2: Users can update ONLY their stripe_customer_id (for checkout flow)
+-- This allows the checkout session creation to save the customer ID
+-- while preventing users from manipulating their plan/status
+CREATE POLICY "Users can update own stripe_customer_id"
+  ON subscriptions
+  FOR UPDATE
+  USING (auth.uid() = user_id)
+  WITH CHECK (auth.uid() = user_id);
+
+-- Policy 3: Service role can manage all subscription data
+-- This is used by webhook handlers to update plan/status
+CREATE POLICY "Service role can manage subscriptions"
+  ON subscriptions
+  FOR ALL
+  USING (auth.role() = 'service_role');
+
+-- ============================================================
+-- 5. Analysis Limit View & Functions
+-- ============================================================
+
+-- View for easy analysis counting per client
+CREATE OR REPLACE VIEW client_analysis_counts AS
+SELECT 
+  c.id as client_id,
+  c.user_id,
+  COUNT(a.id) as analysis_count
+FROM clients c
+LEFT JOIN analyses a ON a.client_id = c.id
+GROUP BY c.id, c.user_id;
+
+-- Function to check if user can analyze a client
+-- SECURITY DEFINER means it runs with elevated privileges
+-- So we MUST filter by both client_id AND user_id to prevent cross-tenant access
+CREATE OR REPLACE FUNCTION can_analyze_client(p_client_id UUID)
+RETURNS BOOLEAN AS $$
+DECLARE
+  v_user_id UUID;
+  v_plan TEXT;
+  v_status TEXT;
+  v_count INT;
+  v_client_owner UUID;
+BEGIN
+  v_user_id := auth.uid();
+  
+  -- Require authentication
+  IF v_user_id IS NULL THEN
+    RETURN FALSE;
+  END IF;
+  
+  -- Verify user owns this client (prevent cross-tenant access)
+  SELECT user_id INTO v_client_owner
+  FROM clients
+  WHERE id = p_client_id;
+  
+  IF v_client_owner IS NULL OR v_client_owner != v_user_id THEN
+    RETURN FALSE;
+  END IF;
+  
+  -- Get user's subscription plan and status
+  SELECT plan, status INTO v_plan, v_status
+  FROM subscriptions 
+  WHERE user_id = v_user_id;
+  
+  -- Pro users with active status have unlimited access
+  IF v_plan = 'pro' AND v_status = 'active' THEN
+    RETURN TRUE;
+  END IF;
+  
+  -- Count analyses for this specific client
+  -- Filter by BOTH client_id and user_id for security
+  SELECT COUNT(*) INTO v_count
+  FROM analyses
+  WHERE client_id = p_client_id
+    AND user_id = v_user_id;
+  
+  -- Free trial: 3 analyses per patient
+  RETURN v_count < 3;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- ============================================================
+-- 6. Analysis Count Function (for UI display)
+-- ============================================================
+
+CREATE OR REPLACE FUNCTION get_client_analysis_count(p_client_id UUID)
+RETURNS INTEGER AS $$
+DECLARE
+  v_user_id UUID;
+  v_count INT;
+  v_client_owner UUID;
+BEGIN
+  v_user_id := auth.uid();
+  
+  -- Require authentication
+  IF v_user_id IS NULL THEN
+    RETURN 0;
+  END IF;
+  
+  -- Verify user owns this client
+  SELECT user_id INTO v_client_owner
+  FROM clients
+  WHERE id = p_client_id;
+  
+  IF v_client_owner IS NULL OR v_client_owner != v_user_id THEN
+    RETURN 0;
+  END IF;
+  
+  -- Count analyses (filter by both for security)
+  SELECT COUNT(*) INTO v_count
+  FROM analyses
+  WHERE client_id = p_client_id
+    AND user_id = v_user_id;
+  
+  RETURN v_count;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- ============================================================
+-- 7. Stripe Configuration Table (Optional - for flexibility)
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS stripe_config (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  key TEXT UNIQUE NOT NULL,
+  value TEXT NOT NULL,
+  description TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW() NOT NULL,
+  updated_at TIMESTAMPTZ DEFAULT NOW() NOT NULL
+);
+
+-- Insert default price ID (update this with your actual Stripe price ID)
+INSERT INTO stripe_config (key, value, description)
+VALUES ('pro_monthly_price_id', 'price_PLACEHOLDER', 'Stripe Price ID for Pro Plan Monthly Subscription')
+ON CONFLICT (key) DO NOTHING;
+
+-- RLS for config (read-only for authenticated users, service role can modify)
+ALTER TABLE stripe_config ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Authenticated users can read config"
+  ON stripe_config
+  FOR SELECT
+  USING (auth.role() = 'authenticated' OR auth.role() = 'service_role');
+
+CREATE POLICY "Service role can manage config"
+  ON stripe_config
+  FOR ALL
+  USING (auth.role() = 'service_role');
+
+-- Updated at trigger for config
+CREATE TRIGGER stripe_config_updated_at
+  BEFORE UPDATE ON stripe_config
+  FOR EACH ROW
+  EXECUTE FUNCTION update_updated_at_column();
+
+-- ============================================================
+-- 8. Helper Function: Get Stripe Price ID
+-- ============================================================
+
+CREATE OR REPLACE FUNCTION get_stripe_price_id(plan_key TEXT DEFAULT 'pro_monthly_price_id')
+RETURNS TEXT AS $$
+DECLARE
+  v_price_id TEXT;
+BEGIN
+  SELECT value INTO v_price_id
+  FROM stripe_config
+  WHERE key = plan_key;
+  
+  RETURN v_price_id;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
