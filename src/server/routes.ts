@@ -31,6 +31,18 @@ async function requireAuth(req: any, res: any, next: any) {
   next();
 }
 
+// Middleware to require admin role
+async function requireAdmin(req: any, res: any, next: any) {
+  const user = req.user;
+  const userRole = user?.user_metadata?.role;
+  
+  if (userRole !== 'admin') {
+    return res.status(403).json({ error: 'Admin access required' });
+  }
+  
+  next();
+}
+
 // Get Stripe publishable key
 router.get('/api/stripe/config', async (req, res) => {
   try {
@@ -260,6 +272,147 @@ router.post('/api/sync-subscription', requireAuth, async (req: any, res) => {
     res.json({ message: 'No active Stripe subscription found', currentSub });
   } catch (error: any) {
     console.error('Error syncing subscription:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============================================
+// ADMIN ENDPOINTS
+// ============================================
+
+// Get all users with subscription info (admin only)
+router.get('/api/admin/users', requireAuth, requireAdmin, async (req: any, res) => {
+  try {
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+    // Get all users from auth.users
+    const { data: authData, error: authError } = await supabase.auth.admin.listUsers();
+    
+    if (authError) {
+      return res.status(500).json({ error: authError.message });
+    }
+
+    // Get all subscriptions
+    const { data: subscriptions, error: subError } = await supabase
+      .from('subscriptions')
+      .select('*');
+
+    if (subError) {
+      console.error('Error fetching subscriptions:', subError);
+    }
+
+    // Create a map of subscriptions by user_id
+    const subMap = new Map(
+      (subscriptions || []).map((s: any) => [s.user_id, s])
+    );
+
+    // Combine user data with subscription info
+    const users = authData.users.map((user: any) => {
+      const subscription = subMap.get(user.id);
+      return {
+        id: user.id,
+        email: user.email,
+        full_name: user.user_metadata?.full_name || '',
+        role: user.user_metadata?.role || 'practitioner',
+        created_at: user.created_at,
+        last_sign_in_at: user.last_sign_in_at,
+        subscription: subscription ? {
+          plan: subscription.plan,
+          status: subscription.status,
+          stripe_customer_id: subscription.stripe_customer_id,
+          current_period_end: subscription.current_period_end,
+          cancel_at_period_end: subscription.cancel_at_period_end,
+          pro_override: subscription.pro_override || false,
+          pro_override_until: subscription.pro_override_until,
+        } : null,
+      };
+    });
+
+    // Sort by created_at descending (newest first)
+    users.sort((a: any, b: any) => 
+      new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
+
+    res.json({ users });
+  } catch (error: any) {
+    console.error('Error fetching users:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Grant or revoke Pro access for a user (admin only)
+router.post('/api/admin/users/:userId/subscription', requireAuth, requireAdmin, async (req: any, res) => {
+  try {
+    const { userId } = req.params;
+    const { plan, override, overrideUntil } = req.body;
+
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+
+    // Check if subscription exists
+    const { data: existing } = await supabase
+      .from('subscriptions')
+      .select('*')
+      .eq('user_id', userId)
+      .single();
+
+    const updateData: any = {
+      updated_at: new Date().toISOString(),
+    };
+
+    // If override is specified, use it for free Pro access
+    if (override !== undefined) {
+      updateData.pro_override = override;
+      updateData.pro_override_until = overrideUntil || null;
+      if (override) {
+        updateData.plan = 'pro';
+        updateData.status = 'active';
+      } else if (!existing?.stripe_subscription_id) {
+        // Only reset to free if they don't have a paid subscription
+        updateData.plan = 'free';
+        updateData.status = 'active';
+      }
+    }
+
+    // If plan is specified directly
+    if (plan) {
+      updateData.plan = plan;
+      updateData.status = 'active';
+    }
+
+    if (existing) {
+      const { data, error } = await supabase
+        .from('subscriptions')
+        .update(updateData)
+        .eq('user_id', userId)
+        .select();
+
+      if (error) {
+        return res.status(500).json({ error: error.message });
+      }
+
+      return res.json({ message: 'Subscription updated', subscription: data?.[0] });
+    } else {
+      // Create new subscription
+      const { data, error } = await supabase
+        .from('subscriptions')
+        .insert({
+          user_id: userId,
+          plan: plan || (override ? 'pro' : 'free'),
+          status: 'active',
+          pro_override: override || false,
+          pro_override_until: overrideUntil || null,
+          ...updateData,
+        })
+        .select();
+
+      if (error) {
+        return res.status(500).json({ error: error.message });
+      }
+
+      return res.json({ message: 'Subscription created', subscription: data?.[0] });
+    }
+  } catch (error: any) {
+    console.error('Error updating subscription:', error);
     res.status(500).json({ error: error.message });
   }
 });

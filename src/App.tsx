@@ -4,6 +4,7 @@ import { HomePage } from '@/pages/HomePage';
 import { ClientsPage } from '@/pages/ClientsPage';
 import { BenchmarksPage } from '@/pages/BenchmarksPage';
 import { SettingsPage } from '@/pages/SettingsPage';
+import { AdminPage } from '@/pages/AdminPage';
 import { Login } from '@/components/Login';
 import { AdminLogin } from '@/components/AdminLogin';
 import { PractitionerLogin } from '@/components/PractitionerLogin';
@@ -14,7 +15,7 @@ import { CheckEmailPending } from '@/components/CheckEmailPending';
 import { isAuthDisabled } from '@/lib/supabase';
 import { AuthService, type AuthUser } from '@/lib/auth-service';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
-import { FileText, Users, Settings as SettingsIcon, LogOut, Loader2, Moon, Sun } from 'lucide-react';
+import { FileText, Users, Settings as SettingsIcon, LogOut, Loader2, Moon, Sun, Shield } from 'lucide-react';
 import { Toaster } from 'sonner';
 import { useTheme } from '@/lib/theme-context';
 
@@ -172,11 +173,14 @@ function App() {
     );
   }
 
+  const isAdmin = user && AuthService.isAdmin(user);
+  
   const navItems = [
     { path: '/', label: 'Analysis', icon: FileText },
     { path: '/clients', label: 'Clients', icon: Users },
     { path: '/benchmarks', label: 'Benchmarks', icon: SettingsIcon },
     { path: '/settings', label: 'Settings', icon: SettingsIcon },
+    ...(isAdmin ? [{ path: '/admin', label: 'Admin', icon: Shield }] : []),
   ];
 
   return (
@@ -258,6 +262,7 @@ function App() {
           <Route path="/clients/*" element={<ClientsPage />} />
           <Route path="/benchmarks" element={<BenchmarksPage />} />
           <Route path="/settings" element={<SettingsPage />} />
+          <Route path="/admin" element={<AdminPage />} />
         </Routes>
       </main>
       </div>
