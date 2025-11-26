@@ -161,6 +161,17 @@ function App() {
     );
   }
 
+  // Show reset password page for both logged in and logged out users
+  // This needs to be checked before the main auth check because clicking the reset link logs user in
+  if (location.pathname === '/reset-password') {
+    return (
+      <ErrorBoundary>
+        <ResetPasswordWrapper />
+        <Toaster />
+      </ErrorBoundary>
+    );
+  }
+
   // Show authentication views if not logged in (unless auth is disabled)
   if (!isAuthDisabled && !user) {
     return (
