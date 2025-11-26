@@ -22,7 +22,7 @@ async function getUser(req: VercelRequest) {
 async function getUserSubscription(userId: string) {
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
   const { data } = await supabase
-    .from('subscriptions')
+    .from('user_subscriptions')
     .select('*')
     .eq('user_id', userId)
     .single();

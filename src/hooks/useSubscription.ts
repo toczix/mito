@@ -47,7 +47,7 @@ export function useSubscription(): UseSubscriptionReturn {
       }
 
       const { data, error } = await supabase
-        .from('subscriptions')
+        .from('user_subscriptions')
         .select('*')
         .eq('user_id', user.id)
         .single();
@@ -56,7 +56,7 @@ export function useSubscription(): UseSubscriptionReturn {
         if (error.code === 'PGRST116') {
           // No subscription found - create default
           const { data: newSub, error: insertError } = await supabase
-            .from('subscriptions')
+            .from('user_subscriptions')
             .insert({
               user_id: user.id,
               status: 'trialing',
@@ -118,7 +118,7 @@ export function useSubscription(): UseSubscriptionReturn {
         {
           event: '*',
           schema: 'public',
-          table: 'subscriptions',
+          table: 'user_subscriptions',
         },
         (payload) => {
           // Only update if it's the current user's subscription

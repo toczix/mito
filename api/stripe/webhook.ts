@@ -57,7 +57,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         if (userId && customerId) {
           await supabase
-            .from('subscriptions')
+            .from('user_subscriptions')
             .update({
               stripe_customer_id: customerId,
               stripe_subscription_id: session.subscription as string,
@@ -76,7 +76,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const customerId = subscription.customer as string;
 
         const { data: existingSub } = await supabase
-          .from('subscriptions')
+          .from('user_subscriptions')
           .select('user_id')
           .eq('stripe_customer_id', customerId)
           .single();
@@ -84,7 +84,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (existingSub) {
           const subAny = subscription as any;
           await supabase
-            .from('subscriptions')
+            .from('user_subscriptions')
             .update({
               stripe_subscription_id: subscription.id,
               status: subscription.status === 'active' ? 'active' : subscription.status,
@@ -104,14 +104,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const customerId = subscription.customer as string;
 
         const { data: existingSub } = await supabase
-          .from('subscriptions')
+          .from('user_subscriptions')
           .select('user_id')
           .eq('stripe_customer_id', customerId)
           .single();
 
         if (existingSub) {
           await supabase
-            .from('subscriptions')
+            .from('user_subscriptions')
             .update({
               status: 'canceled',
               plan: 'free',
@@ -132,7 +132,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
         if (subscriptionId) {
           await supabase
-            .from('subscriptions')
+            .from('user_subscriptions')
             .update({
               status: 'past_due',
               updated_at: new Date().toISOString(),

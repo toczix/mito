@@ -67,8 +67,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     console.log(`Found ${authData?.users?.length || 0} users`);
 
     const { data: subscriptions, error: subError } = await supabase
-      .from('subscriptions')
-      .select('user_id, plan, status, stripe_customer_id, current_period_end, cancel_at_period_end, pro_override, pro_override_until');
+      .from('user_subscriptions')
+      .select('user_id, plan, status, stripe_customer_id, stripe_subscription_id, current_period_end, cancel_at_period_end, pro_override, pro_override_until');
 
     if (subError) {
       console.error('Error fetching subscriptions:', subError);

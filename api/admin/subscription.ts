@@ -48,7 +48,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
     const { data: existing } = await supabase
-      .from('subscriptions')
+      .from('user_subscriptions')
       .select('*')
       .eq('user_id', userId)
       .single();
@@ -76,7 +76,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     if (existing) {
       const { data, error } = await supabase
-        .from('subscriptions')
+        .from('user_subscriptions')
         .update(updateData)
         .eq('user_id', userId)
         .select();
@@ -88,7 +88,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(200).json({ message: 'Subscription updated', subscription: data?.[0] });
     } else {
       const { data, error } = await supabase
-        .from('subscriptions')
+        .from('user_subscriptions')
         .insert({
           user_id: userId,
           plan: plan || (override ? 'pro' : 'free'),
