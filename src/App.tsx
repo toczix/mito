@@ -11,6 +11,7 @@ import { PractitionerLogin } from '@/components/PractitionerLogin';
 import { ClientLogin } from '@/components/ClientLogin';
 import { Signup } from '@/components/Signup';
 import { ForgotPassword } from '@/components/ForgotPassword';
+import { ResetPassword } from '@/components/ResetPassword';
 import { CheckEmailPending } from '@/components/CheckEmailPending';
 import { isAuthDisabled } from '@/lib/supabase';
 import { AuthService, type AuthUser } from '@/lib/auth-service';
@@ -74,6 +75,11 @@ function ForgotPasswordWrapper() {
   return <ForgotPassword onBackToLogin={() => navigate('/login')} />;
 }
 
+function ResetPasswordWrapper() {
+  const navigate = useNavigate();
+  return <ResetPassword onBackToLogin={() => navigate('/login')} />;
+}
+
 function CheckEmailWrapper() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -122,6 +128,7 @@ function App() {
   // Separate effect to navigate when user becomes authenticated
   useEffect(() => {
     // Only navigate if auth is enabled, not loading, and user just became authenticated
+    // Note: /reset-password is excluded because user needs to stay there to set new password
     const isAuthPage = location.pathname.startsWith('/login') || 
                        location.pathname.startsWith('/signup') ||
                        location.pathname.startsWith('/forgot-password') ||
@@ -165,6 +172,7 @@ function App() {
           <Route path="/login/client" element={<ClientLoginWrapper />} />
           <Route path="/signup" element={<SignupWrapper />} />
           <Route path="/forgot-password" element={<ForgotPasswordWrapper />} />
+          <Route path="/reset-password" element={<ResetPasswordWrapper />} />
           <Route path="/check-email" element={<CheckEmailWrapper />} />
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
