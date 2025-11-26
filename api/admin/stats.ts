@@ -41,6 +41,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
+    if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+      return res.status(500).json({ error: 'Server configuration error' });
+    }
+
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
       auth: {
         autoRefreshToken: false,
@@ -48,18 +52,37 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     });
 
-    // Get overall usage stats
-    const { data: analyses } = await supabase
-      .from('analyses')
-      .select('id, user_id, client_id, created_at, analysis_date');
+    // Get overall usage stats with error handling
+    let analyses: any[] = [];
+    let clients: any[] = [];
+    let subscriptions: any[] = [];
 
-    const { data: clients } = await supabase
-      .from('clients')
-      .select('id, user_id, created_at');
+    try {
+      const { data, error } = await supabase
+        .from('analyses')
+        .select('id, user_id, client_id, created_at, analysis_date');
+      if (!error && data) analyses = data;
+    } catch (e) {
+      console.error('Error fetching analyses:', e);
+    }
 
-    const { data: subscriptions } = await supabase
-      .from('user_subscriptions')
-      .select('*');
+    try {
+      const { data, error } = await supabase
+        .from('clients')
+        .select('id, user_id, created_at');
+      if (!error && data) clients = data;
+    } catch (e) {
+      console.error('Error fetching clients:', e);
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('user_subscriptions')
+        .select('user_id, plan, status, stripe_customer_id, stripe_subscription_id, current_period_end, cancel_at_period_end, pro_override, pro_override_until');
+      if (!error && data) subscriptions = data;
+    } catch (e) {
+      console.error('Error fetching subscriptions:', e);
+    }
 
     // Calculate per-user usage
     const userUsage: Record<string, {
@@ -71,7 +94,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // Group analyses by user
     const analysesByUser: Record<string, any[]> = {};
-    (analyses || []).forEach(a => {
+    analyses.forEach(a => {
       if (a.user_id) {
         if (!analysesByUser[a.user_id]) analysesByUser[a.user_id] = [];
         analysesByUser[a.user_id].push(a);
@@ -80,7 +103,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // Group clients by user
     const clientsByUser: Record<string, any[]> = {};
-    (clients || []).forEach(c => {
+    clients.forEach(c => {
       if (c.user_id) {
         if (!clientsByUser[c.user_id]) clientsByUser[c.user_id] = [];
         clientsByUser[c.user_id].push(c);
@@ -89,8 +112,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // Map subscriptions by user
     const subsByUser: Record<string, any> = {};
-    (subscriptions || []).forEach(s => {
-      subsByUser[s.user_id] = s;
+    subscriptions.forEach(s => {
+      if (s.user_id) {
+        subsByUser[s.user_id] = s;
+      }
     });
 
     // Combine into user usage
@@ -122,11 +147,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
     const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
-    const analysesLast30Days = (analyses || []).filter(
+    const analysesLast30Days = analyses.filter(
       a => new Date(a.created_at) >= thirtyDaysAgo
     ).length;
 
-    const analysesLast7Days = (analyses || []).filter(
+    const analysesLast7Days = analyses.filter(
       a => new Date(a.created_at) >= sevenDaysAgo
     ).length;
 
@@ -189,14 +214,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     // Overall stats
     const stats = {
       overall: {
-        totalAnalyses: (analyses || []).length,
-        totalClients: (clients || []).length,
+        totalAnalyses: analyses.length,
+        totalClients: clients.length,
         totalUsers: allUserIds.size,
         analysesLast7Days,
         analysesLast30Days,
-        proUsers: (subscriptions || []).filter(s => s.plan === 'pro' && s.status === 'active').length,
-        freeUsers: (subscriptions || []).filter(s => s.plan === 'free' || !s.plan).length,
-        overrideUsers: (subscriptions || []).filter(s => s.pro_override).length
+        proUsers: subscriptions.filter(s => s.plan === 'pro' && s.status === 'active').length,
+        freeUsers: subscriptions.filter(s => s.plan === 'free' || !s.plan).length,
+        overrideUsers: subscriptions.filter(s => s.pro_override).length
       },
       revenue: revenueData,
       perUser: userUsage
