@@ -1,12 +1,12 @@
-import { getStripeSync } from './stripeClient';
+import Stripe from 'stripe';
 import { createClient } from '@supabase/supabase-js';
+import { getStripeClient, getStripeWebhookSecret } from './stripeClient';
 
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL!;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
 export class WebhookHandlers {
-  static async processWebhook(payload: Buffer, signature: string, uuid: string): Promise<void> {
-    // Validate payload is a Buffer
+  static async processWebhook(payload: Buffer, signature: string): Promise<void> {
     if (!Buffer.isBuffer(payload)) {
       throw new Error(
         'STRIPE WEBHOOK ERROR: Payload must be a Buffer. ' +
@@ -16,36 +16,39 @@ export class WebhookHandlers {
       );
     }
 
-    // Process webhook with stripe-replit-sync
-    // The sync already validates the signature internally, so we can trust it
-    const sync = await getStripeSync();
-    await sync.processWebhook(payload, signature, uuid);
+    const stripe = getStripeClient();
+    const webhookSecret = getStripeWebhookSecret();
 
-    // Parse the raw event to update our subscriptions table
-    // stripe-replit-sync has already validated the signature, so we can safely parse
-    const event = JSON.parse(payload.toString());
+    let event: Stripe.Event;
+    try {
+      event = stripe.webhooks.constructEvent(payload, signature, webhookSecret);
+    } catch (err: any) {
+      console.error('❌ Webhook signature verification failed:', err.message);
+      throw new Error(`Webhook signature verification failed: ${err.message}`);
+    }
 
+    console.log('✅ Webhook signature verified, event type:', event.type);
     await this.handleSubscriptionEvents(event);
   }
 
-  private static async handleSubscriptionEvents(event: any): Promise<void> {
+  private static async handleSubscriptionEvents(event: Stripe.Event): Promise<void> {
     console.log('📨 Handling subscription event:', event.type);
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
     try {
       switch (event.type) {
         case 'checkout.session.completed': {
+          const session = event.data.object as Stripe.Checkout.Session;
           console.log('💳 Checkout completed:', {
-            session_id: event.data.object.id,
-            customer: event.data.object.customer,
-            user_id: event.data.object.client_reference_id || event.data.object.metadata?.user_id,
+            session_id: session.id,
+            customer: session.customer,
+            user_id: session.client_reference_id || session.metadata?.user_id,
           });
-          const session = event.data.object;
+          
           const userId = session.client_reference_id || session.metadata?.user_id;
           const customerId = session.customer as string;
 
           if (userId && customerId) {
-            // Update subscription with customer ID and subscription ID
             const { data, error } = await supabase
               .from('subscriptions')
               .update({
@@ -71,10 +74,9 @@ export class WebhookHandlers {
 
         case 'customer.subscription.created':
         case 'customer.subscription.updated': {
-          const subscription = event.data.object;
+          const subscription = event.data.object as Stripe.Subscription;
           const customerId = subscription.customer as string;
 
-          // Find user by customer ID
           const { data: existingSub } = await supabase
             .from('subscriptions')
             .select('user_id')
@@ -82,14 +84,15 @@ export class WebhookHandlers {
             .single();
 
           if (existingSub) {
+            const subAny = subscription as any;
             await supabase
               .from('subscriptions')
               .update({
                 stripe_subscription_id: subscription.id,
                 status: subscription.status === 'active' ? 'active' : subscription.status,
                 plan: subscription.status === 'active' ? 'pro' : 'free',
-                current_period_start: new Date(subscription.current_period_start * 1000).toISOString(),
-                current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
+                current_period_start: subAny.current_period_start ? new Date(subAny.current_period_start * 1000).toISOString() : null,
+                current_period_end: subAny.current_period_end ? new Date(subAny.current_period_end * 1000).toISOString() : null,
                 cancel_at_period_end: subscription.cancel_at_period_end || false,
                 updated_at: new Date().toISOString(),
               })
@@ -99,10 +102,9 @@ export class WebhookHandlers {
         }
 
         case 'customer.subscription.deleted': {
-          const subscription = event.data.object;
+          const subscription = event.data.object as Stripe.Subscription;
           const customerId = subscription.customer as string;
 
-          // Find user by customer ID and downgrade to free
           const { data: existingSub } = await supabase
             .from('subscriptions')
             .select('user_id')
@@ -127,7 +129,7 @@ export class WebhookHandlers {
         }
 
         case 'invoice.payment_failed': {
-          const invoice = event.data.object;
+          const invoice = event.data.object as any;
           const subscriptionId = invoice.subscription as string;
 
           if (subscriptionId) {
@@ -144,7 +146,6 @@ export class WebhookHandlers {
       }
     } catch (error) {
       console.error('Error handling subscription event:', error);
-      // Don't throw - webhook should still return 200 to Stripe
     }
   }
 }

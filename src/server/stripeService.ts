@@ -1,21 +1,15 @@
 import { storage } from './storage';
-import { getUncachableStripeClient } from './stripeClient';
+import { getStripeClient } from './stripeClient';
 
-/**
- * StripeService: Handles direct Stripe API operations
- * Pattern: Use Stripe client for write operations, storage for read operations
- */
 export class StripeService {
-  // Create customer in Stripe
   async createCustomer(email: string, userId: string) {
-    const stripe = await getUncachableStripeClient();
+    const stripe = getStripeClient();
     return await stripe.customers.create({
       email,
       metadata: { user_id: userId },
     });
   }
 
-  // Create checkout session for subscription
   async createCheckoutSession(
     userId: string,
     email: string,
@@ -23,7 +17,7 @@ export class StripeService {
     successUrl: string,
     cancelUrl: string
   ) {
-    const stripe = await getUncachableStripeClient();
+    const stripe = getStripeClient();
 
     // Get or create customer
     const subscription = await storage.getUserSubscription(userId);
@@ -55,16 +49,14 @@ export class StripeService {
     });
   }
 
-  // Create customer portal session
   async createCustomerPortalSession(customerId: string, returnUrl: string) {
-    const stripe = await getUncachableStripeClient();
+    const stripe = getStripeClient();
     return await stripe.billingPortal.sessions.create({
       customer: customerId,
       return_url: returnUrl,
     });
   }
 
-  // Read operations - delegate to storage (queries PostgreSQL)
   async getProduct(productId: string) {
     return await storage.getProduct(productId);
   }

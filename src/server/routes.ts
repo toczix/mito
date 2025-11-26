@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { storage } from './storage';
 import { stripeService } from './stripeService';
-import { getStripePublishableKey, getUncachableStripeClient } from './stripeClient';
+import { getStripePublishableKey, getStripeClient } from './stripeClient';
 import { createClient } from '@supabase/supabase-js';
 
 const router = Router();
@@ -45,9 +45,9 @@ async function requireAdmin(req: any, res: any, next: any) {
 // @ts-ignore - req is used by Express middleware but TypeScript thinks it's unused
 
 // Get Stripe publishable key
-router.get('/api/stripe/config', async (req, res) => {
+router.get('/api/stripe/config', (_req, res) => {
   try {
-    const publishableKey = await getStripePublishableKey();
+    const publishableKey = getStripePublishableKey();
     res.json({ publishableKey });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -137,7 +137,7 @@ router.post('/api/portal', requireAuth, async (req: any, res) => {
 });
 
 // Get products (for displaying pricing plans)
-router.get('/api/products', async (req, res) => {
+router.get('/api/products', async (_req, res) => {
   try {
     const products = await storage.listProductsWithPrices();
 
@@ -233,7 +233,7 @@ router.post('/api/sync-subscription', requireAuth, async (req: any, res) => {
 
     // If they have a Stripe customer ID, fetch from Stripe
     if (currentSub.stripe_customer_id) {
-      const stripe = await getUncachableStripeClient();
+      const stripe = getStripeClient();
       const customer = await stripe.customers.retrieve(currentSub.stripe_customer_id, {
         expand: ['subscriptions'],
       });
@@ -245,7 +245,7 @@ router.post('/api/sync-subscription', requireAuth, async (req: any, res) => {
       const subscriptions = customer.subscriptions?.data || [];
       
       if (subscriptions.length > 0) {
-        const stripeSub = subscriptions[0];
+        const stripeSub = subscriptions[0] as any;
         
         // Update via Supabase
         const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
@@ -255,8 +255,8 @@ router.post('/api/sync-subscription', requireAuth, async (req: any, res) => {
             stripe_subscription_id: stripeSub.id,
             status: stripeSub.status === 'active' ? 'active' : stripeSub.status,
             plan: stripeSub.status === 'active' ? 'pro' : 'free',
-            current_period_start: new Date(stripeSub.current_period_start * 1000).toISOString(),
-            current_period_end: new Date(stripeSub.current_period_end * 1000).toISOString(),
+            current_period_start: stripeSub.current_period_start ? new Date(stripeSub.current_period_start * 1000).toISOString() : null,
+            current_period_end: stripeSub.current_period_end ? new Date(stripeSub.current_period_end * 1000).toISOString() : null,
             cancel_at_period_end: stripeSub.cancel_at_period_end || false,
             updated_at: new Date().toISOString(),
           })
@@ -282,7 +282,7 @@ router.post('/api/sync-subscription', requireAuth, async (req: any, res) => {
 // ============================================
 
 // Get all users with subscription info (admin only)
-router.get('/api/admin/users', requireAuth, requireAdmin, async (req: any, res) => {
+router.get('/api/admin/users', requireAuth, requireAdmin, async (_req: any, res) => {
   try {
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 

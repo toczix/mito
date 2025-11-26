@@ -1,87 +1,39 @@
 import express from 'express';
 import cors from 'cors';
-import { runMigrations } from 'stripe-replit-sync';
 import routes from './routes';
-import { getStripeSync } from './stripeClient';
 import { WebhookHandlers } from './webhookHandlers';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// CORS configuration
 app.use(cors({
   origin: process.env.VITE_FRONTEND_URL || 'http://localhost:5000',
   credentials: true,
 }));
 
-/**
- * Initialize Stripe schema and sync data on startup
- */
-async function initStripe() {
-  const databaseUrl = process.env.DATABASE_URL;
+async function initServer() {
+  const requiredEnvVars = [
+    'STRIPE_SECRET_KEY',
+    'STRIPE_PUBLISHABLE_KEY',
+    'STRIPE_WEBHOOK_SECRET',
+    'VITE_SUPABASE_URL',
+    'SUPABASE_SERVICE_ROLE_KEY',
+  ];
 
-  if (!databaseUrl) {
-    throw new Error(
-      'DATABASE_URL environment variable is required for Stripe integration. ' +
-      'Please create a PostgreSQL database first.'
-    );
+  const missing = requiredEnvVars.filter(v => !process.env[v]);
+  if (missing.length > 0) {
+    console.warn('⚠️ Missing environment variables:', missing.join(', '));
+    console.warn('Some features may not work correctly.');
   }
 
-  try {
-    console.log('🔄 Initializing Stripe schema...');
-    await runMigrations({ 
-      databaseUrl,
-      schema: 'stripe',
-    });
-    console.log('✅ Stripe schema ready');
-
-    // Get StripeSync instance
-    const stripeSync = await getStripeSync();
-
-    // Set up managed webhook
-    console.log('🔄 Setting up managed webhook...');
-    const replitDomains = process.env.REPLIT_DOMAINS || process.env.REPL_SLUG;
-    const webhookBaseUrl = replitDomains 
-      ? `https://${replitDomains.split(',')[0]}` 
-      : 'http://localhost:3001';
-    
-    const webhookResult = await stripeSync.findOrCreateManagedWebhook(
-      `${webhookBaseUrl}/api/stripe/webhook`,
-      {
-        enabled_events: ['*'],
-        description: 'Managed webhook for Mito subscription sync',
-      }
-    );
-    
-    if (webhookResult && webhookResult.webhook) {
-      console.log(`✅ Webhook configured: ${webhookResult.webhook.url} (UUID: ${webhookResult.uuid})`);
-    } else {
-      console.log('⚠️ Webhook configuration returned unexpected result:', webhookResult);
-    }
-
-    // Sync all existing Stripe data in the background
-    console.log('🔄 Starting Stripe data sync...');
-    stripeSync.syncBackfill()
-      .then(() => {
-        console.log('✅ Stripe data synced');
-      })
-      .catch((err: Error) => {
-        console.error('❌ Error syncing Stripe data:', err);
-      });
-  } catch (error) {
-    console.error('❌ Failed to initialize Stripe:', error);
-    throw error;
-  }
+  console.log('✅ Server initialized');
 }
 
-// Initialize Stripe on startup
-await initStripe();
+await initServer();
 
-// Webhook handler function
 const webhookHandler = async (req: express.Request, res: express.Response) => {
   console.log('🔔 Webhook received:', {
     path: req.path,
-    uuid: (req as any).params.uuid || 'default',
     hasSignature: !!req.headers['stripe-signature'],
     bodyType: Buffer.isBuffer(req.body) ? 'Buffer' : typeof req.body,
   });
@@ -96,56 +48,34 @@ const webhookHandler = async (req: express.Request, res: express.Response) => {
   try {
     const sig = Array.isArray(signature) ? signature[0] : signature;
 
-    // Validate that req.body is a Buffer (not parsed JSON)
     if (!Buffer.isBuffer(req.body)) {
       const errorMsg = 'STRIPE WEBHOOK ERROR: req.body is not a Buffer. ' +
-        'This means express.json() ran before this webhook route. ' +
-        'FIX: Move this webhook route registration BEFORE app.use(express.json()) in your code.';
+        'This means express.json() ran before this webhook route.';
       console.error(errorMsg);
       return res.status(500).json({ error: 'Webhook processing error' });
     }
 
-    const uuid = (req as any).params.uuid || 'default';
-    console.log('✅ Processing webhook with UUID:', uuid);
-    
-    await WebhookHandlers.processWebhook(req.body as Buffer, sig, uuid);
+    await WebhookHandlers.processWebhook(req.body as Buffer, sig);
 
     console.log('✅ Webhook processed successfully');
     res.status(200).json({ received: true });
   } catch (error: any) {
     console.error('❌ Webhook error:', error.message);
-
-    // Log helpful error message if it's the common "payload must be Buffer" error
-    if (error.message && error.message.includes('payload must be provided as a string or a Buffer')) {
-      const helpfulMsg = 'STRIPE WEBHOOK ERROR: Payload is not a Buffer. ' +
-        'This usually means express.json() parsed the body before the webhook handler. ' +
-        'FIX: Ensure the webhook route is registered BEFORE app.use(express.json()).';
-      console.error(helpfulMsg);
-    }
-
     res.status(400).json({ error: 'Webhook processing error' });
   }
 };
 
-// Register Stripe webhook route BEFORE express.json()
-// This is critical - webhook needs raw Buffer, not parsed JSON
-// Support both /api/stripe/webhook and /api/stripe/webhook/:uuid
 app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), webhookHandler);
-app.post('/api/stripe/webhook/:uuid', express.raw({ type: 'application/json' }), webhookHandler);
 
-// Now apply JSON middleware for all other routes
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// Register API routes
 app.use(routes);
 
-// Health check endpoint
-app.get('/api/health', (req, res) => {
+app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', service: 'mito-backend' });
 });
 
-// Start server
 app.listen(PORT, () => {
   console.log(`🚀 Mito backend server running on port ${PORT}`);
   console.log(`📍 API endpoint: http://localhost:${PORT}/api`);

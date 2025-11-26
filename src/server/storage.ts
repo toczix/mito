@@ -1,106 +1,126 @@
 import { createClient } from '@supabase/supabase-js';
-import pg from 'pg';
+import { getStripeClient } from './stripeClient';
 
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL!;
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
-// PostgreSQL pool for direct queries to stripe schema
-const pool = new pg.Pool({
-  connectionString: process.env.DATABASE_URL,
-  max: 2,
-});
-
-/**
- * Storage: Query Stripe data from PostgreSQL and Supabase
- */
 export class Storage {
-  // Query Stripe data from stripe.products table
   async getProduct(productId: string) {
-    const result = await pool.query(
-      'SELECT * FROM stripe.products WHERE id = $1',
-      [productId]
-    );
-    return result.rows[0] || null;
+    try {
+      const stripe = getStripeClient();
+      const product = await stripe.products.retrieve(productId);
+      return product;
+    } catch (error) {
+      console.error('Error fetching product from Stripe:', error);
+      return null;
+    }
   }
 
-  async listProducts(active = true, limit = 20, offset = 0) {
-    const result = await pool.query(
-      'SELECT * FROM stripe.products WHERE active = $1 LIMIT $2 OFFSET $3',
-      [active, limit, offset]
-    );
-    return result.rows;
+  async listProducts(active = true, limit = 20) {
+    try {
+      const stripe = getStripeClient();
+      const products = await stripe.products.list({ active, limit });
+      return products.data;
+    } catch (error) {
+      console.error('Error listing products from Stripe:', error);
+      return [];
+    }
   }
 
-  // Get products with their prices
-  async listProductsWithPrices(active = true, limit = 20, offset = 0) {
-    const result = await pool.query(
-      `
-        WITH paginated_products AS (
-          SELECT id, name, description, metadata, active
-          FROM stripe.products
-          WHERE active = $1
-          ORDER BY id
-          LIMIT $2 OFFSET $3
-        )
-        SELECT 
-          p.id as product_id,
-          p.name as product_name,
-          p.description as product_description,
-          p.active as product_active,
-          p.metadata as product_metadata,
-          pr.id as price_id,
-          pr.unit_amount,
-          pr.currency,
-          pr.recurring,
-          pr.active as price_active,
-          pr.metadata as price_metadata
-        FROM paginated_products p
-        LEFT JOIN stripe.prices pr ON pr.product = p.id AND pr.active = true
-        ORDER BY p.id, pr.unit_amount
-      `,
-      [active, limit, offset]
-    );
-    return result.rows;
+  async listProductsWithPrices(active = true, limit = 20) {
+    try {
+      const stripe = getStripeClient();
+      
+      const products = await stripe.products.list({ active, limit });
+      const prices = await stripe.prices.list({ active: true, limit: 100 });
+      
+      const result = [];
+      for (const product of products.data) {
+        const productPrices = prices.data.filter(p => p.product === product.id);
+        for (const price of productPrices) {
+          result.push({
+            product_id: product.id,
+            product_name: product.name,
+            product_description: product.description,
+            product_active: product.active,
+            product_metadata: product.metadata,
+            price_id: price.id,
+            unit_amount: price.unit_amount,
+            currency: price.currency,
+            recurring: price.recurring,
+            price_active: price.active,
+            price_metadata: price.metadata,
+          });
+        }
+        if (productPrices.length === 0) {
+          result.push({
+            product_id: product.id,
+            product_name: product.name,
+            product_description: product.description,
+            product_active: product.active,
+            product_metadata: product.metadata,
+            price_id: null,
+            unit_amount: null,
+            currency: null,
+            recurring: null,
+            price_active: null,
+            price_metadata: null,
+          });
+        }
+      }
+      return result;
+    } catch (error) {
+      console.error('Error listing products with prices from Stripe:', error);
+      return [];
+    }
   }
 
-  // Query Stripe data from stripe.prices table
   async getPrice(priceId: string) {
-    const result = await pool.query(
-      'SELECT * FROM stripe.prices WHERE id = $1',
-      [priceId]
-    );
-    return result.rows[0] || null;
+    try {
+      const stripe = getStripeClient();
+      const price = await stripe.prices.retrieve(priceId);
+      return price;
+    } catch (error) {
+      console.error('Error fetching price from Stripe:', error);
+      return null;
+    }
   }
 
-  async listPrices(active = true, limit = 20, offset = 0) {
-    const result = await pool.query(
-      'SELECT * FROM stripe.prices WHERE active = $1 LIMIT $2 OFFSET $3',
-      [active, limit, offset]
-    );
-    return result.rows;
+  async listPrices(active = true, limit = 20) {
+    try {
+      const stripe = getStripeClient();
+      const prices = await stripe.prices.list({ active, limit });
+      return prices.data;
+    } catch (error) {
+      console.error('Error listing prices from Stripe:', error);
+      return [];
+    }
   }
 
-  // Get prices for a specific product
   async getPricesForProduct(productId: string) {
-    const result = await pool.query(
-      'SELECT * FROM stripe.prices WHERE product = $1 AND active = true',
-      [productId]
-    );
-    return result.rows;
+    try {
+      const stripe = getStripeClient();
+      const prices = await stripe.prices.list({ product: productId, active: true });
+      return prices.data;
+    } catch (error) {
+      console.error('Error fetching prices for product from Stripe:', error);
+      return [];
+    }
   }
 
-  // Query subscription from stripe.subscriptions
   async getStripeSubscription(subscriptionId: string) {
-    const result = await pool.query(
-      'SELECT * FROM stripe.subscriptions WHERE id = $1',
-      [subscriptionId]
-    );
-    return result.rows[0] || null;
+    try {
+      const stripe = getStripeClient();
+      const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+      return subscription;
+    } catch (error) {
+      console.error('Error fetching subscription from Stripe:', error);
+      return null;
+    }
   }
 
-  // Get user subscription from our subscriptions table
   async getUserSubscription(userId: string) {
     const { data, error } = await supabase
       .from('subscriptions')
@@ -116,7 +136,6 @@ export class Storage {
     return data;
   }
 
-  // Update user subscription
   async updateUserSubscription(userId: string, updates: any) {
     const { data, error } = await supabase
       .from('subscriptions')
@@ -133,7 +152,6 @@ export class Storage {
     return data;
   }
 
-  // Get Stripe price ID from config
   async getStripePriceId(planKey = 'pro_monthly_price_id'): Promise<string | null> {
     const { data, error } = await supabase
       .from('stripe_config')
