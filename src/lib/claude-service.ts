@@ -27,10 +27,34 @@ export interface ClaudeResponseBatch extends Array<ClaudeResponse> {
 /**
  * Configuration constants for API calls
  */
-const EDGE_FUNCTION_TIMEOUT = 180000; // 180 seconds (3 minutes) - abort if taking too long (handles 28-page docs)
+const BASE_TIMEOUT = 90000; // 90 seconds base timeout
+const PER_PAGE_TIMEOUT = 20000; // 20 seconds per page for Vision API
+const MAX_TIMEOUT = 300000; // 5 minutes max timeout
 const MAX_RETRIES = 2; // Reduced from 3 - only retry transient errors
 const INITIAL_RETRY_DELAY = 3000; // 3 seconds
 const MAX_RETRY_DELAY = 10000; // 10 seconds
+
+/**
+ * Calculate dynamic timeout based on file characteristics
+ * Vision API files with many pages need more time
+ */
+function calculateTimeout(processedPdf: ProcessedPDF): number {
+  const isVisionFile = processedPdf.isImage || 
+                       processedPdf.imageData || 
+                       (processedPdf.imagePages && processedPdf.imagePages.length > 0) ||
+                       processedPdf.textQuality === 'poor' ||
+                       processedPdf.textQuality === 'none';
+  
+  if (isVisionFile) {
+    // Vision API: base + per-page time
+    const pageCount = processedPdf.imagePages?.length || processedPdf.pageCount || 1;
+    const timeout = BASE_TIMEOUT + (pageCount * PER_PAGE_TIMEOUT);
+    return Math.min(timeout, MAX_TIMEOUT);
+  }
+  
+  // Text-based: use base timeout (usually fast)
+  return BASE_TIMEOUT;
+}
 
 /**
  * Retry a function with exponential backoff
@@ -40,7 +64,7 @@ async function retryWithBackoff<T>(
   maxRetries: number = MAX_RETRIES,
   initialDelay: number = INITIAL_RETRY_DELAY,
   maxDelay: number = MAX_RETRY_DELAY,
-  timeoutMs: number = EDGE_FUNCTION_TIMEOUT
+  timeoutMs: number = BASE_TIMEOUT
 ): Promise<T> {
   let lastError: any;
 
@@ -327,6 +351,10 @@ export async function extractBiomarkersFromPdf(
     throw new Error('Supabase is not configured');
   }
 
+  // Calculate dynamic timeout BEFORE retry wrapper so both use same value
+  const dynamicTimeout = calculateTimeout(processedPdf);
+  console.log(`⏱️ Using ${(dynamicTimeout / 1000).toFixed(0)}s timeout for ${processedPdf.isImage ? 'Vision API' : 'text-based'} file: ${processedPdf.fileName}`);
+
   return retryWithBackoff(async () => {
     const textLength = processedPdf.extractedText?.length || 0;
     const isLargeFile = textLength > 50000 || processedPdf.pageCount > 10;
@@ -372,9 +400,9 @@ export async function extractBiomarkersFromPdf(
       // Use AbortController to properly cancel request on timeout
       const abortController = new AbortController();
       const timeoutId = setTimeout(() => {
-        console.error(`❌ Edge Function timeout after ${EDGE_FUNCTION_TIMEOUT / 1000}s - aborting request`);
+        console.error(`❌ Edge Function timeout after ${dynamicTimeout / 1000}s - aborting request`);
         abortController.abort();
-      }, EDGE_FUNCTION_TIMEOUT);
+      }, dynamicTimeout);
 
       let data, error;
       try {
@@ -387,7 +415,7 @@ export async function extractBiomarkersFromPdf(
         error = result.error;
       } catch (abortError: any) {
         if (abortError.name === 'AbortError') {
-          throw new Error(`Edge Function timeout after ${EDGE_FUNCTION_TIMEOUT / 1000}s - request aborted`);
+          throw new Error(`Edge Function timeout after ${dynamicTimeout / 1000}s - request aborted. Try splitting large documents into smaller files.`);
         }
         throw abortError;
       } finally {
@@ -545,7 +573,7 @@ export async function extractBiomarkersFromPdf(
         clearInterval(heartbeatInterval);
       }
     }
-  }, MAX_RETRIES, INITIAL_RETRY_DELAY, MAX_RETRY_DELAY, EDGE_FUNCTION_TIMEOUT).catch(error => {
+  }, MAX_RETRIES, INITIAL_RETRY_DELAY, MAX_RETRY_DELAY, dynamicTimeout).catch(error => {
     console.error('Biomarker extraction error:', error);
 
     if (error instanceof Error) {
@@ -553,7 +581,8 @@ export async function extractBiomarkersFromPdf(
         throw new Error('Session expired. Please log in again.');
       }
       if (error.message.includes('timeout')) {
-        throw new Error(`File processing timeout: "${processedPdf.fileName}" took too long to process (>90 seconds). The file may be too large or complex. Try splitting it into smaller documents.`);
+        const pageCount = processedPdf.imagePages?.length || processedPdf.pageCount || 1;
+        throw new Error(`File processing timeout: "${processedPdf.fileName}" (${pageCount} pages) took too long to process. Try splitting into smaller documents (ideally 5-10 pages per file).`);
       }
       if (error.message.includes('rate_limit') || error.message.includes('overloaded')) {
         throw new Error('API rate limit exceeded or service is overloaded. Please try again in a moment.');
@@ -675,11 +704,24 @@ export async function extractBiomarkersWithParallelPages(
   const duration = Date.now() - startTime;
   console.log(`✅ Parallel processing complete: ${uniqueBiomarkers.length} unique biomarkers in ${(duration / 1000).toFixed(1)}s`);
 
-  return {
-    biomarkers: uniqueBiomarkers,
-    patientInfo: patientInfo || { name: null, dateOfBirth: null, gender: null, testDate: null },
-    panelName: '', // Will be populated if found
-  };
+  // ✅ Normalize the merged biomarkers
+  try {
+    const normalizedBiomarkers = await biomarkerNormalizer.normalizeBatch(uniqueBiomarkers);
+    
+    return {
+      biomarkers: uniqueBiomarkers,
+      normalizedBiomarkers, // Include normalized biomarkers
+      patientInfo: patientInfo || { name: null, dateOfBirth: null, gender: null, testDate: null },
+      panelName: '', // Will be populated if found
+    };
+  } catch (normError) {
+    console.warn('⚠️ Normalization failed in parallel processing:', normError);
+    return {
+      biomarkers: uniqueBiomarkers,
+      patientInfo: patientInfo || { name: null, dateOfBirth: null, gender: null, testDate: null },
+      panelName: '',
+    };
+  }
 }
 
 /**

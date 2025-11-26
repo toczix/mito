@@ -72,32 +72,43 @@ export async function processPdfFile(
       console.warn('   Mammoth warnings:', result.messages);
     }
     
+    // If no text or very little text, route to Vision API fallback
     if (!result.value || result.value.trim().length === 0) {
+      console.warn(`   ⚠️ No text extracted from Word doc - routing to Vision API`);
+      
+      // For Word docs with no text, we can't easily convert to images
+      // Inform the user to upload as images instead
       throw new Error(
         `No text could be extracted from ${file.name}. ` +
         `This Word document may be empty, corrupted, or contain only images. ` +
-        `If it contains scanned images, please convert it to PNG/JPG images instead. ` +
-        `Word documents with embedded images cannot be processed - extract the images first.`
+        `If it contains scanned images, please convert it to PNG/JPG images instead.`
       );
     }
     
-    if (result.value.trim().length < 100) {
-      console.warn(`   ⚠️ Very little text extracted (${result.value.length} chars) - document may be mostly images`);
+    // For Word docs with very little text (<100 chars), the document likely contains
+    // scanned images or screenshots that Mammoth can't extract. Ask user to convert.
+    const trimmedText = result.value.trim();
+    if (trimmedText.length < 100) {
+      console.warn(`   ⚠️ Very little text extracted (${trimmedText.length} chars) from Word doc`);
+      console.log('   First 200 chars:', trimmedText.substring(0, 200));
+      
       throw new Error(
-        `${file.name} contains very little extractable text (${result.value.length} characters). ` +
-        `If this document contains scanned images or screenshots of lab results, ` +
-        `please extract those images and upload them as PNG/JPG files instead.`
+        `"${file.name}" contains very little extractable text (${trimmedText.length} characters). ` +
+        `This usually means the document contains scanned images or screenshots of lab results. ` +
+        `Please save/export the images from the Word document as PNG or JPG files and upload those instead.`
       );
     }
     
-    console.log('   First 200 chars:', result.value.substring(0, 200));
+    console.log('   First 200 chars:', trimmedText.substring(0, 200));
     console.log(`✅ Word document processed successfully`);
     
     return {
       fileName: file.name,
-      extractedText: result.value.trim(),
-      pageCount: 1, // Word documents don't have a clear page concept in our context
+      extractedText: trimmedText,
+      pageCount: 1,
       isImage: false,
+      textQuality: 'good' as TextQuality,
+      avgCharsPerPage: trimmedText.length,
     };
   }
 
@@ -134,11 +145,15 @@ export async function processPdfFile(
 
   console.log(`✅ PDF extraction complete: ${extractedText.length} total characters`);
   
-  // Assess text quality for routing decision
-  const avgCharsPerPage = extractedText.length / pageCount;
+  // Calculate avgCharsPerPage from actual page texts (excluding "--- Page N ---" markers)
+  // This prevents inflated character counts that cause misrouting
+  const totalActualChars = pageTexts.reduce((sum, text) => sum + text.trim().length, 0);
+  const avgCharsPerPage = totalActualChars / pageCount;
+  
+  // Assess text quality for routing decision using actual page text
   const textQuality = assessTextQuality(extractedText, pageCount, avgCharsPerPage);
   
-  console.log(`   Text quality: ${textQuality} (avg ${Math.round(avgCharsPerPage)} chars/page)`);
+  console.log(`   Text quality: ${textQuality} (avg ${Math.round(avgCharsPerPage)} actual chars/page, total ${totalActualChars} chars)`);
   
   // Route based on text quality
   if (textQuality === 'none') {
