@@ -614,6 +614,56 @@ router.get('/api/admin/stats', requireAuth, requireAdmin, async (_req: any, res)
       }
     }
 
+    // Get Claude API usage stats
+    let apiUsage = {
+      totalCalls: 0,
+      totalInputTokens: 0,
+      totalOutputTokens: 0,
+      totalCostCents: 0,
+      last30DaysCalls: 0,
+      last30DaysCostCents: 0,
+      last7DaysCalls: 0,
+      last7DaysCostCents: 0,
+      perUser: {} as Record<string, { calls: number; inputTokens: number; outputTokens: number; costCents: number }>
+    };
+
+    try {
+      const { data: claudeUsage, error: usageError } = await supabase
+        .from('claude_usage')
+        .select('user_id, input_tokens, output_tokens, total_cost_cents, created_at');
+      
+      if (!usageError && claudeUsage) {
+        claudeUsage.forEach((u: any) => {
+          apiUsage.totalCalls++;
+          apiUsage.totalInputTokens += u.input_tokens || 0;
+          apiUsage.totalOutputTokens += u.output_tokens || 0;
+          apiUsage.totalCostCents += parseFloat(u.total_cost_cents) || 0;
+
+          const createdAt = new Date(u.created_at);
+          if (createdAt >= thirtyDaysAgo) {
+            apiUsage.last30DaysCalls++;
+            apiUsage.last30DaysCostCents += parseFloat(u.total_cost_cents) || 0;
+          }
+          if (createdAt >= sevenDaysAgo) {
+            apiUsage.last7DaysCalls++;
+            apiUsage.last7DaysCostCents += parseFloat(u.total_cost_cents) || 0;
+          }
+
+          if (u.user_id) {
+            if (!apiUsage.perUser[u.user_id]) {
+              apiUsage.perUser[u.user_id] = { calls: 0, inputTokens: 0, outputTokens: 0, costCents: 0 };
+            }
+            apiUsage.perUser[u.user_id].calls++;
+            apiUsage.perUser[u.user_id].inputTokens += u.input_tokens || 0;
+            apiUsage.perUser[u.user_id].outputTokens += u.output_tokens || 0;
+            apiUsage.perUser[u.user_id].costCents += parseFloat(u.total_cost_cents) || 0;
+          }
+        });
+      }
+    } catch (e) {
+      console.error('Error fetching claude usage:', e);
+    }
+
     // Overall stats
     const stats = {
       overall: {
@@ -627,6 +677,7 @@ router.get('/api/admin/stats', requireAuth, requireAdmin, async (_req: any, res)
         overrideUsers: subscriptions.filter(s => s.pro_override).length
       },
       revenue: revenueData,
+      apiUsage,
       perUser: userUsage
     };
 

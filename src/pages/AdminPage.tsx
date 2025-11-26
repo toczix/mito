@@ -72,6 +72,22 @@ interface UsageStats {
       customerEmail: string | null;
     }>;
   };
+  apiUsage: {
+    totalCalls: number;
+    totalInputTokens: number;
+    totalOutputTokens: number;
+    totalCostCents: number;
+    last30DaysCalls: number;
+    last30DaysCostCents: number;
+    last7DaysCalls: number;
+    last7DaysCostCents: number;
+    perUser: Record<string, {
+      calls: number;
+      inputTokens: number;
+      outputTokens: number;
+      costCents: number;
+    }>;
+  };
   perUser: Record<string, {
     analysisCount: number;
     clientCount: number;
@@ -688,6 +704,54 @@ export function AdminPage() {
             </div>
           ) : stats ? (
             <>
+              <Card className="border-orange-200 dark:border-orange-800 bg-orange-50/50 dark:bg-orange-950/20">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <Activity className="w-5 h-5 text-orange-600" />
+                    Claude API Costs
+                  </CardTitle>
+                  <CardDescription>Token usage and costs for biomarker extraction</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="text-center p-3 bg-white dark:bg-gray-900 rounded-lg">
+                      <div className="text-2xl font-bold text-orange-600">
+                        {formatCurrency((stats.apiUsage?.totalCostCents || 0) / 100)}
+                      </div>
+                      <div className="text-xs text-muted-foreground">Total Cost</div>
+                    </div>
+                    <div className="text-center p-3 bg-white dark:bg-gray-900 rounded-lg">
+                      <div className="text-2xl font-bold text-orange-600">
+                        {formatCurrency((stats.apiUsage?.last30DaysCostCents || 0) / 100)}
+                      </div>
+                      <div className="text-xs text-muted-foreground">Last 30 Days</div>
+                    </div>
+                    <div className="text-center p-3 bg-white dark:bg-gray-900 rounded-lg">
+                      <div className="text-2xl font-bold text-orange-600">
+                        {formatCurrency((stats.apiUsage?.last7DaysCostCents || 0) / 100)}
+                      </div>
+                      <div className="text-xs text-muted-foreground">Last 7 Days</div>
+                    </div>
+                    <div className="text-center p-3 bg-white dark:bg-gray-900 rounded-lg">
+                      <div className="text-2xl font-bold text-blue-600">
+                        {(stats.apiUsage?.totalCalls || 0).toLocaleString()}
+                      </div>
+                      <div className="text-xs text-muted-foreground">Total API Calls</div>
+                    </div>
+                  </div>
+                  <div className="mt-4 grid grid-cols-2 gap-4 text-sm">
+                    <div className="flex justify-between p-2 bg-white dark:bg-gray-900 rounded">
+                      <span className="text-muted-foreground">Input Tokens:</span>
+                      <span className="font-mono">{((stats.apiUsage?.totalInputTokens || 0) / 1000).toFixed(1)}K</span>
+                    </div>
+                    <div className="flex justify-between p-2 bg-white dark:bg-gray-900 rounded">
+                      <span className="text-muted-foreground">Output Tokens:</span>
+                      <span className="font-mono">{((stats.apiUsage?.totalOutputTokens || 0) / 1000).toFixed(1)}K</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 <Card>
                   <CardContent className="pt-6">
@@ -749,7 +813,7 @@ export function AdminPage() {
               <Card>
                 <CardHeader>
                   <CardTitle>Usage by User</CardTitle>
-                  <CardDescription>Analyses and clients per user</CardDescription>
+                  <CardDescription>Analyses, clients, and API costs per user</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <div className="overflow-x-auto">
@@ -759,7 +823,8 @@ export function AdminPage() {
                           <th className="text-left py-3 px-4 font-medium text-muted-foreground">User</th>
                           <th className="text-left py-3 px-4 font-medium text-muted-foreground">Analyses</th>
                           <th className="text-left py-3 px-4 font-medium text-muted-foreground">Clients</th>
-                          <th className="text-left py-3 px-4 font-medium text-muted-foreground">Last Analysis</th>
+                          <th className="text-left py-3 px-4 font-medium text-muted-foreground">API Calls</th>
+                          <th className="text-left py-3 px-4 font-medium text-muted-foreground">API Cost</th>
                           <th className="text-left py-3 px-4 font-medium text-muted-foreground">Plan</th>
                         </tr>
                       </thead>
@@ -772,6 +837,7 @@ export function AdminPage() {
                           })
                           .map((user) => {
                             const usage = stats.perUser[user.id] || { analysisCount: 0, clientCount: 0, lastAnalysis: null };
+                            const apiUsage = stats.apiUsage?.perUser?.[user.id] || { calls: 0, costCents: 0 };
                             return (
                               <tr key={user.id} className="border-b hover:bg-muted/50">
                                 <td className="py-3 px-4">
@@ -780,8 +846,9 @@ export function AdminPage() {
                                 </td>
                                 <td className="py-3 px-4 font-medium">{usage.analysisCount}</td>
                                 <td className="py-3 px-4">{usage.clientCount}</td>
-                                <td className="py-3 px-4 text-sm text-muted-foreground">
-                                  {formatDate(usage.lastAnalysis)}
+                                <td className="py-3 px-4 text-sm">{apiUsage.calls}</td>
+                                <td className="py-3 px-4 text-sm font-mono text-orange-600">
+                                  {apiUsage.costCents > 0 ? formatCurrency(apiUsage.costCents / 100) : '-'}
                                 </td>
                                 <td className="py-3 px-4">
                                   {getSubscriptionBadge(user)}

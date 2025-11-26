@@ -219,6 +219,42 @@ serve(async (req) => {
     const response = await stream.finalMessage()
     console.log(`✅ Received response from Claude`)
 
+    // Log API usage to database for cost tracking
+    const usage = response.usage
+    if (usage) {
+      console.log(`📊 Token usage: ${usage.input_tokens} input, ${usage.output_tokens} output`)
+      
+      // Get user ID if authenticated
+      let userId = null
+      try {
+        const { data: { user } } = await supabaseClient.auth.getUser()
+        userId = user?.id
+      } catch (e) {
+        // User might not be authenticated, continue anyway
+      }
+
+      // Log to claude_usage table (service role for insert)
+      const serviceClient = createClient(
+        Deno.env.get('SUPABASE_URL') ?? '',
+        Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+      )
+      
+      await serviceClient.from('claude_usage').insert({
+        user_id: userId,
+        model: 'claude-haiku-4-5-20251001',
+        request_type: 'biomarker_extraction',
+        input_tokens: usage.input_tokens,
+        output_tokens: usage.output_tokens,
+        file_count: 1,
+        page_count: processedPdf.pageCount || 0,
+        processing_type: useVision ? 'vision' : 'text',
+        success: true
+      }).then(({ error }) => {
+        if (error) console.error('Failed to log usage:', error.message)
+        else console.log('✅ Usage logged to database')
+      })
+    }
+
     // Extract the response text (prefer streamed text, fall back to final message content)
     let responseText = streamedText.trim()
     if (!responseText) {
