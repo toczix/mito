@@ -284,13 +284,40 @@ router.post('/api/sync-subscription', requireAuth, async (req: any, res) => {
 // Get all users with subscription info (admin only)
 router.get('/api/admin/users', requireAuth, requireAdmin, async (_req: any, res) => {
   try {
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    });
 
-    // Get all users from auth.users
-    const { data: authData, error: authError } = await supabase.auth.admin.listUsers();
+    // Fetch users one by one to handle corrupted records gracefully
+    const allUsers: any[] = [];
+    let skippedCount = 0;
     
-    if (authError) {
-      return res.status(500).json({ error: authError.message });
+    for (let page = 1; page <= 100; page++) {
+      try {
+        const { data: authData, error: authError } = await supabase.auth.admin.listUsers({
+          page,
+          perPage: 1
+        });
+        
+        if (authError) {
+          // Skip corrupted user record
+          skippedCount++;
+          continue;
+        }
+        
+        if (!authData?.users || authData.users.length === 0) {
+          break;
+        }
+        
+        allUsers.push(authData.users[0]);
+      } catch (e) {
+        // Skip on error
+        skippedCount++;
+        continue;
+      }
     }
 
     // Get all subscriptions
@@ -308,7 +335,7 @@ router.get('/api/admin/users', requireAuth, requireAdmin, async (_req: any, res)
     );
 
     // Combine user data with subscription info
-    const users = authData.users.map((user: any) => {
+    const users = allUsers.map((user: any) => {
       const subscription = subMap.get(user.id);
       return {
         id: user.id,
@@ -321,6 +348,7 @@ router.get('/api/admin/users', requireAuth, requireAdmin, async (_req: any, res)
           plan: subscription.plan,
           status: subscription.status,
           stripe_customer_id: subscription.stripe_customer_id,
+          stripe_subscription_id: subscription.stripe_subscription_id,
           current_period_end: subscription.current_period_end,
           cancel_at_period_end: subscription.cancel_at_period_end,
           pro_override: subscription.pro_override || false,
@@ -334,10 +362,13 @@ router.get('/api/admin/users', requireAuth, requireAdmin, async (_req: any, res)
       new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     );
 
-    res.json({ users });
+    res.json({ 
+      users,
+      _meta: skippedCount > 0 ? { skippedCorruptedUsers: skippedCount } : undefined
+    });
   } catch (error: any) {
     console.error('Error fetching users:', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: `Database error: ${error.message}` });
   }
 });
 
@@ -418,6 +449,324 @@ router.post('/api/admin/subscription', requireAuth, requireAdmin, async (req: an
     }
   } catch (error: any) {
     console.error('Error updating subscription:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get admin stats (usage and revenue)
+router.get('/api/admin/stats', requireAuth, requireAdmin, async (_req: any, res) => {
+  try {
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    });
+
+    // Get overall usage stats with error handling
+    let analyses: any[] = [];
+    let clients: any[] = [];
+    let subscriptions: any[] = [];
+
+    try {
+      const { data, error } = await supabase
+        .from('analyses')
+        .select('id, user_id, client_id, created_at, analysis_date');
+      if (!error && data) analyses = data;
+    } catch (e) {
+      console.error('Error fetching analyses:', e);
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('clients')
+        .select('id, user_id, created_at');
+      if (!error && data) clients = data;
+    } catch (e) {
+      console.error('Error fetching clients:', e);
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('subscriptions')
+        .select('user_id, plan, status, stripe_customer_id, stripe_subscription_id, current_period_end, cancel_at_period_end, pro_override, pro_override_until');
+      if (!error && data) subscriptions = data;
+    } catch (e) {
+      console.error('Error fetching subscriptions:', e);
+    }
+
+    // Group analyses by user
+    const analysesByUser: Record<string, any[]> = {};
+    analyses.forEach(a => {
+      if (a.user_id) {
+        if (!analysesByUser[a.user_id]) analysesByUser[a.user_id] = [];
+        analysesByUser[a.user_id].push(a);
+      }
+    });
+
+    // Group clients by user
+    const clientsByUser: Record<string, any[]> = {};
+    clients.forEach(c => {
+      if (c.user_id) {
+        if (!clientsByUser[c.user_id]) clientsByUser[c.user_id] = [];
+        clientsByUser[c.user_id].push(c);
+      }
+    });
+
+    // Map subscriptions by user
+    const subsByUser: Record<string, any> = {};
+    subscriptions.forEach(s => {
+      if (s.user_id) {
+        subsByUser[s.user_id] = s;
+      }
+    });
+
+    // Combine into user usage
+    const allUserIds = new Set([
+      ...Object.keys(analysesByUser),
+      ...Object.keys(clientsByUser),
+      ...Object.keys(subsByUser)
+    ]);
+
+    const userUsage: Record<string, any> = {};
+    allUserIds.forEach(userId => {
+      const userAnalyses = analysesByUser[userId] || [];
+      const userClients = clientsByUser[userId] || [];
+      const lastAnalysis = userAnalyses.length > 0
+        ? userAnalyses.sort((a, b) => 
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+          )[0].created_at
+        : null;
+
+      userUsage[userId] = {
+        analysisCount: userAnalyses.length,
+        clientCount: userClients.length,
+        lastAnalysis,
+        subscription: subsByUser[userId] || null
+      };
+    });
+
+    // Calculate time-based stats
+    const now = new Date();
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+    const analysesLast30Days = analyses.filter(
+      a => new Date(a.created_at) >= thirtyDaysAgo
+    ).length;
+
+    const analysesLast7Days = analyses.filter(
+      a => new Date(a.created_at) >= sevenDaysAgo
+    ).length;
+
+    // Get Stripe revenue data
+    let revenueData = {
+      mrr: 0,
+      totalRevenue: 0,
+      activeSubscriptions: 0,
+      charges: [] as any[]
+    };
+
+    const stripe = getStripeClient();
+    if (stripe) {
+      try {
+        // Get active subscriptions
+        const stripeSubscriptions = await stripe.subscriptions.list({
+          status: 'active',
+          limit: 100
+        });
+
+        revenueData.activeSubscriptions = stripeSubscriptions.data.length;
+        
+        // Calculate MRR from active subscriptions
+        revenueData.mrr = stripeSubscriptions.data.reduce((sum: number, sub: any) => {
+          const item = sub.items.data[0];
+          if (item?.price?.unit_amount) {
+            return sum + (item.price.unit_amount / 100);
+          }
+          return sum;
+        }, 0);
+
+        // Get recent charges for revenue tracking
+        const charges = await stripe.charges.list({
+          limit: 50,
+          created: {
+            gte: Math.floor(thirtyDaysAgo.getTime() / 1000)
+          }
+        });
+
+        revenueData.charges = charges.data
+          .filter((c: any) => c.status === 'succeeded')
+          .map((c: any) => ({
+            id: c.id,
+            amount: c.amount / 100,
+            currency: c.currency,
+            created: new Date(c.created * 1000).toISOString(),
+            customerEmail: c.billing_details?.email || c.receipt_email
+          }));
+
+        revenueData.totalRevenue = revenueData.charges.reduce(
+          (sum: number, c: any) => sum + c.amount, 0
+        );
+
+      } catch (stripeError: any) {
+        console.error('Stripe error:', stripeError.message);
+      }
+    }
+
+    // Overall stats
+    const stats = {
+      overall: {
+        totalAnalyses: analyses.length,
+        totalClients: clients.length,
+        totalUsers: allUserIds.size,
+        analysesLast7Days,
+        analysesLast30Days,
+        proUsers: subscriptions.filter(s => s.plan === 'pro' && s.status === 'active').length,
+        freeUsers: subscriptions.filter(s => s.plan === 'free' || !s.plan).length,
+        overrideUsers: subscriptions.filter(s => s.pro_override).length
+      },
+      revenue: revenueData,
+      perUser: userUsage
+    };
+
+    res.json(stats);
+
+  } catch (error: any) {
+    console.error('Error fetching stats:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Admin subscription actions (pause, cancel, etc)
+router.post('/api/admin/subscription-action', requireAuth, requireAdmin, async (req: any, res) => {
+  try {
+    const { userId, action } = req.body;
+
+    if (!userId || !action) {
+      return res.status(400).json({ error: 'User ID and action required' });
+    }
+
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    });
+
+    // Get user's subscription
+    const { data: subscription, error: subError } = await supabase
+      .from('subscriptions')
+      .select('*')
+      .eq('user_id', userId)
+      .single();
+
+    if (subError && subError.code !== 'PGRST116') {
+      return res.status(500).json({ error: subError.message });
+    }
+
+    const stripe = getStripeClient();
+
+    switch (action) {
+      case 'pause': {
+        if (subscription?.stripe_subscription_id) {
+          await stripe.subscriptions.update(subscription.stripe_subscription_id, {
+            pause_collection: { behavior: 'void' }
+          });
+        }
+        await supabase
+          .from('subscriptions')
+          .update({ status: 'paused', updated_at: new Date().toISOString() })
+          .eq('user_id', userId);
+        return res.json({ message: 'Subscription paused' });
+      }
+
+      case 'resume': {
+        if (subscription?.stripe_subscription_id) {
+          await stripe.subscriptions.update(subscription.stripe_subscription_id, {
+            pause_collection: null
+          });
+        }
+        await supabase
+          .from('subscriptions')
+          .update({ status: 'active', updated_at: new Date().toISOString() })
+          .eq('user_id', userId);
+        return res.json({ message: 'Subscription resumed' });
+      }
+
+      case 'cancel': {
+        if (subscription?.stripe_subscription_id) {
+          await stripe.subscriptions.cancel(subscription.stripe_subscription_id);
+        }
+        await supabase
+          .from('subscriptions')
+          .update({
+            status: 'canceled',
+            plan: 'free',
+            stripe_subscription_id: null,
+            pro_override: false,
+            pro_override_until: null,
+            updated_at: new Date().toISOString()
+          })
+          .eq('user_id', userId);
+        return res.json({ message: 'Subscription canceled' });
+      }
+
+      case 'cancel_at_period_end': {
+        if (subscription?.stripe_subscription_id) {
+          await stripe.subscriptions.update(subscription.stripe_subscription_id, {
+            cancel_at_period_end: true
+          });
+        }
+        await supabase
+          .from('subscriptions')
+          .update({ cancel_at_period_end: true, updated_at: new Date().toISOString() })
+          .eq('user_id', userId);
+        return res.json({ message: 'Subscription will cancel at period end' });
+      }
+
+      case 'reactivate': {
+        if (subscription?.stripe_subscription_id) {
+          await stripe.subscriptions.update(subscription.stripe_subscription_id, {
+            cancel_at_period_end: false
+          });
+        }
+        await supabase
+          .from('subscriptions')
+          .update({ cancel_at_period_end: false, updated_at: new Date().toISOString() })
+          .eq('user_id', userId);
+        return res.json({ message: 'Subscription reactivated' });
+      }
+
+      case 'refund_last': {
+        if (!subscription?.stripe_customer_id) {
+          return res.status(400).json({ error: 'No Stripe customer found' });
+        }
+        const charges = await stripe.charges.list({
+          customer: subscription.stripe_customer_id,
+          limit: 1
+        });
+        if (charges.data.length === 0) {
+          return res.status(400).json({ error: 'No charges found to refund' });
+        }
+        const lastCharge = charges.data[0];
+        if (lastCharge.refunded) {
+          return res.status(400).json({ error: 'Last charge already refunded' });
+        }
+        await stripe.refunds.create({ charge: lastCharge.id });
+        return res.json({ 
+          message: 'Refund issued',
+          amount: lastCharge.amount / 100,
+          currency: lastCharge.currency
+        });
+      }
+
+      default:
+        return res.status(400).json({ error: `Unknown action: ${action}` });
+    }
+
+  } catch (error: any) {
+    console.error('Error performing subscription action:', error);
     res.status(500).json({ error: error.message });
   }
 });
