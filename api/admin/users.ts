@@ -39,20 +39,34 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
+    // Validate environment variables
+    if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+      console.error('Missing env vars:', { 
+        hasUrl: !!SUPABASE_URL, 
+        hasServiceKey: !!SUPABASE_SERVICE_ROLE_KEY 
+      });
+      return res.status(500).json({ error: 'Server configuration error' });
+    }
+
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
+    console.log('Fetching users with admin API...');
     const { data: authData, error: authError } = await supabase.auth.admin.listUsers();
     
     if (authError) {
-      return res.status(500).json({ error: authError.message });
+      console.error('Auth admin error:', authError);
+      return res.status(500).json({ error: `Auth error: ${authError.message}` });
     }
+
+    console.log(`Found ${authData?.users?.length || 0} users`);
 
     const { data: subscriptions, error: subError } = await supabase
       .from('subscriptions')
-      .select('*');
+      .select('user_id, plan, status, stripe_customer_id, current_period_end, cancel_at_period_end, pro_override, pro_override_until');
 
     if (subError) {
       console.error('Error fetching subscriptions:', subError);
+      // Continue without subscriptions data rather than failing
     }
 
     const subMap = new Map(
@@ -87,6 +101,6 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(200).json({ users });
   } catch (error: any) {
     console.error('Error fetching users:', error);
-    return res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: `Database error: ${error.message}` });
   }
 }
