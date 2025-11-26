@@ -206,36 +206,6 @@ router.post('/api/can-analyze', requireAuth, async (req: any, res) => {
   }
 });
 
-// Admin: Force update user to Pro (testing only)
-router.post('/api/admin/force-pro', requireAuth, async (req: any, res) => {
-  try {
-    const userId = req.user.id;
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
-
-    const { data, error } = await supabase
-      .from('subscriptions')
-      .update({
-        plan: 'pro',
-        status: 'active',
-        updated_at: new Date().toISOString(),
-      })
-      .eq('user_id', userId)
-      .select();
-
-    if (error) {
-      return res.status(500).json({ error: error.message });
-    }
-
-    return res.json({ 
-      message: 'Subscription updated to Pro', 
-      subscription: data?.[0] 
-    });
-  } catch (error: any) {
-    console.error('Error forcing Pro:', error);
-    res.status(500).json({ error: error.message });
-  }
-});
-
 // Manual subscription sync from Stripe
 router.post('/api/sync-subscription', requireAuth, async (req: any, res) => {
   try {

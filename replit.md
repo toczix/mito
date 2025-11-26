@@ -3,10 +3,22 @@
 ## Overview
 A React-based web application that uses Claude AI to automatically analyze clinical pathology lab reports and compare biomarker values against optimal reference ranges. The app supports multilingual processing, multiple file formats (PDF, DOCX, images), and optional Supabase integration for client management.
 
-**Current State**: 55 biomarkers tracked with complete clinical interpretations, parallel processing, professional light/dark mode with Mito color palette
-**Last Updated**: November 24, 2025
+**Current State**: 55 biomarkers tracked with complete clinical interpretations, parallel processing, professional light/dark mode with Mito color palette, Stripe subscription payments
+**Last Updated**: November 26, 2025
 
 ## Recent Changes
+- **November 26, 2025**: Stripe Subscription System Complete ✅✅✅
+  - Implemented tiered subscription model:
+    - **Free tier**: 3 analyses per patient (enforced via usage tracking)
+    - **Pro tier**: $29/month unlimited analyses
+  - Stripe integration via stripe-replit-sync package
+  - Webhook handler for real-time subscription sync (checkout.session.completed, subscription.created/updated/deleted)
+  - UpgradeModal component for payment flow
+  - SubscriptionSettings component for plan management
+  - Customer portal integration for billing management
+  - Analysis limit enforcement with upgrade prompts
+  - Database: subscriptions table with plan, status, stripe IDs, usage tracking
+  
 - **November 24, 2025**: Complete Clinical Interpretations Database ✅✅✅
   - Added lowReasons and highReasons fields to all 55 biomarkers
   - Comprehensive clinical explanations covering all categories:
@@ -129,7 +141,9 @@ A React-based web application that uses Claude AI to automatically analyze clini
 - **Build Tool**: Vite 7.1
 - **Styling**: Tailwind CSS v3.4 + shadcn/ui components
 - **AI Integration**: Claude Haiku 4.5 (Anthropic SDK)
-- **Database** (Optional): Supabase PostgreSQL
+- **Database**: Supabase PostgreSQL + Replit PostgreSQL (Stripe data)
+- **Backend**: Express.js (port 3001) for Stripe webhooks
+- **Payments**: Stripe (via stripe-replit-sync)
 - **File Processing**: 
   - PDF.js for PDF text extraction
   - Mammoth for DOCX parsing
@@ -203,9 +217,8 @@ VITE_AUTH_DISABLED=false  # Authentication is ENABLED
 - **Aliases**: `@` mapped to `./src`
 
 ### Workflow Setup
-- Single workflow: "Start application" (`npm run dev`)
-- Output type: webview
-- Port: 5000
+- **Frontend**: "Start application" (`npm run dev`) - Port 5000 (webview)
+- **Backend**: "Backend Server" (`npm run dev:backend`) - Port 3001 (Stripe webhooks)
 
 ## Usage Notes
 

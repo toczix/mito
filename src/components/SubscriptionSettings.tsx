@@ -65,38 +65,6 @@ export function SubscriptionSettings() {
     }
   };
 
-  const handleForceProUpdate = async () => {
-    try {
-      const client = supabase;
-      if (!client) return;
-
-      const { data: { session } } = await client.auth.getSession();
-      if (!session) {
-        alert('Not authenticated');
-        return;
-      }
-
-      const response = await fetch('/api/admin/force-pro', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${session.access_token}`,
-        },
-      });
-
-      const data = await response.json();
-      
-      if (response.ok) {
-        alert('Subscription updated to Pro! Refreshing...');
-        window.location.reload();
-      } else {
-        alert(data.error || 'Failed to update subscription');
-      }
-    } catch (error) {
-      console.error('Error updating to Pro:', error);
-      alert('Failed to update subscription');
-    }
-  };
-
   if (loading) {
     return (
       <Card>
@@ -248,23 +216,6 @@ export function SubscriptionSettings() {
         {subscription?.plan === 'free' && (
           <div className="text-xs text-muted-foreground text-center">
             Cancel anytime. Secure payment powered by Stripe.
-          </div>
-        )}
-
-        {/* TESTING ONLY: Force Pro Update */}
-        {subscription?.plan === 'free' && (
-          <div className="pt-4 border-t border-dashed border-amber-500/50">
-            <div className="text-xs text-amber-600 dark:text-amber-500 mb-2 text-center">
-              ⚠️ Testing Tool - Remove Before Production
-            </div>
-            <Button
-              onClick={handleForceProUpdate}
-              variant="outline"
-              size="sm"
-              className="w-full border-amber-500/50 hover:bg-amber-500/10"
-            >
-              🔧 Force Update to Pro (Testing Only)
-            </Button>
           </div>
         )}
       </CardContent>
