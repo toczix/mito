@@ -33,15 +33,39 @@ The application features a professional light/dark mode with the official Mito c
 - **API Key Management**: Claude API keys are stored securely per user in Supabase.
 
 ### System Design Choices
-The application is primarily client-side, with direct API calls to Claude. A lightweight Express.js backend handles Stripe webhooks. The architecture emphasizes privacy by performing PDF processing in the browser. Replit-specific configurations ensure proper development and deployment within the Replit environment, including Vite setup for port 5000, 0.0.0.0 host, and HMR.
+The application is primarily client-side, with direct API calls to Claude. A lightweight Express.js backend handles Stripe webhooks. The architecture emphasizes privacy by performing PDF processing in the browser. Vite is configured for port 5000, 0.0.0.0 host, and HMR. Deployable to any platform (Vercel, etc.) via GitHub.
+
+### Admin Dashboard
+- Located at `/admin` route, accessible only to users with `role: admin` in their Supabase user metadata
+- Features: View all users, subscription status, grant/revoke free Pro access
+- Admin users see an "Admin" tab in the navigation
 
 ## External Dependencies
 - **AI Service**: Anthropic Claude Haiku 4.5
-- **Database**: Supabase PostgreSQL (for client management, user authentication, and API key storage), Replit PostgreSQL (for Stripe subscription data).
-- **Payment Gateway**: Stripe (integrated via `stripe-replit-sync`).
+- **Database**: Supabase PostgreSQL (all data: auth, clients, subscriptions, API keys)
+- **Payment Gateway**: Stripe (direct SDK integration, no third-party sync libraries)
 - **File Processing Libraries**:
     - `pdfjs-dist` (for PDF text extraction)
     - `mammoth` (for DOCX parsing)
     - `tesseract.js` (for OCR on images)
 - **UI Libraries**: `@radix-ui/*` (for UI component primitives).
 - **Development Tools**: Vite (build tool).
+
+## Environment Variables Required
+### Supabase
+- `VITE_SUPABASE_URL` - Supabase project URL
+- `VITE_SUPABASE_ANON_KEY` - Supabase anonymous key
+- `SUPABASE_SERVICE_ROLE_KEY` - Supabase service role key (backend only)
+
+### Stripe
+- `STRIPE_SECRET_KEY` - Stripe secret key (sk_test_... or sk_live_...)
+- `STRIPE_PUBLISHABLE_KEY` - Stripe publishable key (pk_test_... or pk_live_...)
+- `STRIPE_WEBHOOK_SECRET` - Webhook signing secret from Stripe dashboard
+
+### Optional
+- `VITE_AUTH_DISABLED` - Set to "true" to disable auth in development
+
+## Deployment Notes
+- Deploy frontend + backend together (e.g., Vercel with API routes, or separate services)
+- Configure Stripe webhook URL in Stripe Dashboard pointing to `/api/stripe/webhook`
+- Run Supabase migrations: `supabase/migrations/20251126000001_add_pro_override.sql`
