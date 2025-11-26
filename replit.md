@@ -65,7 +65,56 @@ The application is primarily client-side, with direct API calls to Claude. A lig
 ### Optional
 - `VITE_AUTH_DISABLED` - Set to "true" to disable auth in development
 
-## Deployment Notes
-- Deploy frontend + backend together (e.g., Vercel with API routes, or separate services)
-- Configure Stripe webhook URL in Stripe Dashboard pointing to `/api/stripe/webhook`
-- Run Supabase migrations: `supabase/migrations/20251126000001_add_pro_override.sql`
+## Deployment Architecture
+
+### Development Environment (Replit)
+- Frontend: Vite dev server on port 5000
+- Backend: Express server on port 3001
+- Vite proxy forwards `/api/*` requests to Express backend
+
+### Production Environment (Vercel)
+- Frontend: Static build served by Vercel
+- Backend: Vercel serverless functions in `/api` folder
+- All API routes are TypeScript serverless functions
+
+### API Routes (Vercel Serverless)
+Located in `/api` folder:
+- `api/stripe/webhook.ts` - Stripe webhook handler (raw body parsing)
+- `api/stripe/config.ts` - Returns Stripe publishable key
+- `api/checkout.ts` - Creates Stripe checkout session
+- `api/portal.ts` - Creates Stripe customer portal session
+- `api/subscription.ts` - Gets user subscription status
+- `api/can-analyze.ts` - Checks if user can analyze (limit enforcement)
+- `api/products.ts` - Lists Stripe products/prices
+- `api/sync-subscription.ts` - Manual subscription sync from Stripe
+- `api/admin/users.ts` - List all users (admin only)
+- `api/admin/subscription.ts` - Grant/revoke Pro access (admin only)
+
+## Deployment Steps
+
+### Vercel Deployment
+1. Push code to GitHub
+2. Connect GitHub repo to Vercel
+3. Set environment variables in Vercel:
+   - `VITE_SUPABASE_URL`
+   - `VITE_SUPABASE_ANON_KEY`
+   - `SUPABASE_SERVICE_ROLE_KEY`
+   - `STRIPE_SECRET_KEY`
+   - `STRIPE_PUBLISHABLE_KEY`
+   - `STRIPE_WEBHOOK_SECRET`
+4. Configure Stripe webhook URL: `https://your-domain.vercel.app/api/stripe/webhook`
+
+### Supabase Setup
+1. Run migrations in Supabase SQL Editor
+2. Set admin user: `UPDATE auth.users SET raw_user_meta_data = raw_user_meta_data || '{"role": "admin"}'::jsonb WHERE email = 'your-email';`
+3. Update `stripe_config` table with actual Stripe Price ID
+
+### Stripe Configuration
+1. Create Pro product with $29/month price
+2. Copy Price ID to Supabase `stripe_config` table
+3. Configure webhook endpoint for events:
+   - `checkout.session.completed`
+   - `customer.subscription.created`
+   - `customer.subscription.updated`
+   - `customer.subscription.deleted`
+   - `invoice.payment_failed`
