@@ -51,11 +51,17 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 
     console.log('Fetching users with admin API...');
+    console.log('Service key starts with:', SUPABASE_SERVICE_ROLE_KEY?.substring(0, 20));
+    
     const { data: authData, error: authError } = await supabase.auth.admin.listUsers();
     
     if (authError) {
       console.error('Auth admin error:', authError);
-      return res.status(500).json({ error: `Auth error: ${authError.message}` });
+      console.error('Auth error details:', JSON.stringify(authError, null, 2));
+      return res.status(500).json({ 
+        error: `Auth error: ${authError.message}`,
+        hint: 'Check that SUPABASE_SERVICE_ROLE_KEY is the service_role key (not anon key) from Supabase Dashboard → Settings → API'
+      });
     }
 
     console.log(`Found ${authData?.users?.length || 0} users`);
