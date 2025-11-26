@@ -17,7 +17,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     });
 
-    const { data: authData, error: authError } = await supabase.auth.admin.listUsers();
+    // Try with pagination - fetch first 50 users
+    const { data: authData, error: authError } = await supabase.auth.admin.listUsers({
+      page: 1,
+      perPage: 50
+    });
     
     if (authError) {
       return res.status(200).json({ 
@@ -30,7 +34,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(200).json({
       status: 'ok',
       userCount: authData?.users?.length || 0,
-      firstUser: authData?.users?.[0]?.email
+      users: authData?.users?.map(u => ({ email: u.email, id: u.id.substring(0, 8) }))
     });
   } catch (error: any) {
     return res.status(200).json({

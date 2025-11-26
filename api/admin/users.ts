@@ -50,11 +50,33 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     });
 
-    const { data: authData, error: authError } = await supabase.auth.admin.listUsers();
+    // Fetch users with pagination to avoid timeout issues
+    const allUsers: any[] = [];
+    let page = 1;
+    const perPage = 50;
     
-    if (authError) {
-      console.error('Auth admin error:', authError);
-      return res.status(500).json({ error: `Auth error: ${authError.message}` });
+    while (true) {
+      const { data: authData, error: authError } = await supabase.auth.admin.listUsers({
+        page,
+        perPage
+      });
+      
+      if (authError) {
+        console.error('Auth admin error:', authError);
+        return res.status(500).json({ error: `Auth error: ${authError.message}` });
+      }
+      
+      if (!authData?.users || authData.users.length === 0) {
+        break;
+      }
+      
+      allUsers.push(...authData.users);
+      
+      if (authData.users.length < perPage) {
+        break;
+      }
+      
+      page++;
     }
 
     const { data: subscriptions } = await supabase
@@ -63,7 +85,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const subMap = new Map((subscriptions || []).map((s: any) => [s.user_id, s]));
 
-    const users = (authData?.users || []).map((u: any) => {
+    const users = allUsers.map((u: any) => {
       const subscription = subMap.get(u.id);
       return {
         id: u.id,
