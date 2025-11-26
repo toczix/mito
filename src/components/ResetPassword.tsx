@@ -29,24 +29,54 @@ export function ResetPassword({ onBackToLogin }: ResetPasswordProps) {
     const supabaseClient = supabase;
 
     const initializeSession = async () => {
-      // First check if there are recovery tokens in the URL hash
+      console.log('Initializing password reset session...');
+      console.log('URL hash:', window.location.hash);
+      console.log('URL search:', window.location.search);
+
+      // Check for PKCE flow code parameter (newer Supabase versions)
+      const urlParams = new URLSearchParams(window.location.search);
+      const code = urlParams.get('code');
+      
+      if (code) {
+        console.log('Found PKCE code, exchanging for session...');
+        try {
+          const { data, error } = await supabaseClient.auth.exchangeCodeForSession(code);
+          if (!error && data.session) {
+            console.log('Session established from code');
+            setIsValidSession(true);
+            // Clear the code from URL
+            window.history.replaceState(null, '', window.location.pathname);
+            return;
+          } else if (error) {
+            console.error('Error exchanging code:', error);
+          }
+        } catch (e) {
+          console.error('Error in code exchange:', e);
+        }
+      }
+
+      // Check for hash tokens (older/implicit flow)
       const hashParams = new URLSearchParams(window.location.hash.substring(1));
       const accessToken = hashParams.get('access_token');
       const refreshToken = hashParams.get('refresh_token');
       const type = hashParams.get('type');
 
+      console.log('Hash params - type:', type, 'hasAccessToken:', !!accessToken);
+
       if (accessToken && type === 'recovery') {
-        // Manually set the session from URL tokens
+        console.log('Found hash tokens, setting session...');
         try {
           const { error } = await supabaseClient.auth.setSession({
             access_token: accessToken,
             refresh_token: refreshToken || '',
           });
           if (!error) {
+            console.log('Session established from hash tokens');
             setIsValidSession(true);
-            // Clear the hash to avoid issues on reload
             window.history.replaceState(null, '', window.location.pathname);
             return;
+          } else {
+            console.error('Error setting session:', error);
           }
         } catch (e) {
           console.error('Error setting session from tokens:', e);
@@ -55,12 +85,14 @@ export function ResetPassword({ onBackToLogin }: ResetPasswordProps) {
 
       // Fall back to checking existing session
       const { data: { session } } = await supabaseClient.auth.getSession();
+      console.log('Existing session check:', !!session);
       setIsValidSession(!!session);
     };
 
     initializeSession();
 
-    const { data: { subscription } } = supabaseClient.auth.onAuthStateChange((event) => {
+    const { data: { subscription } } = supabaseClient.auth.onAuthStateChange((event, session) => {
+      console.log('Auth state change:', event, !!session);
       if (event === 'PASSWORD_RECOVERY') {
         setIsValidSession(true);
       }
@@ -88,21 +120,36 @@ export function ResetPassword({ onBackToLogin }: ResetPasswordProps) {
     }
 
     setIsLoading(true);
+    console.log('Starting password update...');
 
     try {
+      // First verify we have a valid session
+      const { data: { session } } = await supabase.auth.getSession();
+      console.log('Current session before update:', !!session, session?.user?.email);
+      
+      if (!session) {
+        toast.error('Session expired. Please request a new password reset link.');
+        setIsLoading(false);
+        return;
+      }
+
       // Add timeout to prevent infinite loading
       const timeoutPromise = new Promise((_, reject) => {
         setTimeout(() => reject(new Error('Request timed out. Please try again.')), 15000);
       });
 
+      console.log('Calling updateUser...');
       const updatePromise = supabase.auth.updateUser({ password });
       
-      const result = await Promise.race([updatePromise, timeoutPromise]) as { error: any };
+      const result = await Promise.race([updatePromise, timeoutPromise]) as { data: any; error: any };
+      console.log('Update result:', result);
 
       if (result.error) {
+        console.error('Update error:', result.error);
         toast.error(result.error.message);
         setIsLoading(false);
       } else {
+        console.log('Password updated successfully');
         setIsSuccess(true);
         toast.success('Password updated successfully!');
         setIsLoading(false);
