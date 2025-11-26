@@ -1,3 +1,4 @@
+// Password reset component for Mito
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
