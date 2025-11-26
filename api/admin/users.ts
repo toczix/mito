@@ -50,33 +50,33 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     });
 
-    // Fetch users with pagination to avoid timeout issues
+    // Fetch users one by one to handle corrupted records gracefully
     const allUsers: any[] = [];
-    let page = 1;
-    const perPage = 50;
+    let skippedCount = 0;
     
-    while (true) {
-      const { data: authData, error: authError } = await supabase.auth.admin.listUsers({
-        page,
-        perPage
-      });
-      
-      if (authError) {
-        console.error('Auth admin error:', authError);
-        return res.status(500).json({ error: `Auth error: ${authError.message}` });
+    for (let page = 1; page <= 100; page++) {
+      try {
+        const { data: authData, error: authError } = await supabase.auth.admin.listUsers({
+          page,
+          perPage: 1
+        });
+        
+        if (authError) {
+          // Skip corrupted user record
+          skippedCount++;
+          continue;
+        }
+        
+        if (!authData?.users || authData.users.length === 0) {
+          break;
+        }
+        
+        allUsers.push(authData.users[0]);
+      } catch (e) {
+        // Skip on error
+        skippedCount++;
+        continue;
       }
-      
-      if (!authData?.users || authData.users.length === 0) {
-        break;
-      }
-      
-      allUsers.push(...authData.users);
-      
-      if (authData.users.length < perPage) {
-        break;
-      }
-      
-      page++;
     }
 
     const { data: subscriptions } = await supabase
@@ -110,7 +110,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     );
 
-    return res.status(200).json({ users });
+    return res.status(200).json({ 
+      users,
+      _meta: skippedCount > 0 ? { skippedCorruptedUsers: skippedCount } : undefined
+    });
   } catch (error: any) {
     console.error('Error fetching users:', error);
     return res.status(500).json({ error: `Database error: ${error.message}` });
