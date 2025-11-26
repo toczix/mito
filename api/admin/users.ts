@@ -40,7 +40,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   try {
     if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-      return res.status(500).json({ error: 'Server configuration error: missing env vars' });
+      return res.status(500).json({ error: 'Server configuration error' });
     }
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
@@ -50,51 +50,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     });
 
-    const { data: authUsers, error: authError } = await supabase
-      .from('auth.users')
-      .select('id, email, raw_user_meta_data, created_at, last_sign_in_at');
-
+    const { data: authData, error: authError } = await supabase.auth.admin.listUsers();
+    
     if (authError) {
-      console.error('Direct query error:', authError);
-      
-      const { data: authData, error: adminError } = await supabase.auth.admin.listUsers();
-      
-      if (adminError) {
-        console.error('Admin API also failed:', adminError);
-        return res.status(500).json({ 
-          error: `Failed to fetch users: ${adminError.message}`,
-          directError: authError.message
-        });
-      }
-
-      const { data: subscriptions } = await supabase
-        .from('user_subscriptions')
-        .select('user_id, plan, status, stripe_customer_id, stripe_subscription_id, current_period_end, cancel_at_period_end, pro_override, pro_override_until');
-
-      const subMap = new Map((subscriptions || []).map((s: any) => [s.user_id, s]));
-
-      const users = authData.users.map((u: any) => {
-        const subscription = subMap.get(u.id);
-        return {
-          id: u.id,
-          email: u.email,
-          full_name: u.user_metadata?.full_name || '',
-          role: u.user_metadata?.role || 'practitioner',
-          created_at: u.created_at,
-          last_sign_in_at: u.last_sign_in_at,
-          subscription: subscription ? {
-            plan: subscription.plan,
-            status: subscription.status,
-            stripe_customer_id: subscription.stripe_customer_id,
-            current_period_end: subscription.current_period_end,
-            cancel_at_period_end: subscription.cancel_at_period_end,
-            pro_override: subscription.pro_override || false,
-            pro_override_until: subscription.pro_override_until,
-          } : null,
-        };
-      });
-
-      return res.status(200).json({ users });
+      console.error('Auth admin error:', authError);
+      return res.status(500).json({ error: `Auth error: ${authError.message}` });
     }
 
     const { data: subscriptions } = await supabase
@@ -103,14 +63,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const subMap = new Map((subscriptions || []).map((s: any) => [s.user_id, s]));
 
-    const users = (authUsers || []).map((u: any) => {
+    const users = (authData?.users || []).map((u: any) => {
       const subscription = subMap.get(u.id);
-      const metadata = u.raw_user_meta_data || {};
       return {
         id: u.id,
         email: u.email,
-        full_name: metadata.full_name || '',
-        role: metadata.role || 'practitioner',
+        full_name: u.user_metadata?.full_name || '',
+        role: u.user_metadata?.role || 'practitioner',
         created_at: u.created_at,
         last_sign_in_at: u.last_sign_in_at,
         subscription: subscription ? {
