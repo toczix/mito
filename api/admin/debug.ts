@@ -17,24 +17,57 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     });
 
-    // Try with pagination - fetch first 50 users
-    const { data: authData, error: authError } = await supabase.auth.admin.listUsers({
-      page: 1,
-      perPage: 50
-    });
+    // Iterate through users one by one to find the corrupted record
+    const goodUsers: string[] = [];
+    const badPage: number[] = [];
     
-    if (authError) {
-      return res.status(200).json({ 
-        status: 'auth_error',
-        error: authError.message,
-        code: (authError as any).code
-      });
+    for (let page = 1; page <= 20; page++) {
+      try {
+        const { data, error } = await supabase.auth.admin.listUsers({
+          page,
+          perPage: 1
+        });
+        
+        if (error) {
+          badPage.push(page);
+        } else if (data?.users?.[0]) {
+          goodUsers.push(data.users[0].email || data.users[0].id);
+        } else {
+          // No more users
+          break;
+        }
+      } catch (e: any) {
+        badPage.push(page);
+      }
+    }
+
+    // Now try to find which specific page breaks when fetching more
+    let breakPoint = null;
+    for (let size = 2; size <= 20; size++) {
+      try {
+        const { error } = await supabase.auth.admin.listUsers({
+          page: 1,
+          perPage: size
+        });
+        if (error) {
+          breakPoint = size;
+          break;
+        }
+      } catch (e) {
+        breakPoint = size;
+        break;
+      }
     }
 
     return res.status(200).json({
-      status: 'ok',
-      userCount: authData?.users?.length || 0,
-      users: authData?.users?.map(u => ({ email: u.email, id: u.id.substring(0, 8) }))
+      status: 'diagnostic',
+      totalGoodUsers: goodUsers.length,
+      goodUsers,
+      badPages: badPage,
+      breaksAtSize: breakPoint,
+      message: breakPoint 
+        ? `Fetching fails when perPage >= ${breakPoint}. User #${breakPoint} may be corrupted.`
+        : 'All individual fetches worked'
     });
   } catch (error: any) {
     return res.status(200).json({
