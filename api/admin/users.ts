@@ -45,21 +45,38 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         hasUrl: !!SUPABASE_URL, 
         hasServiceKey: !!SUPABASE_SERVICE_ROLE_KEY 
       });
-      return res.status(500).json({ error: 'Server configuration error' });
+      return res.status(500).json({ error: 'Server configuration error: missing env vars' });
     }
 
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    // Validate key format
+    const keyPrefix = SUPABASE_SERVICE_ROLE_KEY?.substring(0, 10);
+    const keyLength = SUPABASE_SERVICE_ROLE_KEY?.length;
+    console.log('Key diagnostics:', { keyPrefix, keyLength, urlPrefix: SUPABASE_URL?.substring(0, 30) });
+
+    // Check if it looks like a valid JWT
+    if (!SUPABASE_SERVICE_ROLE_KEY.startsWith('eyJ')) {
+      return res.status(500).json({ 
+        error: 'Invalid service key format',
+        hint: 'Service role key should start with eyJ (it is a JWT token)'
+      });
+    }
+
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    });
 
     console.log('Fetching users with admin API...');
-    console.log('Service key starts with:', SUPABASE_SERVICE_ROLE_KEY?.substring(0, 20));
     
     const { data: authData, error: authError } = await supabase.auth.admin.listUsers();
     
     if (authError) {
       console.error('Auth admin error:', authError);
-      console.error('Auth error details:', JSON.stringify(authError, null, 2));
       return res.status(500).json({ 
         error: `Auth error: ${authError.message}`,
+        code: (authError as any).code || 'unknown',
         hint: 'Check that SUPABASE_SERVICE_ROLE_KEY is the service_role key (not anon key) from Supabase Dashboard → Settings → API'
       });
     }
