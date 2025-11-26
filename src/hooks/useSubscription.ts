@@ -109,7 +109,9 @@ export function useSubscription(): UseSubscriptionReturn {
     }
 
     // Subscribe to realtime updates
-    const channel = supabase
+    // supabase is guaranteed non-null here due to check above
+    const supabaseClient = supabase!;
+    const channel = supabaseClient
       .channel('subscription-changes')
       .on(
         'postgres_changes',
@@ -120,7 +122,7 @@ export function useSubscription(): UseSubscriptionReturn {
         },
         (payload) => {
           // Only update if it's the current user's subscription
-          supabase.auth.getUser().then(({ data: { user } }) => {
+          supabaseClient.auth.getUser().then(({ data: { user } }) => {
             if (user && payload.new && (payload.new as any).user_id === user.id) {
               fetchSubscription();
             }
@@ -130,7 +132,7 @@ export function useSubscription(): UseSubscriptionReturn {
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      supabaseClient.removeChannel(channel);
     };
   }, []);
 
