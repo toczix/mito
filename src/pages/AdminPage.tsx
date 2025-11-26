@@ -9,12 +9,10 @@ import {
   Users, 
   Crown, 
   Shield, 
-  Calendar, 
   Mail, 
   Search,
   Gift,
   X,
-  Check,
   Loader2,
   RefreshCw
 } from 'lucide-react';
@@ -188,7 +186,7 @@ export function AdminPage() {
       );
     }
 
-    const { plan, status, pro_override, stripe_customer_id } = user.subscription;
+    const { plan, status, pro_override } = user.subscription;
 
     if (pro_override) {
       return (

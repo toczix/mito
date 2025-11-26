@@ -42,6 +42,7 @@ async function requireAdmin(req: any, res: any, next: any) {
   
   next();
 }
+// @ts-ignore - req is used by Express middleware but TypeScript thinks it's unused
 
 // Get Stripe publishable key
 router.get('/api/stripe/config', async (req, res) => {
