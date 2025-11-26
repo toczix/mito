@@ -28,12 +28,37 @@ export function ResetPassword({ onBackToLogin }: ResetPasswordProps) {
 
     const supabaseClient = supabase;
 
-    const checkSession = async () => {
+    const initializeSession = async () => {
+      // First check if there are recovery tokens in the URL hash
+      const hashParams = new URLSearchParams(window.location.hash.substring(1));
+      const accessToken = hashParams.get('access_token');
+      const refreshToken = hashParams.get('refresh_token');
+      const type = hashParams.get('type');
+
+      if (accessToken && type === 'recovery') {
+        // Manually set the session from URL tokens
+        try {
+          const { error } = await supabaseClient.auth.setSession({
+            access_token: accessToken,
+            refresh_token: refreshToken || '',
+          });
+          if (!error) {
+            setIsValidSession(true);
+            // Clear the hash to avoid issues on reload
+            window.history.replaceState(null, '', window.location.pathname);
+            return;
+          }
+        } catch (e) {
+          console.error('Error setting session from tokens:', e);
+        }
+      }
+
+      // Fall back to checking existing session
       const { data: { session } } = await supabaseClient.auth.getSession();
       setIsValidSession(!!session);
     };
 
-    checkSession();
+    initializeSession();
 
     const { data: { subscription } } = supabaseClient.auth.onAuthStateChange((event) => {
       if (event === 'PASSWORD_RECOVERY') {
@@ -65,17 +90,26 @@ export function ResetPassword({ onBackToLogin }: ResetPasswordProps) {
     setIsLoading(true);
 
     try {
-      const { error } = await supabase.auth.updateUser({ password });
+      // Add timeout to prevent infinite loading
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => reject(new Error('Request timed out. Please try again.')), 15000);
+      });
 
-      if (error) {
-        toast.error(error.message);
+      const updatePromise = supabase.auth.updateUser({ password });
+      
+      const result = await Promise.race([updatePromise, timeoutPromise]) as { error: any };
+
+      if (result.error) {
+        toast.error(result.error.message);
+        setIsLoading(false);
       } else {
         setIsSuccess(true);
         toast.success('Password updated successfully!');
+        setIsLoading(false);
       }
     } catch (error: any) {
-      toast.error(error.message || 'Failed to update password');
-    } finally {
+      console.error('Password update error:', error);
+      toast.error(error.message || 'Failed to update password. Please try again.');
       setIsLoading(false);
     }
   };
