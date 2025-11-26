@@ -342,10 +342,14 @@ router.get('/api/admin/users', requireAuth, requireAdmin, async (_req: any, res)
 });
 
 // Grant or revoke Pro access for a user (admin only)
-router.post('/api/admin/users/:userId/subscription', requireAuth, requireAdmin, async (req: any, res) => {
+// New endpoint that accepts userId in body (for Vercel serverless compatibility)
+router.post('/api/admin/subscription', requireAuth, requireAdmin, async (req: any, res) => {
   try {
-    const { userId } = req.params;
-    const { plan, override, overrideUntil } = req.body;
+    const { userId, plan, override, overrideUntil } = req.body;
+    
+    if (!userId) {
+      return res.status(400).json({ error: 'User ID required' });
+    }
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
 

@@ -100,13 +100,14 @@ export function AdminPage() {
       const overrideUntil = new Date();
       overrideUntil.setMonth(overrideUntil.getMonth() + months);
 
-      const response = await fetch(`/api/admin/users/${userId}/subscription`, {
+      const response = await fetch(`/api/admin/subscription`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
+          userId,
           override: true,
           overrideUntil: overrideUntil.toISOString(),
         }),
@@ -137,13 +138,14 @@ export function AdminPage() {
         return;
       }
 
-      const response = await fetch(`/api/admin/users/${userId}/subscription`, {
+      const response = await fetch(`/api/admin/subscription`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
+          userId,
           override: false,
         }),
       });
