@@ -39,26 +39,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   try {
-    // Validate environment variables
     if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
-      console.error('Missing env vars:', { 
-        hasUrl: !!SUPABASE_URL, 
-        hasServiceKey: !!SUPABASE_SERVICE_ROLE_KEY 
-      });
       return res.status(500).json({ error: 'Server configuration error: missing env vars' });
-    }
-
-    // Validate key format
-    const keyPrefix = SUPABASE_SERVICE_ROLE_KEY?.substring(0, 10);
-    const keyLength = SUPABASE_SERVICE_ROLE_KEY?.length;
-    console.log('Key diagnostics:', { keyPrefix, keyLength, urlPrefix: SUPABASE_URL?.substring(0, 30) });
-
-    // Check if it looks like a valid JWT
-    if (!SUPABASE_SERVICE_ROLE_KEY.startsWith('eyJ')) {
-      return res.status(500).json({ 
-        error: 'Invalid service key format',
-        hint: 'Service role key should start with eyJ (it is a JWT token)'
-      });
     }
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
@@ -68,43 +50,69 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
     });
 
-    console.log('Fetching users with admin API...');
-    
-    const { data: authData, error: authError } = await supabase.auth.admin.listUsers();
-    
+    const { data: authUsers, error: authError } = await supabase
+      .from('auth.users')
+      .select('id, email, raw_user_meta_data, created_at, last_sign_in_at');
+
     if (authError) {
-      console.error('Auth admin error:', authError);
-      return res.status(500).json({ 
-        error: `Auth error: ${authError.message}`,
-        code: (authError as any).code || 'unknown',
-        hint: 'Check that SUPABASE_SERVICE_ROLE_KEY is the service_role key (not anon key) from Supabase Dashboard → Settings → API'
+      console.error('Direct query error:', authError);
+      
+      const { data: authData, error: adminError } = await supabase.auth.admin.listUsers();
+      
+      if (adminError) {
+        console.error('Admin API also failed:', adminError);
+        return res.status(500).json({ 
+          error: `Failed to fetch users: ${adminError.message}`,
+          directError: authError.message
+        });
+      }
+
+      const { data: subscriptions } = await supabase
+        .from('user_subscriptions')
+        .select('user_id, plan, status, stripe_customer_id, stripe_subscription_id, current_period_end, cancel_at_period_end, pro_override, pro_override_until');
+
+      const subMap = new Map((subscriptions || []).map((s: any) => [s.user_id, s]));
+
+      const users = authData.users.map((u: any) => {
+        const subscription = subMap.get(u.id);
+        return {
+          id: u.id,
+          email: u.email,
+          full_name: u.user_metadata?.full_name || '',
+          role: u.user_metadata?.role || 'practitioner',
+          created_at: u.created_at,
+          last_sign_in_at: u.last_sign_in_at,
+          subscription: subscription ? {
+            plan: subscription.plan,
+            status: subscription.status,
+            stripe_customer_id: subscription.stripe_customer_id,
+            current_period_end: subscription.current_period_end,
+            cancel_at_period_end: subscription.cancel_at_period_end,
+            pro_override: subscription.pro_override || false,
+            pro_override_until: subscription.pro_override_until,
+          } : null,
+        };
       });
+
+      return res.status(200).json({ users });
     }
 
-    console.log(`Found ${authData?.users?.length || 0} users`);
-
-    const { data: subscriptions, error: subError } = await supabase
+    const { data: subscriptions } = await supabase
       .from('user_subscriptions')
       .select('user_id, plan, status, stripe_customer_id, stripe_subscription_id, current_period_end, cancel_at_period_end, pro_override, pro_override_until');
 
-    if (subError) {
-      console.error('Error fetching subscriptions:', subError);
-      // Continue without subscriptions data rather than failing
-    }
+    const subMap = new Map((subscriptions || []).map((s: any) => [s.user_id, s]));
 
-    const subMap = new Map(
-      (subscriptions || []).map((s: any) => [s.user_id, s])
-    );
-
-    const users = authData.users.map((user: any) => {
-      const subscription = subMap.get(user.id);
+    const users = (authUsers || []).map((u: any) => {
+      const subscription = subMap.get(u.id);
+      const metadata = u.raw_user_meta_data || {};
       return {
-        id: user.id,
-        email: user.email,
-        full_name: user.user_metadata?.full_name || '',
-        role: user.user_metadata?.role || 'practitioner',
-        created_at: user.created_at,
-        last_sign_in_at: user.last_sign_in_at,
+        id: u.id,
+        email: u.email,
+        full_name: metadata.full_name || '',
+        role: metadata.role || 'practitioner',
+        created_at: u.created_at,
+        last_sign_in_at: u.last_sign_in_at,
         subscription: subscription ? {
           plan: subscription.plan,
           status: subscription.status,
