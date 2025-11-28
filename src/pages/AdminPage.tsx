@@ -547,9 +547,9 @@ export function AdminPage() {
                                 Until {formatDate(user.subscription.pro_override_until)}
                               </div>
                             )}
-                            {cancelAtEnd && (
+                            {cancelAtEnd && user.subscription?.current_period_end && (
                               <div className="text-xs text-orange-600 mt-1">
-                                Cancels {formatDate(user.subscription?.current_period_end)}
+                                Cancels {formatDate(user.subscription.current_period_end)}
                               </div>
                             )}
                           </td>
