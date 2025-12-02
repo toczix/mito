@@ -327,10 +327,11 @@ export function HomePage() {
         const extractedBiomarkers: ExtractedBiomarker[] = biomarkers.map(b => {
           if (isNormalized && 'originalName' in b) {
             // NormalizedBiomarker -> ExtractedBiomarker (preserve metadata)
+            // ✅ Use ORIGINAL unit from lab report for display, not normalized unit
             return {
               name: b.name, // Use canonical name
               value: b.value,
-              unit: b.unit,
+              unit: b.originalUnit || b.unit, // Prefer original measured unit
               testDate: claudeResponse.patientInfo.testDate || undefined,
               // ✅ Preserve normalization metadata
               _normalization: {
