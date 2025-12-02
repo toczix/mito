@@ -863,25 +863,44 @@ export async function extractBiomarkersWithParallelVisionPages(
 /**
  * Smart extraction that automatically uses parallel page processing for multi-page documents
  * This is the recommended entry point for single-file extraction
+ * 
+ * @param processedPdf - The processed PDF to extract biomarkers from
+ * @param onPageProgress - Optional callback for page-level progress updates (pagesComplete, totalPages)
  */
 export async function extractBiomarkersSmartSingle(
   processedPdf: ProcessedPDF,
-  onProgress?: (pagesComplete: number, totalPages: number) => void
+  onPageProgress?: (pagesComplete: number, totalPages: number) => void
 ): Promise<ClaudeResponse> {
   // Multi-page Vision files: use parallel Vision processing to avoid timeouts
   if (processedPdf.imagePages && processedPdf.imagePages.length > 1) {
     console.log(`📸 Multi-page Vision file detected (${processedPdf.imagePages.length} pages) - using parallel page processing`);
-    return extractBiomarkersWithParallelVisionPages(processedPdf, onProgress);
+    // Report initial progress (0 pages complete)
+    if (onPageProgress) {
+      onPageProgress(0, processedPdf.imagePages.length);
+    }
+    return extractBiomarkersWithParallelVisionPages(processedPdf, onPageProgress);
   }
 
   // Multi-page text files with page texts: use parallel text processing
   if (processedPdf.pageTexts && processedPdf.pageTexts.length > 1 && !processedPdf.isImage) {
     console.log(`📄 Multi-page text file detected (${processedPdf.pageTexts.length} pages) - using parallel page processing`);
-    return extractBiomarkersWithParallelPages(processedPdf, onProgress);
+    // Report initial progress (0 pages complete)
+    if (onPageProgress) {
+      onPageProgress(0, processedPdf.pageTexts.length);
+    }
+    return extractBiomarkersWithParallelPages(processedPdf, onPageProgress);
   }
 
   // Single page or simple file: use direct extraction
-  return extractBiomarkersFromPdf(processedPdf);
+  // Report as 1/1 progress for single-page files
+  if (onPageProgress) {
+    onPageProgress(0, 1);
+  }
+  const result = await extractBiomarkersFromPdf(processedPdf);
+  if (onPageProgress) {
+    onPageProgress(1, 1);
+  }
+  return result;
 }
 
 /**
@@ -954,7 +973,7 @@ export async function extractBiomarkersFromPdfs(
   // Using extractBiomarkersSmartSingle to automatically handle multi-page Vision files
   const processingResult = await processInParallel(
     queue,
-    (pdf) => extractBiomarkersSmartSingle(pdf), // Smart extraction handles multi-page docs
+    (pdf, onPageProgress) => extractBiomarkersSmartSingle(pdf, onPageProgress), // Smart extraction handles multi-page docs
     (progress: ProcessingProgress) => {
       if (!onProgress) return;
       
@@ -1005,6 +1024,22 @@ export async function extractBiomarkersFromPdfs(
           progress.status
         );
       }
+    },
+    // Page-level progress callback
+    (fileName: string, pagesComplete: number, totalPages: number) => {
+      if (!onProgress) return;
+      
+      // Calculate percentage for this file's page progress
+      const percentage = Math.round((pagesComplete / totalPages) * 100);
+      console.log(`📄 Page progress: ${fileName} - ${pagesComplete}/${totalPages} (${percentage}%)`);
+      
+      // Send page-progress status in the expected format for HomePage to parse
+      onProgress(
+        0, // These values are not used for page progress
+        0,
+        '',
+        `processing ${fileName} page-progress ${pagesComplete}/${totalPages} ${percentage}%`
+      );
     }
   );
 

@@ -46,14 +46,20 @@ export function categorizeFiles(processedFiles: ProcessedPDF[]): ProcessingQueue
 }
 
 /**
+ * Callback for page-level progress within a file
+ */
+export type PageProgressCallback = (fileName: string, pagesComplete: number, totalPages: number) => void;
+
+/**
  * Process files in parallel with concurrency limits
  * - Text-based files: Higher concurrency (up to 10 parallel)
  * - Vision-based files: Limited concurrency (max 3-5 to avoid API overload)
  */
 export async function processInParallel(
   queue: ProcessingQueue,
-  processorFn: (file: ProcessedPDF) => Promise<ClaudeResponse>,
-  onProgress?: (progress: ProcessingProgress) => void
+  processorFn: (file: ProcessedPDF, onPageProgress?: (pagesComplete: number, totalPages: number) => void) => Promise<ClaudeResponse>,
+  onProgress?: (progress: ProcessingProgress) => void,
+  onPageProgress?: PageProgressCallback
 ): Promise<ProcessingResult> {
   const startTime = Date.now();
   const results: ClaudeResponse[] = [];
@@ -108,7 +114,12 @@ export async function processInParallel(
               onProgress({ ...progress });
             }
             
-            const result = await processorFn(file);
+            // Create a per-file page progress callback
+            const filePageProgress = onPageProgress 
+              ? (pagesComplete: number, totalPages: number) => onPageProgress(file.fileName, pagesComplete, totalPages)
+              : undefined;
+            
+            const result = await processorFn(file, filePageProgress);
             results.push(result);
             console.log(`✅ [${type}] Completed: ${file.fileName}`);
           } catch (error) {
