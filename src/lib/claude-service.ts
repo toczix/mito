@@ -1319,6 +1319,47 @@ function toTitleCase(name: string): string {
 }
 
 /**
+ * Canonicalize patient name for comparison
+ * Handles: case, "Last, First" format, honorifics, credentials, Unicode, extra whitespace
+ */
+function canonicalizePatientName(name: string): { display: string; key: string } {
+  // Honorifics and credentials to remove
+  const prefixes = /^(mr\.?|mrs\.?|ms\.?|miss\.?|dr\.?|prof\.?)\s+/i;
+  const suffixes = /,?\s*(jr\.?|sr\.?|ii|iii|iv|md|rn|np|pa|phd|do|dds|esq\.?|cpa)$/i;
+  
+  // Normalize Unicode (NFKD), remove diacritics, collapse whitespace
+  let normalized = name
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '') // Remove diacritics
+    .replace(/[\u200B-\u200D\uFEFF]/g, '') // Remove zero-width chars
+    .replace(/\s+/g, ' ') // Collapse whitespace
+    .trim();
+  
+  // Remove prefixes and suffixes
+  normalized = normalized.replace(prefixes, '').replace(suffixes, '').trim();
+  
+  // Handle "Last, First" format -> "First Last"
+  if (normalized.includes(',')) {
+    const parts = normalized.split(',').map(p => p.trim());
+    if (parts.length === 2 && parts[0] && parts[1]) {
+      normalized = `${parts[1]} ${parts[0]}`;
+    }
+  }
+  
+  // Remove middle initials (single letter followed by optional period)
+  normalized = normalized.replace(/\s+[A-Za-z]\.?\s+/g, ' ').trim();
+  
+  // Create comparison key: lowercase, sorted tokens for fuzzy matching
+  const tokens = normalized.toLowerCase().split(/\s+/).filter(t => t.length > 1);
+  const key = tokens.sort().join(' ');
+  
+  // Display name: Title Case
+  const display = toTitleCase(normalized);
+  
+  return { display, key };
+}
+
+/**
  * Consolidate patient info from multiple extractions (batch upload for single client)
  * Picks the most common/complete values and flags discrepancies
  */
@@ -1337,33 +1378,46 @@ export function consolidatePatientInfo(
   const genders = patientInfos.map(p => p.gender).filter((g): g is 'male' | 'female' | 'other' => g !== null);
   const testDates = patientInfos.map(p => p.testDate).filter((t): t is string => t !== null && t !== 'Not provided' && t !== 'N/A');
   
-  // Consolidate names - pick most common, or longest (likely most complete)
+  // Consolidate names - use canonical comparison to handle formatting differences
   let consolidatedName: string | null = null;
   if (names.length > 0) {
-    // Count occurrences
-    const nameCounts = new Map<string, number>();
-    names.forEach(name => {
-      const normalized = name.toLowerCase().trim();
-      nameCounts.set(normalized, (nameCounts.get(normalized) || 0) + 1);
+    // Canonicalize all names for comparison
+    const canonicalizedNames = names.map(name => ({
+      original: name,
+      ...canonicalizePatientName(name)
+    }));
+    
+    // Count occurrences by canonical key
+    const keyCounts = new Map<string, number>();
+    canonicalizedNames.forEach(({ key }) => {
+      keyCounts.set(key, (keyCounts.get(key) || 0) + 1);
     });
     
-    // Find most common
+    // Find most common canonical key
     let maxCount = 0;
-    let mostCommonName = names[0];
-    nameCounts.forEach((count, name) => {
+    let bestCanonical = canonicalizedNames[0];
+    keyCounts.forEach((count, key) => {
       if (count > maxCount) {
         maxCount = count;
-        mostCommonName = names.find(n => n.toLowerCase().trim() === name) || name;
+        bestCanonical = canonicalizedNames.find(c => c.key === key) || canonicalizedNames[0];
       }
     });
     
-    // Convert to Title Case for consistency
-    consolidatedName = toTitleCase(mostCommonName);
+    // Use the display version of the most common name
+    consolidatedName = bestCanonical.display;
     
-    // Check for discrepancies
-    const uniqueNames = Array.from(new Set(names.map(n => n.toLowerCase().trim())));
-    if (uniqueNames.length > 1) {
-      discrepancies.push(`Name: Found ${uniqueNames.length} variations → Using "${consolidatedName}"`);
+    // Check for discrepancies - only if canonical keys are TRULY different
+    const uniqueKeys = Array.from(new Set(canonicalizedNames.map(c => c.key)));
+    if (uniqueKeys.length > 1) {
+      // Get distinct display names for each unique key
+      const distinctDisplayNames = uniqueKeys.map(key => {
+        const match = canonicalizedNames.find(c => c.key === key);
+        return match ? `"${match.display}"` : '';
+      }).filter(Boolean);
+      
+      const displayList = distinctDisplayNames.slice(0, 3).join(', ');
+      const moreCount = distinctDisplayNames.length > 3 ? ` and ${distinctDisplayNames.length - 3} more` : '';
+      discrepancies.push(`Name: Found ${uniqueKeys.length} different names (${displayList}${moreCount}) → Using "${consolidatedName}"`);
     }
   }
   
@@ -1410,17 +1464,13 @@ export function consolidatePatientInfo(
   }
   
   // Consolidate test date - pick most recent
+  // Note: Multiple test dates is NORMAL for multiple lab visits - not a discrepancy
   let consolidatedTestDate: string | null = null;
   if (testDates.length > 0) {
     consolidatedTestDate = testDates.reduce((latest, current) => {
       return new Date(current) > new Date(latest) ? current : latest;
     });
-    
-    // Check if there are multiple dates (multiple lab visits)
-    const uniqueDates = Array.from(new Set(testDates));
-    if (uniqueDates.length > 1) {
-      discrepancies.push(`Test Dates: Found ${uniqueDates.length} different dates (multiple lab visits)`);
-    }
+    // No discrepancy warning for multiple dates - this is expected behavior
   }
   
   // Determine confidence level
