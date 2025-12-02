@@ -256,7 +256,7 @@ router.post('/api/sync-subscription', requireAuth, async (req: any, res) => {
         // Update via Supabase
         const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
         await supabase
-          .from('subscriptions')
+          .from('user_subscriptions')
           .update({
             stripe_subscription_id: stripeSub.id,
             status: stripeSub.status === 'active' ? 'active' : stripeSub.status,
@@ -328,7 +328,7 @@ router.get('/api/admin/users', requireAuth, requireAdmin, async (_req: any, res)
 
     // Get all subscriptions
     const { data: subscriptions, error: subError } = await supabase
-      .from('subscriptions')
+      .from('user_subscriptions')
       .select('*');
 
     if (subError) {
@@ -392,7 +392,7 @@ router.post('/api/admin/subscription', requireAuth, requireAdmin, async (req: an
 
     // Check if subscription exists
     const { data: existing } = await supabase
-      .from('subscriptions')
+      .from('user_subscriptions')
       .select('*')
       .eq('user_id', userId)
       .single();
@@ -423,7 +423,7 @@ router.post('/api/admin/subscription', requireAuth, requireAdmin, async (req: an
 
     if (existing) {
       const { data, error } = await supabase
-        .from('subscriptions')
+        .from('user_subscriptions')
         .update(updateData)
         .eq('user_id', userId)
         .select();
@@ -436,7 +436,7 @@ router.post('/api/admin/subscription', requireAuth, requireAdmin, async (req: an
     } else {
       // Create new subscription
       const { data, error } = await supabase
-        .from('subscriptions')
+        .from('user_subscriptions')
         .insert({
           user_id: userId,
           plan: plan || (override ? 'pro' : 'free'),
@@ -494,7 +494,7 @@ router.get('/api/admin/stats', requireAuth, requireAdmin, async (_req: any, res)
 
     try {
       const { data, error } = await supabase
-        .from('subscriptions')
+        .from('user_subscriptions')
         .select('user_id, plan, status, stripe_customer_id, stripe_subscription_id, current_period_end, cancel_at_period_end, pro_override, pro_override_until');
       if (!error && data) subscriptions = data;
     } catch (e) {
@@ -713,7 +713,7 @@ router.post('/api/admin/subscription-action', requireAuth, requireAdmin, async (
 
     // Get user's subscription
     const { data: subscription, error: subError } = await supabase
-      .from('subscriptions')
+      .from('user_subscriptions')
       .select('*')
       .eq('user_id', userId)
       .single();
@@ -732,7 +732,7 @@ router.post('/api/admin/subscription-action', requireAuth, requireAdmin, async (
           });
         }
         await supabase
-          .from('subscriptions')
+          .from('user_subscriptions')
           .update({ status: 'paused', updated_at: new Date().toISOString() })
           .eq('user_id', userId);
         return res.json({ message: 'Subscription paused' });
@@ -745,7 +745,7 @@ router.post('/api/admin/subscription-action', requireAuth, requireAdmin, async (
           });
         }
         await supabase
-          .from('subscriptions')
+          .from('user_subscriptions')
           .update({ status: 'active', updated_at: new Date().toISOString() })
           .eq('user_id', userId);
         return res.json({ message: 'Subscription resumed' });
@@ -756,7 +756,7 @@ router.post('/api/admin/subscription-action', requireAuth, requireAdmin, async (
           await stripe.subscriptions.cancel(subscription.stripe_subscription_id);
         }
         await supabase
-          .from('subscriptions')
+          .from('user_subscriptions')
           .update({
             status: 'canceled',
             plan: 'free',
@@ -776,7 +776,7 @@ router.post('/api/admin/subscription-action', requireAuth, requireAdmin, async (
           });
         }
         await supabase
-          .from('subscriptions')
+          .from('user_subscriptions')
           .update({ cancel_at_period_end: true, updated_at: new Date().toISOString() })
           .eq('user_id', userId);
         return res.json({ message: 'Subscription will cancel at period end' });
@@ -789,7 +789,7 @@ router.post('/api/admin/subscription-action', requireAuth, requireAdmin, async (
           });
         }
         await supabase
-          .from('subscriptions')
+          .from('user_subscriptions')
           .update({ cancel_at_period_end: false, updated_at: new Date().toISOString() })
           .eq('user_id', userId);
         return res.json({ message: 'Subscription reactivated' });

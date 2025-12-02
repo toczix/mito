@@ -123,7 +123,7 @@ export class Storage {
 
   async getUserSubscription(userId: string) {
     const { data, error } = await supabase
-      .from('subscriptions')
+      .from('user_subscriptions')
       .select('*')
       .eq('user_id', userId)
       .single();
@@ -138,7 +138,7 @@ export class Storage {
 
   async updateUserSubscription(userId: string, updates: any) {
     const { data, error } = await supabase
-      .from('subscriptions')
+      .from('user_subscriptions')
       .update(updates)
       .eq('user_id', userId)
       .select()

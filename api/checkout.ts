@@ -36,7 +36,7 @@ async function getStripePriceId(): Promise<string | null> {
 async function getUserSubscription(userId: string) {
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
   const { data } = await supabase
-    .from('subscriptions')
+    .from('user_subscriptions')
     .select('*')
     .eq('user_id', userId)
     .single();
@@ -79,7 +79,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
       await supabase
-        .from('subscriptions')
+        .from('user_subscriptions')
         .update({ stripe_customer_id: customerId })
         .eq('user_id', user.id);
     }
