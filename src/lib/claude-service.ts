@@ -26,34 +26,23 @@ export interface ClaudeResponseBatch extends Array<ClaudeResponse> {
 
 /**
  * Configuration constants for API calls
+ * IMPORTANT: Supabase Edge Functions have a ~60s timeout limit
+ * We use 55s to stay safely under the limit with buffer for network latency
  */
-const BASE_TIMEOUT = 90000; // 90 seconds base timeout
-const PER_PAGE_TIMEOUT = 20000; // 20 seconds per page for Vision API
-const MAX_TIMEOUT = 300000; // 5 minutes max timeout
-const MAX_RETRIES = 2; // Reduced from 3 - only retry transient errors
-const INITIAL_RETRY_DELAY = 3000; // 3 seconds
-const MAX_RETRY_DELAY = 10000; // 10 seconds
+const BASE_TIMEOUT = 55000; // 55 seconds - aligned with Supabase Edge Function limit
+const MAX_RETRIES = 2; // Only retry transient errors
+const INITIAL_RETRY_DELAY = 2000; // 2 seconds
+const MAX_RETRY_DELAY = 8000; // 8 seconds
 
 /**
- * Calculate dynamic timeout based on file characteristics
- * Vision API files with many pages need more time
+ * Calculate timeout for single-page/single-file requests
+ * Now that multi-page files are processed page-by-page, each request is small and fast
+ * All requests use the same 55s timeout to stay within Supabase Edge Function limits
  */
-function calculateTimeout(processedPdf: ProcessedPDF): number {
-  const isVisionFile = processedPdf.isImage || 
-                       processedPdf.imageData || 
-                       (processedPdf.imagePages && processedPdf.imagePages.length > 0) ||
-                       processedPdf.textQuality === 'poor' ||
-                       processedPdf.textQuality === 'none';
-  
-  if (isVisionFile) {
-    // Vision API: base + per-page time
-    const pageCount = processedPdf.imagePages?.length || processedPdf.pageCount || 1;
-    const timeout = BASE_TIMEOUT + (pageCount * PER_PAGE_TIMEOUT);
-    return Math.min(timeout, MAX_TIMEOUT);
-  }
-  
-  // Text-based: use base timeout (usually fast)
-  return BASE_TIMEOUT;
+function calculateTimeout(_processedPdf: ProcessedPDF): number {
+  // All requests now use the same timeout since multi-page files are split
+  // into individual page requests by extractBiomarkersSmartSingle
+  return BASE_TIMEOUT; // 55 seconds - safe for Supabase Edge Functions
 }
 
 /**
@@ -333,6 +322,38 @@ Return your response now:`;
 }
 */
 
+// Max payload size for safe single-page processing
+// Individual pages are typically 100-500 KB after JPEG compression
+// Allow up to 10 MB for single-page requests (well under Edge Function's 20 MB limit)
+const MAX_SAFE_PAYLOAD_SIZE = 10 * 1024 * 1024;
+
+/**
+ * Calculate estimated payload size for a processed PDF
+ */
+function estimatePayloadSize(pdf: ProcessedPDF): number {
+  let size = 0;
+  
+  // Text content
+  if (pdf.extractedText) {
+    size += pdf.extractedText.length;
+  }
+  
+  // Single image data
+  if (pdf.imageData) {
+    size += pdf.imageData.length;
+  }
+  
+  // Multiple image pages
+  if (pdf.imagePages) {
+    for (const page of pdf.imagePages) {
+      size += page.length;
+    }
+  }
+  
+  // Add overhead for JSON encoding (~10%)
+  return Math.ceil(size * 1.1);
+}
+
 /**
  * Extract biomarkers from a SINGLE PDF document using Supabase Edge Function
  * This keeps the Claude API key secure on the server-side
@@ -350,6 +371,22 @@ export async function extractBiomarkersFromPdf(
   if (!supabaseClient) {
     throw new Error('Supabase is not configured');
   }
+
+  // Pre-send payload size check to fail fast on oversized files
+  const estimatedSize = estimatePayloadSize(processedPdf);
+  const sizeMB = (estimatedSize / (1024 * 1024)).toFixed(2);
+  
+  if (estimatedSize > MAX_SAFE_PAYLOAD_SIZE) {
+    const maxMB = (MAX_SAFE_PAYLOAD_SIZE / (1024 * 1024)).toFixed(1);
+    console.error(`❌ Payload too large: ${sizeMB} MB exceeds ${maxMB} MB limit`);
+    throw new Error(
+      `File "${processedPdf.fileName}" is too large (${sizeMB} MB). ` +
+      `Maximum safe size is ${maxMB} MB per request. ` +
+      `Multi-page files are automatically split into individual pages for processing.`
+    );
+  }
+  
+  console.log(`📊 Estimated payload size: ${sizeMB} MB (limit: ${(MAX_SAFE_PAYLOAD_SIZE / (1024 * 1024)).toFixed(1)} MB)`);
 
   // Calculate dynamic timeout BEFORE retry wrapper so both use same value
   const dynamicTimeout = calculateTimeout(processedPdf);
@@ -725,6 +762,129 @@ export async function extractBiomarkersWithParallelPages(
 }
 
 /**
+ * Extract biomarkers from a scanned PDF using parallel Vision page processing
+ * Processes individual image pages with controlled concurrency (2 at a time for Vision)
+ * This prevents timeout issues by keeping each request small and fast (~55s per page)
+ */
+export async function extractBiomarkersWithParallelVisionPages(
+  processedPdf: ProcessedPDF,
+  onProgress?: (pagesComplete: number, totalPages: number) => void
+): Promise<ClaudeResponse> {
+  const startTime = Date.now();
+  const { fileName, imagePages, mimeType } = processedPdf;
+
+  if (!imagePages || imagePages.length === 0) {
+    throw new Error('No image pages available for parallel Vision processing');
+  }
+
+  const pageCount = imagePages.length;
+  console.log(`🚀 PARALLEL VISION PROCESSING: ${fileName} (${pageCount} pages)`);
+  console.log(`   - Processing with concurrency limit of 2 (Vision API is slower)`);
+
+  const VISION_CONCURRENCY_LIMIT = 2; // Lower than text (5) because Vision is slower
+  const allBiomarkers: ExtractedBiomarker[] = [];
+  let patientInfo: PatientInfo | null = null;
+  let completedPages = 0;
+
+  // Process all image pages with concurrency control
+  const pageResults = await processConcurrently(
+    imagePages,
+    async (imageData, idx) => {
+      const pageNum = idx + 1;
+      const singlePagePdf: ProcessedPDF = {
+        fileName: `${fileName} (Page ${pageNum})`,
+        extractedText: '',
+        pageCount: 1,
+        isImage: true,
+        imageData: imageData, // Single image page
+        mimeType: mimeType || 'image/jpeg',
+      };
+
+      try {
+        const result = await extractBiomarkersFromPdf(singlePagePdf);
+        completedPages++;
+        if (onProgress) {
+          onProgress(completedPages, pageCount);
+        }
+        console.log(`   ✅ Vision Page ${pageNum} complete (${result.biomarkers?.length || 0} biomarkers) - ${completedPages}/${pageCount} pages done`);
+        return result;
+      } catch (error) {
+        completedPages++;
+        if (onProgress) {
+          onProgress(completedPages, pageCount);
+        }
+        console.error(`   ❌ Vision Page ${pageNum} failed:`, error);
+        return null;
+      }
+    },
+    VISION_CONCURRENCY_LIMIT
+  );
+
+  // Combine and deduplicate results
+  for (const result of pageResults) {
+    if (result && result.biomarkers) {
+      allBiomarkers.push(...result.biomarkers);
+      if (!patientInfo && result.patientInfo) patientInfo = result.patientInfo;
+    }
+  }
+
+  // Deduplicate biomarkers by name (case-insensitive)
+  const uniqueBiomarkers = Array.from(
+    new Map(
+      allBiomarkers
+        .filter(b => b && b.name)
+        .map(b => [b.name.toLowerCase(), b])
+    ).values()
+  );
+
+  const duration = Date.now() - startTime;
+  console.log(`✅ Parallel Vision processing complete: ${uniqueBiomarkers.length} unique biomarkers in ${(duration / 1000).toFixed(1)}s`);
+
+  // Normalize the merged biomarkers
+  try {
+    const normalizedBiomarkers = await biomarkerNormalizer.normalizeBatch(uniqueBiomarkers);
+    
+    return {
+      biomarkers: uniqueBiomarkers,
+      normalizedBiomarkers,
+      patientInfo: patientInfo || { name: null, dateOfBirth: null, gender: null, testDate: null },
+      panelName: '',
+    };
+  } catch (normError) {
+    console.warn('⚠️ Normalization failed in parallel Vision processing:', normError);
+    return {
+      biomarkers: uniqueBiomarkers,
+      patientInfo: patientInfo || { name: null, dateOfBirth: null, gender: null, testDate: null },
+      panelName: '',
+    };
+  }
+}
+
+/**
+ * Smart extraction that automatically uses parallel page processing for multi-page documents
+ * This is the recommended entry point for single-file extraction
+ */
+export async function extractBiomarkersSmartSingle(
+  processedPdf: ProcessedPDF,
+  onProgress?: (pagesComplete: number, totalPages: number) => void
+): Promise<ClaudeResponse> {
+  // Multi-page Vision files: use parallel Vision processing to avoid timeouts
+  if (processedPdf.imagePages && processedPdf.imagePages.length > 1) {
+    console.log(`📸 Multi-page Vision file detected (${processedPdf.imagePages.length} pages) - using parallel page processing`);
+    return extractBiomarkersWithParallelVisionPages(processedPdf, onProgress);
+  }
+
+  // Multi-page text files with page texts: use parallel text processing
+  if (processedPdf.pageTexts && processedPdf.pageTexts.length > 1 && !processedPdf.isImage) {
+    console.log(`📄 Multi-page text file detected (${processedPdf.pageTexts.length} pages) - using parallel page processing`);
+    return extractBiomarkersWithParallelPages(processedPdf, onProgress);
+  }
+
+  // Single page or simple file: use direct extraction
+  return extractBiomarkersFromPdf(processedPdf);
+}
+
+/**
  * Extract biomarkers from MULTIPLE PDFs with adaptive batching
  *
  * New Features:
@@ -791,9 +951,10 @@ export async function extractBiomarkersFromPdfs(
   console.groupEnd();
 
   // Step 4: Process files in parallel with concurrency limits
+  // Using extractBiomarkersSmartSingle to automatically handle multi-page Vision files
   const processingResult = await processInParallel(
     queue,
-    (pdf) => extractBiomarkersFromPdf(pdf), // Process each file individually
+    (pdf) => extractBiomarkersSmartSingle(pdf), // Smart extraction handles multi-page docs
     (progress: ProcessingProgress) => {
       if (!onProgress) return;
       

@@ -1,0 +1,25 @@
+Key findings about the current pipeline and why timeouts are likely:
+
+Vision fallback sends every page of low/empty-text PDFs as 2x PNG images in a single request (src/lib/pdf-processor.ts:159-252). This can create huge payloads and the Edge Function itself notes Vision can take 2–5 minutes (supabase/functions/analyze-biomarkers/index.ts:202-207), well above the desired <2 minutes.
+Client timeout policy is BASE 90s + 20s/page up to 5 minutes (src/lib/claude-service.ts:30-56), which likely exceeds Supabase Edge runtime limits (~60s), so the server may be killed before the client timeout fires.
+Parallel processor fires up to 10 text and 3 vision jobs at once (src/lib/parallel-processor.ts:142-150) with no adaptive batch/token/payload guardrails (despite ADAPTIVE_BATCHING.md claiming otherwise). That can overwhelm the Edge Function or the Claude endpoint and increase timeout risk.
+Large payloads hit multiple early failure points: body parsing timeout at 30s, payload hard cap 20MB (supabase/functions/analyze-biomarkers/index.ts around request parsing and size check), plus long Vision inference.
+Critical bug: useVision is referenced but never defined when logging usage (supabase/functions/analyze-biomarkers/index.ts:242-251). That will throw a ReferenceError after Claude responds, turning successes into 500s.
+Observability gap: the telemetry/batching utilities aren’t wired into the live path; we have little timing data per stage to pinpoint where time is spent.
+Suggested plan to hit <2 min reliably:
+
+Instrument and measure: add timing/logging per stage (client extraction time, payload size after conversion, Edge call duration, Claude duration) and expose a lightweight console/telemetry summary so we know exactly where time is spent on timeouts.
+Guardrails before the Edge call:
+Compute post-conversion size with calculateFileMetrics and reject/ask for split if >10–12MB or >N pages for Vision.
+Downscale scanned pages (e.g., max width 1200px, JPEG) and cap number of pages sent to Vision; prompt user to select recent pages when over the cap.
+Restructure scanned/poor-text flow:
+Avoid single huge Vision calls; either (a) split pages into smaller batches (2–3 pages) with a per-batch timeout aligned to Supabase limits, then merge results, or (b) use the existing page-level text path (extractBiomarkersWithParallelPages) when any text exists.
+Concurrency and timeouts:
+Lower client concurrency to something like 3 text / 1–2 vision and enforce a global queue to prevent overload.
+Align client timeout to the Edge runtime (target ~55–60s) and return actionable errors before the Edge is killed.
+Edge fixes and resilience:
+Fix useVision bug and add safe logging around the usage insert.
+Add a fast “payload/time budget” check at the top of the Edge function and short-circuit with a clear error when the request can’t finish in time.
+Validation loop:
+Create a small battery of test docs (short text PDF, 5-page scan, 15-page scan) and record stage timings after changes to confirm end-to-end stays under 2 minutes.
+If you want, I can start by (a) fixing the useVision crash, (b) wiring size/timing telemetry into the live path, and (c) implementing a strict Vision page/size cap with downscaling so we immediately cut the long-tail timeouts.

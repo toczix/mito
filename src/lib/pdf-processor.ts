@@ -174,7 +174,7 @@ export async function processPdfFile(
 
     for (let pageNum = 1; pageNum <= pagesToConvert; pageNum++) {
       const page = await pdf.getPage(pageNum);
-      const viewport = page.getViewport({ scale: 2.0 }); // 2x scale for better quality
+      const viewport = page.getViewport({ scale: 1.5 }); // 1.5x scale (reduced from 2.0 for faster processing)
 
       canvas.width = viewport.width;
       canvas.height = viewport.height;
@@ -185,11 +185,11 @@ export async function processPdfFile(
         canvas: canvas,
       }).promise;
 
-      // Convert canvas to base64 image
-      const imageData = canvas.toDataURL('image/png').split(',')[1];
+      // Convert canvas to JPEG (quality 0.8) instead of PNG - reduces payload by 60-80%
+      const imageData = canvas.toDataURL('image/jpeg', 0.8).split(',')[1];
       imagePages.push(imageData);
 
-      console.log(`✅ Converted page ${pageNum} to image (${imageData.length} bytes)`);
+      console.log(`✅ Converted page ${pageNum} to JPEG image (${(imageData.length / 1024).toFixed(1)} KB)`);
     }
 
     // Send images to Vision API for accurate extraction
@@ -201,7 +201,7 @@ export async function processPdfFile(
       pageCount: imagePages.length,
       isImage: true, // Mark as image so Edge Function uses Vision API
       imagePages: imagePages, // Send all page images to Vision API
-      mimeType: 'image/png',
+      mimeType: 'image/jpeg', // Using JPEG for smaller payloads
       textQuality: 'none',
       avgCharsPerPage: 0,
     };
@@ -219,7 +219,7 @@ export async function processPdfFile(
       // Process ALL pages (no limit) to prevent data loss on long lab reports
       for (let pageNum = 1; pageNum <= pageCount; pageNum++) {
         const page = await pdf.getPage(pageNum);
-        const viewport = page.getViewport({ scale: 2.0 });
+        const viewport = page.getViewport({ scale: 1.5 }); // 1.5x scale (reduced from 2.0)
         
         canvas.width = viewport.width;
         canvas.height = viewport.height;
@@ -230,11 +230,12 @@ export async function processPdfFile(
           canvas: canvas,
         }).promise;
         
-        const imageData = canvas.toDataURL('image/png').split(',')[1];
+        // Use JPEG (quality 0.8) instead of PNG - reduces payload by 60-80%
+        const imageData = canvas.toDataURL('image/jpeg', 0.8).split(',')[1];
         imagePages.push(imageData);
       }
       
-      console.log(`   Prepared ${imagePages.length} page images as fallback`);
+      console.log(`   Prepared ${imagePages.length} JPEG page images as fallback`);
     }
     
     return {
@@ -243,7 +244,7 @@ export async function processPdfFile(
       pageCount,
       isImage: true, // Mark for Vision API due to poor text quality
       imagePages: imagePages.length > 0 ? imagePages : undefined,
-      mimeType: 'image/png',
+      mimeType: 'image/jpeg', // Using JPEG for smaller payloads
       textQuality,
       avgCharsPerPage,
       pageTexts,

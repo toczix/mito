@@ -154,9 +154,12 @@ serve(async (req) => {
 
     // Build content based on whether we have images or text
     const content: any[] = []
+    
+    // Determine if we're using Vision API (used for logging)
+    const useVision = !!(processedPdf.isImage || processedPdf.imageData || processedPdf.imagePages)
 
     // For images: use Vision API (single image or multi-page scanned PDF)
-    if (processedPdf.isImage || processedPdf.imageData || processedPdf.imagePages) {
+    if (useVision) {
       console.log('📸 Using Vision API for image processing')
 
       // Add the prompt first
@@ -184,7 +187,7 @@ serve(async (req) => {
             type: 'image',
             source: {
               type: 'base64',
-              media_type: 'image/png',
+              media_type: processedPdf.mimeType || 'image/jpeg', // Support both JPEG and PNG
               data: imageData,
             },
           })

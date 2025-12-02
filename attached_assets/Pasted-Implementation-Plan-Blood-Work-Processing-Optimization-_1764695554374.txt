@@ -1,0 +1,40 @@
+Implementation Plan - Blood Work Processing Optimization
+The goal is to eliminate timeout errors and improve processing speed for blood work analysis, specifically for scanned documents (images) and multi-page PDFs.
+
+User Review Required
+IMPORTANT
+
+Breaking Change: The processing logic will be altered to split multi-page image PDFs into individual page requests. This increases the number of API calls but significantly reduces the risk of timeouts.
+
+Performance Trade-off: We are switching from PNG to JPEG (0.8 quality) for scanned images. This reduces payload size by ~60-80% with negligible impact on OCR/Vision accuracy, but is a change in data format.
+
+Proposed Changes
+Client-Side Processing (src/lib)
+[MODIFY] 
+pdf-processor.ts
+Change image conversion from PNG to JPEG (quality 0.8) to reduce payload size.
+Reduce canvas scaling from 2.0 to 1.5 to improve conversion speed and reduce memory usage.
+[MODIFY] 
+claude-service.ts
+Update extractBiomarkersWithParallelPages to support imagePages (currently only supports pageTexts).
+Update extractBiomarkersFromPdf (the main entry point) to automatically switch to parallel page processing if:
+The file has multiple imagePages (scanned PDF).
+The file is a large text PDF (>10 pages).
+This ensures that a 10-page scanned PDF becomes 10 small, fast requests instead of 1 giant, slow request that times out.
+Server-Side / Edge Function
+No changes required to the Edge Function itself, as it already handles single-page requests correctly. The client-side changes will ensure the Edge Function receives manageable payloads.
+
+Verification Plan
+Automated Tests
+We will rely on manual verification as this involves complex file processing and external API calls (Claude).
+Manual Verification
+Upload Large Scanned PDF:
+Upload a multi-page (>5 pages) scanned PDF (or a PDF with images).
+Verify that the UI shows progress for individual pages (e.g., "Processing page 1/5...").
+Verify that the process completes without timeout.
+Check the network tab to see multiple calls to analyze-biomarkers (one per page).
+Upload Text PDF:
+Upload a standard text-based PDF.
+Verify it processes normally (likely as a single batch if small, or parallel if large).
+Speed Test:
+Measure the time taken for a 5-page scan. It should be significantly faster (or at least reliable) compared to the previous timeout.

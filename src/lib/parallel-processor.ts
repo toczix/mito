@@ -141,12 +141,14 @@ export async function processInParallel(
 
   console.log('\n🚀 Starting parallel processing...');
   console.log(`   Text-based files: ${queue.textBased.length} (concurrency: 10)`);
-  console.log(`   Vision-based files: ${queue.visionBased.length} (concurrency: 3)`);
+  console.log(`   Vision-based files: ${queue.visionBased.length} (concurrency: 1, pages processed internally)`);
 
   // Process both queues in parallel
+  // Vision concurrency reduced to 1 because extractBiomarkersSmartSingle now splits
+  // multi-page Vision files into individual page requests (2 concurrent internally)
   await Promise.all([
     processWithLimit(queue.textBased, 10, 'textBased'),    // Higher concurrency for fast text processing
-    processWithLimit(queue.visionBased, 3, 'visionBased')  // Limited concurrency for Vision API
+    processWithLimit(queue.visionBased, 1, 'visionBased')  // Single file at a time (pages split internally)
   ]);
 
   const processingTime = Date.now() - startTime;
