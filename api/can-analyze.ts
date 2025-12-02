@@ -69,7 +69,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const currentCount = countError ? 0 : (countData || 0);
     const subscription = await getUserSubscription(user.id);
-    const isPro = subscription?.plan === 'pro' && subscription?.status === 'active';
+    
+    // Check if user has Pro access via paid subscription OR admin override
+    const hasPaidPro = subscription?.plan === 'pro' && subscription?.status === 'active';
+    const hasProOverride = subscription?.pro_override && 
+      subscription?.pro_override_until && 
+      new Date(subscription.pro_override_until) > new Date();
+    const isPro = hasPaidPro || hasProOverride;
 
     return res.status(200).json({
       allowed: canAnalyze === true,

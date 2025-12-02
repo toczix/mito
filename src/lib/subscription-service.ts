@@ -133,8 +133,8 @@ async function canAnalyzeClientLocal(clientId: string): Promise<AnalysisLimit> {
 
     // Get subscription
     const { data: subscription, error: subError } = await supabase
-      .from('subscriptions')
-      .select('plan, status')
+      .from('user_subscriptions')
+      .select('plan, status, pro_override, pro_override_until')
       .eq('user_id', user.id)
       .single();
 
@@ -142,7 +142,12 @@ async function canAnalyzeClientLocal(clientId: string): Promise<AnalysisLimit> {
       console.error('Error fetching subscription:', subError);
     }
 
-    const isPro = subscription?.plan === 'pro' && subscription?.status === 'active';
+    // Check if user has Pro access via paid subscription OR admin override
+    const hasPaidPro = subscription?.plan === 'pro' && subscription?.status === 'active';
+    const hasProOverride = subscription?.pro_override && 
+      subscription?.pro_override_until && 
+      new Date(subscription.pro_override_until) > new Date();
+    const isPro = hasPaidPro || hasProOverride;
 
     if (isPro) {
       return {
