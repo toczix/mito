@@ -108,7 +108,11 @@ export const BIOMARKERS: Biomarker[] = [
     femaleRange: "4.0-6.9 mmol/L (11.2-19.3 mg/dL)",
     units: ["mmol/L", "mg/dL"],
     category: "Kidney Function",
-    aliases: ["Blood Urea Nitrogen", "Urea Nitrogen", "Urea"],
+    aliases: [
+      "Blood Urea Nitrogen", "Urea Nitrogen", "Urea",
+      "UREA NITROGEN (BUN)", "Urea Nitrogen (BUN)", "UREA NITROGEN BUN",
+      "BUN (Urea Nitrogen)", "BUN/Urea", "Urea/BUN", "Blood Urea"
+    ],
     lowReasons: "Low protein intake/malabsorption, Excess hydration, B6 need, Liver dysfunction",
     highReasons: "Dehydration, High protein diet/digestion issues, Kidney dysfunction, Cardiovascular dysfunction"
   },
@@ -796,6 +800,11 @@ export const BIOMARKERS: Biomarker[] = [
       "Calcidiol", "Cholecalciferol", "25-Hydroxycholecalciferol",
       "Serum Vitamin D", "Total Vitamin D", "Vitamin D Total",
       "D Vitamin", "D-Vitamin",
+      // Lab-specific comma-separated formats
+      "VITAMIN D,25-OH,TOTAL,IA", "VITAMIN D,25-OH,TOTAL", "VITAMIN D 25-OH TOTAL",
+      "Vitamin D,25-OH", "Vitamin D, 25-OH", "25-OH,TOTAL", "25-OH TOTAL",
+      "VITAMIN D,25-HYDROXY", "Vitamin D,25-Hydroxy", "25-Hydroxy,Total",
+      "D,25-OH", "D 25-OH", "25OH Vitamin D", "25OH-D", "25OHD",
       // Spanish
       "Vitamina D", "25-Hidroxi Vitamina D", "Vitamina D 25-Hidroxi", "D Vitamina",
       // Portuguese  
