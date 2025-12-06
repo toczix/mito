@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { PdfUploader } from '@/components/PdfUploader';
 import { LoadingState, type FileProgress } from '@/components/LoadingState';
 import { AnalysisResults } from '@/components/AnalysisResults';
@@ -12,10 +12,54 @@ import { matchBiomarkersWithRanges } from '@/lib/analyzer';
 import { createAnalysis } from '@/lib/analysis-service';
 import { matchOrCreateClient, autoCreateClient, type ClientMatchResult } from '@/lib/client-matcher';
 import type { AnalysisResult, ExtractedBiomarker } from '@/lib/biomarkers';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, Copy, CheckCircle } from 'lucide-react';
 import { isSupabaseEnabled } from '@/lib/supabase';
 import { AuthService, type AuthUser } from '@/lib/auth-service';
 import { canAnalyzeClient } from '@/lib/subscription-service';
+import { Button } from '@/components/ui/button';
+
+const GLOBAL_TIMEOUT_MS = 120000;
+
+interface DiagnosticInfo {
+  timestamp: string;
+  lastProgress: number;
+  lastMessage: string;
+  filesProcessing: string[];
+  userAgent: string;
+  errorCode: string;
+}
+
+function generateDiagnosticInfo(
+  progress: number,
+  message: string,
+  fileProgress: FileProgress[],
+  errorMessage?: string
+): DiagnosticInfo {
+  const processingFiles = fileProgress
+    .filter(f => f.status === 'processing')
+    .map(f => f.fileName);
+  
+  return {
+    timestamp: new Date().toISOString(),
+    lastProgress: progress,
+    lastMessage: message,
+    filesProcessing: processingFiles,
+    userAgent: navigator.userAgent.substring(0, 100),
+    errorCode: `MITO-${Date.now().toString(36).toUpperCase()}-${errorMessage ? 'ERR' : 'TIMEOUT'}`
+  };
+}
+
+function formatDiagnosticForCopy(info: DiagnosticInfo, errorMessage?: string): string {
+  return `--- Mito Diagnostic Report ---
+Error Code: ${info.errorCode}
+Time: ${info.timestamp}
+Progress: ${info.lastProgress}%
+Status: ${info.lastMessage}
+Files in progress: ${info.filesProcessing.length > 0 ? info.filesProcessing.join(', ') : 'None'}
+${errorMessage ? `Error: ${errorMessage}` : 'Issue: Processing timeout - analysis did not complete within 2 minutes'}
+Browser: ${info.userAgent}
+---`;
+}
 
 type AppState = 'upload' | 'processing' | 'confirmation' | 'analyzing' | 'results' | 'error';
 
@@ -62,6 +106,12 @@ export function HomePage() {
     currentCount: number;
     patientName: string;
   } | null>(null);
+  
+  // Diagnostic state for error reporting
+  const [diagnosticInfo, setDiagnosticInfo] = useState<DiagnosticInfo | null>(null);
+  const [copied, setCopied] = useState(false);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const progressRef = useRef({ progress: 0, message: '' });
 
   const handleFilesSelected = (selectedFiles: File[]) => {
     setFiles(selectedFiles);
@@ -76,9 +126,31 @@ export function HomePage() {
 
     setState('processing');
     setError(null);
+    setDiagnosticInfo(null);
     setSavedAnalysesCount(0);
     setProcessingProgress(0);
     setFileProgress([]);
+    progressRef.current = { progress: 0, message: 'Starting...' };
+
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+
+    let analysisCompleted = false;
+
+    timeoutRef.current = setTimeout(() => {
+      if (!analysisCompleted) {
+        console.error('⏱️ Global timeout triggered after 2 minutes');
+        const diagInfo = generateDiagnosticInfo(
+          progressRef.current.progress,
+          progressRef.current.message,
+          fileProgress
+        );
+        setDiagnosticInfo(diagInfo);
+        setError('Analysis is taking too long. The processing did not complete within 2 minutes. This may be due to server issues or file complexity. Please try again or contact support with the diagnostic info below.');
+        setState('error');
+      }
+    }, GLOBAL_TIMEOUT_MS);
 
     try {
       // Filter out oversized files (>10MB) before processing
@@ -98,8 +170,13 @@ export function HomePage() {
       }
 
       // OCR/Extraction phase: 0-20%
-      setProcessingMessage(`Extracting text from ${validFiles.length} PDF(s)...`);
-      setProcessingProgress(5);
+      const updateProgress = (progress: number, message: string) => {
+        setProcessingProgress(progress);
+        setProcessingMessage(message);
+        progressRef.current = { progress, message };
+      };
+      
+      updateProgress(5, `Extracting text from ${validFiles.length} PDF(s)...`);
 
       const processedPdfs = await processMultiplePdfs(
         validFiles,
@@ -170,7 +247,9 @@ export function HomePage() {
             if (status.startsWith('processing')) {
               const parts = status.split(' ');
               const fileName = parts.slice(1).join(' ');
-              setProcessingMessage(`Processing ${fileName}...`);
+              const msg = `Processing ${fileName}...`;
+              setProcessingMessage(msg);
+              progressRef.current.message = msg;
               setFileProgress(prev => prev.map(f =>
                 f.fileName === fileName ? { ...f, status: 'processing' as const } : f
               ));
@@ -181,8 +260,10 @@ export function HomePage() {
 
               // Calculate granular progress: 20% + (completed/total * 70%)
               const analysisProgress = 20 + Math.round((completedFiles / totalFiles) * 70);
+              const msg = `Completed ${fileName} (${completedFiles}/${totalFiles})`;
               setProcessingProgress(analysisProgress);
-              setProcessingMessage(`Completed ${fileName} (${completedFiles}/${totalFiles})`);
+              setProcessingMessage(msg);
+              progressRef.current = { progress: analysisProgress, message: msg };
 
               setFileProgress(prev => prev.map(f =>
                 f.fileName === fileName ? { ...f, status: 'completed' as const } : f
@@ -202,8 +283,10 @@ export function HomePage() {
                 const fileProgress = (parseInt(percentage) / 100) * fileWeight;
                 const overallProgress = Math.min(90, Math.round(baseProgress + fileProgress));
 
+                const msg = `Processing ${fileName}: ${pagesComplete}/${totalPages} pages (${percentage}%)`;
                 setProcessingProgress(overallProgress);
-                setProcessingMessage(`Processing ${fileName}: ${pagesComplete}/${totalPages} pages (${percentage}%)`);
+                setProcessingMessage(msg);
+                progressRef.current = { progress: overallProgress, message: msg };
 
                 setFileProgress(prev => prev.map(f =>
                   f.fileName === fileName ? {
@@ -437,10 +520,27 @@ export function HomePage() {
       }
 
       setProcessingProgress(100);
+      analysisCompleted = true;
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
       setState('confirmation');
     } catch (err) {
       console.error('Analysis error:', err);
-      setError(err instanceof Error ? err.message : 'An unexpected error occurred');
+      analysisCompleted = true;
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+      
+      const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred';
+      const diagInfo = generateDiagnosticInfo(
+        progressRef.current.progress,
+        progressRef.current.message,
+        fileProgress,
+        errorMessage
+      );
+      setDiagnosticInfo(diagInfo);
+      setError(errorMessage);
       setState('error');
     }
   };
@@ -660,6 +760,8 @@ export function HomePage() {
     setFiles([]);
     setResults([]);
     setError(null);
+    setDiagnosticInfo(null);
+    setCopied(false);
     setExtractedAnalyses([]);
     setSavedAnalysesCount(0);
     setProcessingProgress(0);
@@ -674,6 +776,8 @@ export function HomePage() {
     setFiles([]);
     setResults([]);
     setError(null);
+    setDiagnosticInfo(null);
+    setCopied(false);
     setSelectedClientId('');
     setSelectedClientName('');
     setExtractedAnalyses([]);
@@ -718,6 +822,45 @@ export function HomePage() {
               <p>{error}</p>
             </AlertDescription>
           </Alert>
+          
+          {/* Diagnostic Info for Support */}
+          {diagnosticInfo && (
+            <div className="bg-muted p-4 rounded-lg border">
+              <div className="flex items-center justify-between mb-2">
+                <p className="text-sm font-medium">Diagnostic Information</p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const text = formatDiagnosticForCopy(diagnosticInfo, error || undefined);
+                    navigator.clipboard.writeText(text);
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 2000);
+                  }}
+                  className="flex items-center gap-1"
+                >
+                  {copied ? (
+                    <>
+                      <CheckCircle className="h-4 w-4" />
+                      Copied!
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="h-4 w-4" />
+                      Copy for Support
+                    </>
+                  )}
+                </Button>
+              </div>
+              <p className="text-xs text-muted-foreground mb-2">
+                If this problem persists, please copy this information and send it to support.
+              </p>
+              <pre className="text-xs bg-background p-2 rounded overflow-x-auto">
+                <code>{formatDiagnosticForCopy(diagnosticInfo, error || undefined)}</code>
+              </pre>
+            </div>
+          )}
+          
           <div className="flex justify-center gap-3">
             <button
               onClick={handleReset}
