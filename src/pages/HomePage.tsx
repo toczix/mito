@@ -112,6 +112,7 @@ export function HomePage() {
   const [copied, setCopied] = useState(false);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const progressRef = useRef({ progress: 0, message: '' });
+  const fileProgressRef = useRef<FileProgress[]>([]);
 
   const handleFilesSelected = (selectedFiles: File[]) => {
     setFiles(selectedFiles);
@@ -131,12 +132,21 @@ export function HomePage() {
     setProcessingProgress(0);
     setFileProgress([]);
     progressRef.current = { progress: 0, message: 'Starting...' };
+    fileProgressRef.current = [];
 
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
     }
 
     let analysisCompleted = false;
+    
+    const cleanupAndMarkComplete = () => {
+      analysisCompleted = true;
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
+      }
+    };
 
     timeoutRef.current = setTimeout(() => {
       if (!analysisCompleted) {
@@ -144,7 +154,7 @@ export function HomePage() {
         const diagInfo = generateDiagnosticInfo(
           progressRef.current.progress,
           progressRef.current.message,
-          fileProgress
+          fileProgressRef.current
         );
         setDiagnosticInfo(diagInfo);
         setError('Analysis is taking too long. The processing did not complete within 2 minutes. This may be due to server issues or file complexity. Please try again or contact support with the diagnostic info below.');
@@ -164,6 +174,7 @@ export function HomePage() {
       }
 
       if (validFiles.length === 0) {
+        cleanupAndMarkComplete();
         setError('All selected files exceed the 10 MB limit. Please select smaller files.');
         setState('upload');
         return;
@@ -193,19 +204,18 @@ export function HomePage() {
           const isLarge = file && file.size > 8 * 1024 * 1024; // Over 8MB
 
           // Cap at 20% to prevent going over during OCR phase
-          setProcessingProgress(Math.min(20, Math.round(currentProgress)));
-          if (isLarge) {
-            setProcessingMessage(`Running OCR on ${fileName}... ${ocrProgress}% (large file - may take longer)`);
-          } else {
-            setProcessingMessage(`Running OCR on ${fileName}... ${ocrProgress}%`);
-          }
+          const ocrProgressNum = Math.min(20, Math.round(currentProgress));
+          const ocrMessage = isLarge 
+            ? `Running OCR on ${fileName}... ${ocrProgress}% (large file - may take longer)`
+            : `Running OCR on ${fileName}... ${ocrProgress}%`;
+          updateProgress(ocrProgressNum, ocrMessage);
         }
       );
-      setProcessingProgress(20);
+      updateProgress(20, 'OCR complete, starting analysis...');
 
       // Notify user if files were skipped
       if (oversizedFiles.length > 0) {
-        setProcessingMessage(`⚠️ Skipped ${oversizedFiles.length} oversized file(s). Processing ${validFiles.length} valid file(s)...`);
+        updateProgress(20, `⚠️ Skipped ${oversizedFiles.length} oversized file(s). Processing ${validFiles.length} valid file(s)...`);
         // Brief pause to show the message
         await new Promise(resolve => setTimeout(resolve, 2000));
       }
@@ -230,11 +240,17 @@ export function HomePage() {
         status: 'pending' as const
       }));
       setFileProgress(initialFileProgress);
+      fileProgressRef.current = initialFileProgress;
+      
+      const updateFileProgress = (updater: (prev: FileProgress[]) => FileProgress[]) => {
+        setFileProgress(prev => {
+          const updated = updater(prev);
+          fileProgressRef.current = updated;
+          return updated;
+        });
+      };
 
-      setProcessingProgress(20);
-
-      // AI Analysis phase: 20-90% (70% total range, divided by number of files)
-      setProcessingMessage(`Analyzing ${validPdfs.length} document(s) with Claude AI...`);
+      updateProgress(20, `Analyzing ${validPdfs.length} document(s) with Claude AI...`);
 
       let completedFiles = 0;
       const totalFiles = validPdfs.length;
@@ -248,9 +264,8 @@ export function HomePage() {
               const parts = status.split(' ');
               const fileName = parts.slice(1).join(' ');
               const msg = `Processing ${fileName}...`;
-              setProcessingMessage(msg);
-              progressRef.current.message = msg;
-              setFileProgress(prev => prev.map(f =>
+              updateProgress(progressRef.current.progress, msg);
+              updateFileProgress(prev => prev.map(f =>
                 f.fileName === fileName ? { ...f, status: 'processing' as const } : f
               ));
             } else if (status.startsWith('completed')) {
@@ -261,11 +276,9 @@ export function HomePage() {
               // Calculate granular progress: 20% + (completed/total * 70%)
               const analysisProgress = 20 + Math.round((completedFiles / totalFiles) * 70);
               const msg = `Completed ${fileName} (${completedFiles}/${totalFiles})`;
-              setProcessingProgress(analysisProgress);
-              setProcessingMessage(msg);
-              progressRef.current = { progress: analysisProgress, message: msg };
+              updateProgress(analysisProgress, msg);
 
-              setFileProgress(prev => prev.map(f =>
+              updateFileProgress(prev => prev.map(f =>
                 f.fileName === fileName ? { ...f, status: 'completed' as const } : f
               ));
             } else if (status.includes('page-progress')) {
@@ -280,15 +293,13 @@ export function HomePage() {
                 const fileWeight = 70 / totalFiles; // Each file gets equal weight
                 const fileIndex = validPdfs.findIndex(p => p.fileName === fileName);
                 const baseProgress = 20 + (fileIndex * fileWeight);
-                const fileProgress = (parseInt(percentage) / 100) * fileWeight;
-                const overallProgress = Math.min(90, Math.round(baseProgress + fileProgress));
+                const fileProgressCalc = (parseInt(percentage) / 100) * fileWeight;
+                const overallProgress = Math.min(90, Math.round(baseProgress + fileProgressCalc));
 
                 const msg = `Processing ${fileName}: ${pagesComplete}/${totalPages} pages (${percentage}%)`;
-                setProcessingProgress(overallProgress);
-                setProcessingMessage(msg);
-                progressRef.current = { progress: overallProgress, message: msg };
+                updateProgress(overallProgress, msg);
 
-                setFileProgress(prev => prev.map(f =>
+                updateFileProgress(prev => prev.map(f =>
                   f.fileName === fileName ? {
                     ...f,
                     status: 'processing' as const,
@@ -302,23 +313,22 @@ export function HomePage() {
 
               // Count failed files toward progress too
               const analysisProgress = 20 + Math.round((completedFiles / totalFiles) * 70);
-              setProcessingProgress(analysisProgress);
-              setProcessingMessage(`Failed ${fileName} (${completedFiles}/${totalFiles})`);
+              const msg = `Failed ${fileName} (${completedFiles}/${totalFiles})`;
+              updateProgress(analysisProgress, msg);
 
-              setFileProgress(prev => prev.map(f =>
+              updateFileProgress(prev => prev.map(f =>
                 f.fileName === fileName ? { ...f, status: 'error' as const, error: 'Processing failed' } : f
               ));
             } else if (status.startsWith('skipped')) {
               const message = status.replace(/^skipped\s+/i, 'Skipped ');
-              setProcessingMessage(message);
+              updateProgress(progressRef.current.progress, message);
             }
           }
         }
       );
-      setProcessingProgress(90);
+      updateProgress(90, 'AI analysis complete...');
 
-      setProcessingMessage('Consolidating patient information...');
-      setProcessingProgress(91);
+      updateProgress(91, 'Consolidating patient information...');
       
       const allPatientInfos = claudeResponses.map(r => r.patientInfo);
       console.log('📊 All extracted patient infos:', allPatientInfos);
@@ -399,8 +409,7 @@ export function HomePage() {
 
         // Progress: 92-96% (processing individual analyses)
         const progressInStep = 92 + (i / claudeResponses.length) * 4;
-        setProcessingProgress(Math.round(progressInStep));
-        setProcessingMessage(`Matching biomarkers ${i + 1} of ${claudeResponses.length}...`);
+        updateProgress(Math.round(progressInStep), `Matching biomarkers ${i + 1} of ${claudeResponses.length}...`);
 
         // ✅ Use normalized biomarkers if available, fall back to raw
         const biomarkers = claudeResponse.normalizedBiomarkers || claudeResponse.biomarkers;
@@ -453,8 +462,7 @@ export function HomePage() {
         });
       }
       
-      setProcessingMessage('Combining biomarkers from all documents...');
-      setProcessingProgress(97);
+      updateProgress(97, 'Combining biomarkers from all documents...');
       
       const biomarkerMap = new Map<string, { biomarker: ExtractedBiomarker; testDate: string | null; pdfIndex: number }>();
       
@@ -496,7 +504,7 @@ export function HomePage() {
       console.groupEnd();
       
       // STEP 1: Save extracted data and show confirmation dialog
-      setProcessingProgress(98);
+      updateProgress(98, 'Preparing results...');
       setConsolidatedPatientInfo(consolidatedPatientInfo);
       setExtractedBiomarkers(deduplicatedBiomarkers);
       setExtractedAnalyses(allAnalyses);
@@ -504,8 +512,7 @@ export function HomePage() {
       // ALWAYS show confirmation dialog so user can review/edit patient info
       if (isSupabaseEnabled && consolidatedPatientInfo.name) {
         // With Supabase: Try to match existing client
-        setProcessingMessage('Matching client...');
-        setProcessingProgress(99);
+        updateProgress(99, 'Matching client...');
         const matchResult = await matchOrCreateClient(consolidatedPatientInfo);
         setMatchResult(matchResult);
       } else {
@@ -519,24 +526,18 @@ export function HomePage() {
         });
       }
 
-      setProcessingProgress(100);
-      analysisCompleted = true;
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
+      updateProgress(100, 'Complete!');
+      cleanupAndMarkComplete();
       setState('confirmation');
     } catch (err) {
       console.error('Analysis error:', err);
-      analysisCompleted = true;
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
+      cleanupAndMarkComplete();
       
       const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred';
       const diagInfo = generateDiagnosticInfo(
         progressRef.current.progress,
         progressRef.current.message,
-        fileProgress,
+        fileProgressRef.current,
         errorMessage
       );
       setDiagnosticInfo(diagInfo);
